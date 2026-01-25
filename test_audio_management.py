@@ -67,6 +67,16 @@ class TestFindExistingChunks:
                 assert chunks[0].name == "audio_chunk0.mp3"
                 assert chunks[1].name == "audio_chunk1.mp3"
                 assert chunks[2].name == "audio_chunk2.mp3"
+    
+    def test_find_chunks_parent_directory_not_exists(self) -> None:
+        """Given: audio path with non-existent parent directory, When: find_existing_chunks called, Then: empty list returned."""
+        audio_path = Path("/nonexistent/directory/that/does/not/exist/audio.mp3")
+        
+        with patch('main.OpenAI'):
+            transcriber = VideoTranscriber("key")
+            chunks = transcriber.find_existing_chunks(audio_path)
+            
+            assert chunks == []
 
 
 class TestCleanupAudioFiles:
