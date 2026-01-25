@@ -1,0 +1,96 @@
+src = [ 
+    "."
+]
+
+line-length = 127
+exclude = [
+    ".venv",
+]
+
+[lint]
+select = [
+# pycodestyle
+"E", "W",
+# Pyflakes
+"F",
+# pyupgrade
+"UP",
+# pep8-naming
+"N",
+# flake8-async
+"ASYNC",
+# flake8-bandit
+"S",
+# flake8-boolean-trap
+"FBT",
+# flake8-bugbear
+"B",
+# flake8-builtins
+"A",
+# flake8-commas
+"COM",
+# flake8-comprehensions
+"C4",
+# flake8-datetimez
+"DTZ",
+# flake8-errmsg
+"EM",
+# flake8-import-conventions
+"ICN",
+# flake8-logging
+"LOG",
+# flake8-logging-format
+"G",
+# flake8-no-pep420
+"INP",
+# flake8-pie
+"PIE",
+# flake8-pyi
+"PYI",
+# flake8-pytest-style
+"PT",
+# flake8-quotes
+"Q",
+# flake8-raise
+"RSE",
+# flake8-return
+"RET",
+# flake8-self
+"SLF",
+# flake8-simplify
+"SIM",
+# flake8-tidy-imports
+"TID",
+# flake8-type-checking
+"TCH",
+# flake8-unused-args
+"ARG",
+# eradicate
+"ERA",
+# Mccabe
+"C",
+# isort
+"I",
+# Ruff-specific
+"RUF",
+]
+
+ignore = [
+# Use of assert
+"S101",
+# Avoid format conflict with flake8-commas/format
+# COM812 can conflict with formatters; disable to avoid unexpected behavior
+"COM812",
+# Use of implicit namespace
+#"INP001",
+# mixed-case-variable-in-class-scope (N815)
+# models extensively use mixed-case
+#"N815",
+# empty parentheses pytest
+"PT001","PT023",
+# Ignore UP017 as python 3.10 doesn't support
+#"UP017"
+]
+
+# Per-file ignores for tests only
+per-file-ignores = { "test_*.py" = ["SLF001"] }
