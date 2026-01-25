@@ -248,7 +248,9 @@ class TestTranscribeWithKeepAudio:
             # Given: mock Whisper API for small file transcription
             mock_client = MagicMock()
             mock_openai.return_value = mock_client
-            mock_client.audio.transcriptions.create.return_value = "transcript"
+            from typing import cast
+            from openai.types.audio.transcription_verbose import TranscriptionVerbose
+            mock_client.audio.transcriptions.create.return_value = cast(TranscriptionVerbose, "transcript")
             
             with tempfile.TemporaryDirectory() as tmpdir:
                 video_path = Path(tmpdir) / "video.mp4"
@@ -273,7 +275,9 @@ class TestTranscribeWithKeepAudio:
             # Given: mock Whisper API for small file transcription
             mock_client = MagicMock()
             mock_openai.return_value = mock_client
-            mock_client.audio.transcriptions.create.return_value = "transcript"
+            from typing import cast
+            from openai.types.audio.transcription_verbose import TranscriptionVerbose
+            mock_client.audio.transcriptions.create.return_value = cast(TranscriptionVerbose, "transcript")
             
             with tempfile.TemporaryDirectory() as tmpdir:
                 video_path = Path(tmpdir) / "video.mp4"
@@ -371,7 +375,9 @@ class TestForceOverwriteWithExistingChunks:
             # Given: existing audio and chunk files
             mock_client = MagicMock()
             mock_openai.return_value = mock_client
-            mock_client.audio.transcriptions.create.return_value = "new_transcript"
+            from typing import cast
+            from openai.types.audio.transcription_verbose import TranscriptionVerbose
+            mock_client.audio.transcriptions.create.return_value = cast(TranscriptionVerbose, "new_transcript")
             
             with tempfile.TemporaryDirectory() as tmpdir:
                 video_path = Path(tmpdir) / "video.mp4"

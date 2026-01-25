@@ -2,9 +2,14 @@
 
 import os
 import tempfile
+import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+from unittest.mock import patch
 import pytest
+import runpy
+from typing import cast
+from openai.types.audio.transcription_verbose import TranscriptionVerbose
 
 from main import (
     VideoTranscriber,
@@ -385,7 +390,7 @@ class TestTranscribeAudioFile:
         with patch('main.OpenAI') as mock_openai:
             mock_client = MagicMock()
             mock_openai.return_value = mock_client
-            mock_client.audio.transcriptions.create.return_value = "Hello world"
+            mock_client.audio.transcriptions.create.return_value = cast(TranscriptionVerbose, "Hello world")
             
             with tempfile.TemporaryDirectory() as tmpdir:
                 audio_path = Path(tmpdir) / "audio.mp3"
@@ -551,7 +556,7 @@ class TestTranscribeSmallFile:
         with patch('main.OpenAI') as mock_openai:
             mock_client = MagicMock()
             mock_openai.return_value = mock_client
-            mock_client.audio.transcriptions.create.return_value = "Full transcript"
+            mock_client.audio.transcriptions.create.return_value = cast(TranscriptionVerbose, "Full transcript")
             
             with tempfile.TemporaryDirectory() as tmpdir:
                 video_path = Path(tmpdir) / "video.mp4"
@@ -726,7 +731,7 @@ class TestMainCliArgumentParsing:
                         pass
                     # Then: execution completes without error
     
-    def test_main_with_all_args(self) -> None:
+    def test_main_with_all_args(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Should handle all CLI arguments."""
         # Given: all CLI arguments specified (video, key, audio, save, force)
         with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
@@ -752,6 +757,13 @@ class TestMainCliArgumentParsing:
                     except SystemExit:
                         pass
                     # Then: execution completes without error
+                        # Create a companion audio file and pass it as -o so main() uses existing audio
+                        audio = tmp_path / "video.mp3"
+                        audio.write_bytes(b"")
+                        monkeypatch.setattr(sys, "argv", ["main.py", str(video_path), "-k", "custom-key", "-o", str(audio)])
+
+                        # Run main.py as a __main__ module; should not raise
+                        runpy.run_path(str(Path(__file__).parent / "main.py"), run_name="__main__")
 
 
 class TestMainErrorHandling:
@@ -772,6 +784,156 @@ class TestMainErrorHandling:
                         main()
                     # Then: exits with error code 1
                     assert exc_info.value.code == 1
+
+
+class TestFormatTranscriptInternal:
+    """Tests for internal transcript formatting branches in main.py."""
+
+    def test_format_transcript_with_dict_segments(self) -> None:
+        """Dict responses with segments should be formatted into timestamp lines."""
+        with patch('main.OpenAI'):
+            transcriber = VideoTranscriber("key")
+            response = {
+                "segments": [
+                    {"start": 0.0, "end": 2.5, "text": "Hello dict"},
+                ]
+            }
+
+            formatted = transcriber._format_transcript_with_timestamps(response)
+            assert "[00:00 - 00:02] Hello dict" in formatted
+
+    def test_format_transcript_with_sdk_segments(self) -> None:
+        """SDK-like response objects with `segments` attribute are handled."""
+        class Seg:
+            def __init__(self, start, end, text) -> None:
+                self.start = start
+                self.end = end
+                self.text = text
+
+        class Resp:
+            def __init__(self, segments) -> None:
+                self.segments = segments
+
+        with patch('main.OpenAI'):
+            transcriber = VideoTranscriber("key")
+            resp = Resp([Seg(5.0, 8.2, "SDK segment")])
+            formatted = transcriber._format_transcript_with_timestamps(resp)
+            assert "[00:05 - 00:08] SDK segment" in formatted
+
+    def test_format_transcript_with_text_attribute(self) -> None:
+        """If SDK response exposes `text` attribute, it's returned as fallback."""
+        class Resp:
+            def __init__(self, text):
+                self.text = text
+
+        with patch('main.OpenAI'):
+            transcriber = VideoTranscriber("key")
+            resp = Resp("Raw text fallback")
+            formatted = transcriber._format_transcript_with_timestamps(resp)
+            assert formatted == "Raw text fallback"
+
+    def test_transcribe_audio_file_debug_on_empty(self, capsys) -> None:
+        """When formatting yields empty string, debug preview prints are emitted."""
+        # Create a dummy response object with no segments and no text, but meaningful __str__
+        class Resp:
+            def __str__(self):
+                return "DummyPreview: verbose details here"
+
+        with patch('main.OpenAI') as mock_openai:
+            mock_client = MagicMock()
+            mock_openai.return_value = mock_client
+            mock_client.audio.transcriptions.create.return_value = cast(TranscriptionVerbose, Resp())
+
+            with tempfile.TemporaryDirectory() as tmpdir:
+                audio_path = Path(tmpdir) / "audio.mp3"
+                audio_path.write_text("dummy audio")
+
+                transcriber = VideoTranscriber("key")
+                # When: transcribing a file that yields empty formatted transcript
+                _ = transcriber.transcribe_audio_file(audio_path)
+
+                captured = capsys.readouterr()
+                assert "DEBUG: Empty formatted transcript produced" in captured.out
+                assert "DEBUG: response preview" in captured.out
+
+
+class TestCleanupFunctions:
+    """Tests for cleanup_audio_files and cleanup_audio_chunks."""
+
+    def test_cleanup_audio_files_deletes_main_and_chunks(self, capsys) -> None:
+        with patch('main.OpenAI'):
+            transcriber = VideoTranscriber("key")
+            with tempfile.TemporaryDirectory() as tmpdir:
+                audio_path = Path(tmpdir) / "audio.mp3"
+                audio_path.write_text("audio")
+                # create chunk files
+                chunk0 = Path(tmpdir) / "audio_chunk0.mp3"
+                chunk1 = Path(tmpdir) / "audio_chunk1.mp3"
+                chunk0.write_text("c0")
+                chunk1.write_text("c1")
+
+                # When: cleanup_audio_files is called
+                transcriber.cleanup_audio_files(audio_path)
+
+                # Then: all files removed
+                assert not audio_path.exists()
+                assert not chunk0.exists()
+                assert not chunk1.exists()
+
+    def test_cleanup_audio_chunks_only_delete_chunks(self, capsys) -> None:
+        with patch('main.OpenAI'):
+            transcriber = VideoTranscriber("key")
+            with tempfile.TemporaryDirectory() as tmpdir:
+                audio_path = Path(tmpdir) / "audio.mp3"
+                audio_path.write_text("audio")
+                # create chunk files
+                chunk0 = Path(tmpdir) / "audio_chunk0.mp3"
+                chunk1 = Path(tmpdir) / "audio_chunk1.mp3"
+                chunk0.write_text("c0")
+                chunk1.write_text("c1")
+
+                # When: cleanup_audio_chunks is called
+                transcriber.cleanup_audio_chunks(audio_path)
+
+                # Then: main audio remains, chunks removed
+                assert audio_path.exists()
+                assert not chunk0.exists()
+                assert not chunk1.exists()
+
+
+class TestTranscribeAudioFileDebugDict:
+    def test_debug_prints_for_dict_response_without_text(self, capsys) -> None:
+        with patch('main.OpenAI') as mock_openai:
+            mock_client = MagicMock()
+            mock_openai.return_value = mock_client
+            mock_client.audio.transcriptions.create.return_value = cast(TranscriptionVerbose, {})
+
+            with tempfile.TemporaryDirectory() as tmpdir:
+                audio_path = Path(tmpdir) / "audio.mp3"
+                audio_path.write_text("dummy audio")
+
+                transcriber = VideoTranscriber("key")
+                _ = transcriber.transcribe_audio_file(audio_path)
+                captured = capsys.readouterr()
+                assert "DEBUG: Empty formatted transcript produced" in captured.out
+                assert "DEBUG: response keys: []" in captured.out
+
+    def test_debug_prints_for_dict_response_with_text_key(self, capsys) -> None:
+        with patch('main.OpenAI') as mock_openai:
+            mock_client = MagicMock()
+            mock_openai.return_value = mock_client
+            mock_client.audio.transcriptions.create.return_value = cast(TranscriptionVerbose, {"text": ""})
+
+            with tempfile.TemporaryDirectory() as tmpdir:
+                audio_path = Path(tmpdir) / "audio.mp3"
+                audio_path.write_text("dummy audio")
+
+                transcriber = VideoTranscriber("key")
+                _ = transcriber.transcribe_audio_file(audio_path)
+                captured = capsys.readouterr()
+                assert "DEBUG: Empty formatted transcript produced" in captured.out
+                assert "DEBUG: response keys: ['text']" in captured.out
+                assert "DEBUG: response[text] preview" in captured.out
     
     def test_main_missing_video_file(self) -> None:
         """Should exit with error when video file doesn't exist."""
@@ -911,7 +1073,7 @@ class TestEdgeCases:
         with patch('main.OpenAI') as mock_openai:
             mock_client = MagicMock()
             mock_openai.return_value = mock_client
-            mock_client.audio.transcriptions.create.return_value = ""
+            mock_client.audio.transcriptions.create.return_value = cast(TranscriptionVerbose, "")
             
             with tempfile.TemporaryDirectory() as tmpdir:
                 audio_path = Path(tmpdir) / "audio.mp3"
@@ -967,11 +1129,14 @@ class TestTranscribeVerboseJson:
         with patch('main.OpenAI') as mock_openai:
             mock_client = MagicMock()
             mock_openai.return_value = mock_client
-            mock_client.audio.transcriptions.create.return_value = {
-                "segments": [
-                    {"start": 0.0, "end": 1.0, "text": "Hello"}
-                ]
-            }
+            mock_client.audio.transcriptions.create.return_value = cast(
+                TranscriptionVerbose,
+                {
+                    "segments": [
+                        {"start": 0.0, "end": 1.0, "text": "Hello"}
+                    ]
+                }
+            )
 
             with tempfile.TemporaryDirectory() as tmpdir:
                 audio_path = Path(tmpdir) / "audio.mp3"
@@ -991,12 +1156,15 @@ class TestTranscribeVerboseJson:
         with patch('main.OpenAI') as mock_openai:
             mock_client = MagicMock()
             mock_openai.return_value = mock_client
-            mock_client.audio.transcriptions.create.return_value = {
-                "segments": [
-                    {"start": 0.0, "end": 1.2, "text": "Hello world"},
-                    {"start": 2.5, "end": 4.7, "text": "Second line"},
-                ]
-            }
+            mock_client.audio.transcriptions.create.return_value = cast(
+                TranscriptionVerbose,
+                {
+                    "segments": [
+                        {"start": 0.0, "end": 1.2, "text": "Hello world"},
+                        {"start": 2.5, "end": 4.7, "text": "Second line"},
+                    ]
+                }
+            )
 
             with tempfile.TemporaryDirectory() as tmpdir:
                 audio_path = Path(tmpdir) / "audio.mp3"
@@ -1011,6 +1179,95 @@ class TestTranscribeVerboseJson:
                 expected_second = "[00:02 - 00:04] Second line"
                 assert expected_first in result
                 assert expected_second in result
+
+
+def test_debug_print_exception_while_printing_response(tmp_path, capsys, monkeypatch):
+    # Given: a transcriber whose client returns an object that raises on __str__
+    class BadRepr:
+        def __str__(self):
+            raise RuntimeError("bad repr")
+
+    vt = VideoTranscriber(api_key="key")
+
+    # When: patching the client's transcription call to return the bad object
+    monkeypatch.setattr(vt.client.audio.transcriptions, "create", lambda **kwargs: BadRepr())
+
+    # And: create a temporary audio file to pass into transcribe_audio_file
+    audio_file = tmp_path / "dummy.mp3"
+    audio_file.write_bytes(b"\0\0")
+
+    # When: transcribing the file
+    vt.transcribe_audio_file(audio_file)
+
+    # Then: the debug except branch should print an error message
+    captured = capsys.readouterr()
+    assert "DEBUG: error while printing response" in captured.out
+
+
+def test_format_timestamp_exception_branch():
+    # Given: a transcriber
+    with patch('main.OpenAI'):
+        transcriber = VideoTranscriber("key")
+        # When: calling _format_timestamp with a non-int-convertible value
+        result = transcriber._format_timestamp("not-a-number")
+        # Then: fallback to 00:00 is returned
+        assert result == "00:00"
+
+
+def test_main_guard_executes_with_mocked_deps(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import runpy
+    import types
+    import sys
+
+    # Given: a dummy video file so validate_video_file passes
+    video = tmp_path / "video.mp4"
+    video.write_bytes(b"mp4")
+
+    # And: prepare fake modules to satisfy imports inside main.py
+    moviepy_vfc = types.ModuleType("moviepy.video.io.VideoFileClip")
+    class DummyVideo:
+        def __init__(self, path: Path) -> None:
+            self.audio = types.SimpleNamespace(write_audiofile=lambda *a, **k: None)
+        def close(self) -> None:
+            return None
+    moviepy_vfc.VideoFileClip = DummyVideo
+
+    moviepy_afc = types.ModuleType("moviepy.audio.io.AudioFileClip")
+    class DummyAudio:
+        def __init__(self, path: Path) -> None:
+            self.duration = 1.0
+        def close(self) -> None:
+            return None
+        def subclipped(self, s, e)  -> 'DummyAudio':
+            return self
+        def write_audiofile(self, *a, **k) -> None:
+            return None
+    moviepy_afc.AudioFileClip = DummyAudio
+
+    # Minimal openai module and OpenAI client
+    openai_mod = types.ModuleType("openai")
+    class DummyClient:
+        def __init__(self, api_key=None):
+            self.audio = types.SimpleNamespace(transcriptions=types.SimpleNamespace(create=lambda **k: {"text": "ok"}))
+    openai_mod.OpenAI = DummyClient
+
+    # And: insert fake modules into sys.modules so runpy will use them
+    monkeypatch.setitem(sys.modules, "moviepy.video.io.VideoFileClip", moviepy_vfc)
+    monkeypatch.setitem(sys.modules, "moviepy.audio.io.AudioFileClip", moviepy_afc)
+    monkeypatch.setitem(sys.modules, "openai", openai_mod)
+
+    # Run main.py as a __main__ module to hit the if __name__ == "__main__" guard
+    monkeypatch.chdir(str(tmp_path))
+    monkeypatch.setenv("OPENAI_API_KEY", "dummy")
+    # And: create a companion audio file and pass it as -o so main() uses existing audio
+    audio = tmp_path / "video.mp3"
+    audio.write_bytes(b"")
+    monkeypatch.setattr(sys, "argv", ["main.py", str(video), "-k", "dummy", "-o", str(audio)])
+
+    # When: executing the project's main.py as __main__
+    runpy.run_path(str(Path(__file__).parent / "main.py"), run_name="__main__")
+
+    # Then: execution completes without raising an exception
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--cov=main", "--cov-report=term-missing", "--cov-report=html"])
