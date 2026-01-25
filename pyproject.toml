@@ -9,3 +9,9 @@ dependencies = [
     "moviepy>=2.2.1",
     "openai>=2.15.0",
 ]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.19.1",
+    "ruff>=0.14.14",
+]
