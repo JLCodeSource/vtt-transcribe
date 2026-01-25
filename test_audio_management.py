@@ -395,5 +395,99 @@ class TestForceOverwriteWithExistingChunks:
                     assert mock_extract.call_args[0][2] is True
 
 
+class TestExtractAudioChunkWithCustomPath:
+    """Test extract_audio_chunk with custom audio output paths."""
+    
+    def test_extract_chunk_with_custom_audio_path(self) -> None:
+        """Should create chunks with custom audio filename in custom directory."""
+        # Given: custom audio path in subdirectory and mocked AudioFileClip
+        with patch('main.OpenAI'), \
+             patch('main.AudioFileClip') as mock_audio:
+            mock_audio_instance = MagicMock()
+            mock_chunk = MagicMock()
+            mock_audio_instance.subclipped.return_value = mock_chunk
+            mock_audio.return_value = mock_audio_instance
+            
+            with tempfile.TemporaryDirectory() as tmpdir:
+                # Create custom subdirectory
+                custom_dir = Path(tmpdir) / "audio_files" / "custom_location"
+                custom_dir.mkdir(parents=True, exist_ok=True)
+                
+                # Use custom audio filename
+                audio_path = custom_dir / "my_custom_audio.mp3"
+                audio_path.touch()
+                
+                transcriber = VideoTranscriber("key")
+                # When: extract_audio_chunk is called with custom audio path
+                chunk_path = transcriber.extract_audio_chunk(audio_path, 0.0, 60.0, 0)
+                
+                # Then: chunk is created with custom filename in same directory
+                assert chunk_path.parent == custom_dir
+                assert chunk_path.name == "my_custom_audio_chunk0.mp3"
+                mock_audio_instance.subclipped.assert_called_once_with(0.0, 60.0)
+                mock_chunk.write_audiofile.assert_called_once()
+    
+    def test_extract_multiple_chunks_with_custom_path(self) -> None:
+        """Should create sequentially numbered chunks with custom audio path."""
+        # Given: custom audio path and multiple chunk extractions
+        with patch('main.OpenAI'), \
+             patch('main.AudioFileClip') as mock_audio:
+            mock_audio_instance = MagicMock()
+            mock_chunk = MagicMock()
+            mock_audio_instance.subclipped.return_value = mock_chunk
+            mock_audio.return_value = mock_audio_instance
+            
+            with tempfile.TemporaryDirectory() as tmpdir:
+                custom_dir = Path(tmpdir) / "my_audio_output"
+                custom_dir.mkdir(parents=True, exist_ok=True)
+                
+                audio_path = custom_dir / "transcript_audio.mp3"
+                audio_path.touch()
+                
+                transcriber = VideoTranscriber("key")
+                
+                # When: multiple chunks are extracted
+                chunk0_path = transcriber.extract_audio_chunk(audio_path, 0.0, 60.0, 0)
+                chunk1_path = transcriber.extract_audio_chunk(audio_path, 60.0, 120.0, 1)
+                chunk2_path = transcriber.extract_audio_chunk(audio_path, 120.0, 180.0, 2)
+                
+                # Then: all chunks have correct names and are in same directory
+                assert chunk0_path.name == "transcript_audio_chunk0.mp3"
+                assert chunk1_path.name == "transcript_audio_chunk1.mp3"
+                assert chunk2_path.name == "transcript_audio_chunk2.mp3"
+                assert chunk0_path.parent == custom_dir
+                assert chunk1_path.parent == custom_dir
+                assert chunk2_path.parent == custom_dir
+    
+    def test_find_chunks_with_custom_path(self) -> None:
+        """Should find chunks when using custom audio path."""
+        # Given: custom audio path with chunk files
+        with tempfile.TemporaryDirectory() as tmpdir:
+            custom_dir = Path(tmpdir) / "custom_audio_dir"
+            custom_dir.mkdir(parents=True)
+            
+            audio_path = custom_dir / "my_output.mp3"
+            audio_path.write_text("audio")
+            
+            # Create chunks with custom filename
+            chunk0 = custom_dir / "my_output_chunk0.mp3"
+            chunk1 = custom_dir / "my_output_chunk1.mp3"
+            chunk2 = custom_dir / "my_output_chunk2.mp3"
+            chunk0.write_text("chunk0")
+            chunk1.write_text("chunk1")
+            chunk2.write_text("chunk2")
+            
+            with patch('main.OpenAI'):
+                transcriber = VideoTranscriber("key")
+                # When: find_existing_chunks is called with custom path
+                chunks = transcriber.find_existing_chunks(audio_path)
+                
+                # Then: all custom-named chunks are found
+                assert len(chunks) == 3
+                assert chunks[0].name == "my_output_chunk0.mp3"
+                assert chunks[1].name == "my_output_chunk1.mp3"
+                assert chunks[2].name == "my_output_chunk2.mp3"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--cov=main", "--cov-report=term-missing"])
