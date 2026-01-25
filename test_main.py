@@ -356,7 +356,7 @@ class TestTranscribeLargeFile:
                     mock_extract_chunk.side_effect = chunk_files
                     
                     transcriber = VideoTranscriber("key")
-                    result = transcriber.transcribe(video_path, audio_path)
+                    _ = transcriber.transcribe(video_path, audio_path)
                     
                     # Should call transcribe multiple times for chunks
                     assert mock_client.audio.transcriptions.create.call_count >= 1
@@ -646,11 +646,11 @@ class TestMainGuard:
         # by checking that importing the module doesn't call main()
         import importlib.util
         spec = importlib.util.spec_from_file_location("main_module", Path(__file__).parent / "main.py")
-        module = importlib.util.module_from_spec(spec)
+        module = importlib.util.module_from_spec(spec) if spec else None
         
         # Mock sys.argv to avoid argparse errors during import
         with patch('sys.argv', ['main.py']), \
-             patch('main.main') as mock_main:
+             patch('main.main'):
             # When we execute the module directly, main should be called
             # But when we import it, main should NOT be called
             # This test just verifies the pattern is correct
