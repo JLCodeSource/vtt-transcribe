@@ -12,7 +12,7 @@ install:
 	@set -e; \
 	curl -LsSf https://astral.sh/uv/install.sh | sh; \
 	uv venv && \
-	uv sync || true
+	uv sync
 
 # Use `uv run` for all runtime targets so commands run inside the project's environment
 test:
