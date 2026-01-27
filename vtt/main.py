@@ -6,8 +6,8 @@ import re
 import sys
 from pathlib import Path
 
-from moviepy.audio.io.AudioFileClip import AudioFileClip  # type: ignore[import]
-from moviepy.video.io.VideoFileClip import VideoFileClip  # type: ignore[import]
+from moviepy.audio.io.AudioFileClip import AudioFileClip  # type: ignore
+from moviepy.video.io.VideoFileClip import VideoFileClip  # type: ignore
 from openai import OpenAI
 from openai.types.audio.transcription_verbose import TranscriptionVerbose
 
@@ -23,17 +23,17 @@ class VideoTranscriber:
         self.api_key: str = api_key
         self.client = OpenAI(api_key=api_key)
 
-    def validate_video_file(self, video_path: Path) -> Path:
+    def validate_input_file(self, input_path: Path) -> Path:
         """Validate and return video file path."""
-        if not video_path.exists():
-            msg = f"Video file not found: {video_path}"
+        if not input_path.exists():
+            msg = f"Input file not found: {input_path}"
             raise FileNotFoundError(msg)
-        return video_path
+        return input_path
 
-    def resolve_audio_path(self, video_path: Path, audio_path: Path | None) -> Path:
+    def resolve_audio_path(self, input_path: Path, audio_path: Path | None) -> Path:
         """Resolve audio file path, ensuring .mp3 extension."""
         if audio_path is None:
-            return video_path.with_suffix(".mp3")
+            return input_path.with_suffix(".mp3")
         # Custom audio path handling
         if audio_path.suffix.lower() == ".mp3":
             # Already has .mp3 extension, accept as-is
@@ -45,7 +45,7 @@ class VideoTranscriber:
         msg = f"Audio file must have .mp3 extension, got: {audio_path}"
         raise ValueError(msg)
 
-    def extract_audio(self, video_path: Path, audio_path: Path, *, force: bool = False) -> None:
+    def extract_audio(self, input_path: Path, audio_path: Path, *, force: bool = False) -> None:
         """Extract audio from video file if it doesn't exist or force is True."""
         if audio_path.exists() and not force:
             file_size_mb = audio_path.stat().st_size / (1024 * 1024)
@@ -53,7 +53,7 @@ class VideoTranscriber:
             return
 
         print("Extracting audio from video...")
-        video: VideoFileClip = VideoFileClip(str(video_path))
+        video: VideoFileClip = VideoFileClip(str(input_path))
         if video.audio is not None:
             video.audio.write_audiofile(str(audio_path), logger=None)
         video.close()
@@ -314,7 +314,7 @@ class VideoTranscriber:
 
     def transcribe(
         self,
-        video_path: Path,
+        input_path: Path,
         audio_path: Path | None = None,
         *,
         force: bool = False,
@@ -325,7 +325,7 @@ class VideoTranscriber:
         Transcribe video audio using OpenAI's Whisper model.
 
         Args:
-            video_path: Path to the video file or audio file
+            input_path: Path to the video file or audio file
             audio_path: Optional path for extracted audio file. If not provided, creates one based on video name
             force: If True, re-extract audio even if it exists
             keep_audio: If True, keep audio files after transcription. If False, delete them.
@@ -335,12 +335,12 @@ class VideoTranscriber:
             Transcribed text from the video audio
         """
         # Check if input is already an audio file
-        is_audio_input = video_path.suffix.lower() in self.SUPPORTED_AUDIO_FORMATS
+        is_audio_input = input_path.suffix.lower() in self.SUPPORTED_AUDIO_FORMATS
 
         if is_audio_input:
             # Validate audio file exists
-            if not video_path.exists():
-                msg = f"Audio file not found: {video_path}"
+            if not input_path.exists():
+                msg = f"Audio file not found: {input_path}"
                 raise FileNotFoundError(msg)
 
             # Reject -o flag with audio input
@@ -349,7 +349,7 @@ class VideoTranscriber:
                 raise ValueError(msg)
 
             # Direct audio input: use it directly, no extraction needed
-            audio_path = video_path
+            audio_path = input_path
 
             # Check if this is a chunk file and scan_chunks is enabled
             if scan_chunks and "_chunk" in audio_path.stem:
@@ -362,11 +362,11 @@ class VideoTranscriber:
                     return result
         else:
             # Validate inputs
-            video_path = self.validate_video_file(video_path)
-            audio_path = self.resolve_audio_path(video_path, audio_path)
+            input_path = self.validate_input_file(input_path)
+            audio_path = self.resolve_audio_path(input_path, audio_path)
 
             # Extract audio
-            self.extract_audio(video_path, audio_path, force=force)
+            self.extract_audio(input_path, audio_path, force=force)
 
         # Get file size
         file_size_mb = audio_path.stat().st_size / (1024 * 1024)
@@ -425,7 +425,7 @@ def main() -> None:
         description="Transcribe video or audio files using OpenAI's Whisper model",
     )
     parser.add_argument(
-        "video_file",
+        "input_file",
         help="Path to the video or audio file to transcribe (.mp4, .mp3, .wav, .ogg)",
     )
     parser.add_argument(
@@ -436,7 +436,7 @@ def main() -> None:
     parser.add_argument(
         "-o",
         "--output-audio",
-        help="Path for extracted audio file (defaults to video name with .mp3 extension)",
+        help="Path for extracted audio file (defaults to input name with .mp3 extension)",
     )
     parser.add_argument(
         "-s",
@@ -466,11 +466,11 @@ def main() -> None:
         api_key = get_api_key(args.api_key)
         transcriber = VideoTranscriber(api_key)
 
-        video_path = Path(args.video_file)
+        input_path = Path(args.input_file)
         audio_path = Path(args.output_audio) if args.output_audio else None
         keep_audio = not args.delete_audio
         result = transcriber.transcribe(
-            video_path, audio_path, force=args.force, keep_audio=keep_audio, scan_chunks=args.scan_chunks
+            input_path, audio_path, force=args.force, keep_audio=keep_audio, scan_chunks=args.scan_chunks
         )
         display_result(result)
 

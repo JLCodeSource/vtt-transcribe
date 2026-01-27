@@ -33,13 +33,13 @@ make install
 2. Run the CLI (simple example):
 
 ```bash
-uv run python main.py -k $OPENAI_API_KEY path/to/video.mp4
+uv run python main.py -k $OPENAI_API_KEY path/to/input.mp4
 ```
 
 CLI options
- - `video_file`: positional path to the input video file
+ - `input_file`: positional path to the input video file
  - `-k, --api-key`: OpenAI API key (or set `OPENAI_API_KEY` env var)
- - `-o, --output-audio`: path for extracted audio file (defaults to video name with `.mp3`)
+ - `-o, --output-audio`: path for extracted audio file (defaults to input name with `.mp3` & fails if input is audio)
  - `-s, --save-transcript`: path to save the transcript (will ensure `.txt` extension)
  - `-f, --force`: re-extract audio even if it already exists
  - `--delete-audio`: delete audio files after transcription (default is to keep them)

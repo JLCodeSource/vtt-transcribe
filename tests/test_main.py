@@ -57,8 +57,8 @@ class TestValidateVideoFile:
 
             with patch("vtt.main.OpenAI"):
                 transcriber = VideoTranscriber("key")
-                # When validate_video_file is called with existing file
-                result = transcriber.validate_video_file(video_path)
+                # When validate_input_file is called with existing file
+                result = transcriber.validate_input_file(video_path)
                 # Then same path is returned
                 assert result == video_path
 
@@ -69,11 +69,11 @@ class TestValidateVideoFile:
             transcriber = VideoTranscriber("key")
             nonexistent = Path("/nonexistent/video.mp4")
 
-            # When validate_video_file is called with non-existent file
+            # When validate_input_file is called with non-existent file
             with pytest.raises(FileNotFoundError) as exc_info:
-                transcriber.validate_video_file(nonexistent)
+                transcriber.validate_input_file(nonexistent)
             # Then FileNotFoundError is raised with appropriate message
-            assert "Video file not found" in str(exc_info.value)
+            assert "Input file not found" in str(exc_info.value)
 
 
 class TestResolveAudioPath:
@@ -385,7 +385,11 @@ class TestTranscribeAudioFile:
         with patch("vtt.main.OpenAI") as mock_openai:
             mock_client = MagicMock()
             mock_openai.return_value = mock_client
-            mock_client.audio.transcriptions.create.return_value = cast("TranscriptionVerbose", "Hello world")  # type: ignore[arg-type]
+            mock_client.audio.transcriptions.create.return_value = cast(
+                # type: ignore[arg-type]
+                "TranscriptionVerbose",
+                "Hello world",
+            )
 
             with tempfile.TemporaryDirectory() as tmpdir:
                 audio_path = Path(tmpdir) / "audio.mp3"
@@ -412,7 +416,11 @@ class TestDirectAudioTranscription:
         with patch("vtt.main.OpenAI") as mock_openai:
             mock_client = MagicMock()
             mock_openai.return_value = mock_client
-            mock_client.audio.transcriptions.create.return_value = cast("TranscriptionVerbose", "Test transcript")  # type: ignore[arg-type]
+            mock_client.audio.transcriptions.create.return_value = cast(
+                # type: ignore[arg-type]
+                "TranscriptionVerbose",
+                "Test transcript",
+            )
 
             with tempfile.TemporaryDirectory() as tmpdir:
                 input_audio = Path(tmpdir) / "input_audio.mp3"
@@ -434,7 +442,11 @@ class TestDirectAudioTranscription:
         with patch("vtt.main.OpenAI") as mock_openai:
             mock_client = MagicMock()
             mock_openai.return_value = mock_client
-            mock_client.audio.transcriptions.create.return_value = cast("TranscriptionVerbose", "Chunk transcript")  # type: ignore[arg-type]
+            mock_client.audio.transcriptions.create.return_value = cast(
+                # type: ignore[arg-type]
+                "TranscriptionVerbose",
+                "Chunk transcript",
+            )
 
             with tempfile.TemporaryDirectory() as tmpdir:
                 chunk_file = Path(tmpdir) / "audio_chunk0.mp3"
@@ -505,7 +517,12 @@ class TestDirectAudioTranscription:
                     transcriber = VideoTranscriber("key")
 
                     # When transcribe is called with scan_chunks=True
-                    result = transcriber.transcribe(chunk0, audio_path=None, scan_chunks=True)  # type: ignore[call-arg]
+                    result = transcriber.transcribe(
+                        # type: ignore[call-arg]
+                        chunk0,
+                        audio_path=None,
+                        scan_chunks=True,
+                    )
 
                     # Then all 3 chunks are transcribed in order
                     assert mock_client.audio.transcriptions.create.call_count == 3
@@ -534,11 +551,17 @@ class TestDirectAudioTranscription:
                     transcriber = VideoTranscriber("key")
 
                     # When transcribe is called with scan_chunks=True
-                    result = transcriber.transcribe(chunk0, audio_path=None, scan_chunks=True)  # type: ignore[call-arg]
+                    result = transcriber.transcribe(
+                        # type: ignore[call-arg]
+                        chunk0,
+                        audio_path=None,
+                        scan_chunks=True,
+                    )
 
                     # Then timestamps are shifted and chunks separated with blank lines
                     assert "[00:00 - 00:02]" in result  # First chunk at 0s
-                    assert "[00:10 - 00:12]" in result  # Second chunk offset by 10s
+                    # Second chunk offset by 10s
+                    assert "[00:10 - 00:12]" in result
                     assert "\n\n" in result  # Blank line separator between chunks
 
 
@@ -689,7 +712,11 @@ class TestTranscribeSmallFile:
         with patch("vtt.main.OpenAI") as mock_openai:
             mock_client = MagicMock()
             mock_openai.return_value = mock_client
-            mock_client.audio.transcriptions.create.return_value = cast("TranscriptionVerbose", "Full transcript")  # type: ignore[arg-type]
+            mock_client.audio.transcriptions.create.return_value = cast(
+                # type: ignore[arg-type]
+                "TranscriptionVerbose",
+                "Full transcript",
+            )
 
             with tempfile.TemporaryDirectory() as tmpdir:
                 video_path = Path(tmpdir) / "video.mp4"
@@ -698,7 +725,7 @@ class TestTranscribeSmallFile:
                 audio_path.write_text("x" * 1024)  # 1KB file
 
                 with (
-                    patch.object(VideoTranscriber, "validate_video_file", return_value=video_path),
+                    patch.object(VideoTranscriber, "validate_input_file", return_value=video_path),
                     patch.object(VideoTranscriber, "extract_audio"),
                     patch("builtins.print"),
                 ):
@@ -733,7 +760,7 @@ class TestTranscribeLargeFile:
                 audio_path.write_text("x" * (30 * 1024 * 1024))
 
                 with (
-                    patch.object(VideoTranscriber, "validate_video_file", return_value=video_path),
+                    patch.object(VideoTranscriber, "validate_input_file", return_value=video_path),
                     patch.object(VideoTranscriber, "extract_audio"),
                     patch.object(VideoTranscriber, "get_audio_duration", return_value=600.0),
                     patch.object(VideoTranscriber, "extract_audio_chunk") as mock_extract_chunk,
@@ -1162,7 +1189,7 @@ class TestIntegrationFullWorkflow:
                         str(transcript_path),
                     ],
                 ),
-                patch.object(VideoTranscriber, "validate_video_file", return_value=video_path),
+                patch.object(VideoTranscriber, "validate_input_file", return_value=video_path),
                 patch.object(VideoTranscriber, "extract_audio"),
                 patch.object(VideoTranscriber, "transcribe_audio_file", return_value="Final transcript"),
                 patch("builtins.print"),
@@ -1403,7 +1430,7 @@ def test_main_guard_executes_with_mocked_deps(tmp_path: Path, monkeypatch: pytes
     import sys
     import types
 
-    # Given a dummy video file so validate_video_file passes
+    # Given a dummy video file so validate_input_file passes
     video = tmp_path / "video.mp4"
     video.write_bytes(b"mp4")
 
@@ -1446,9 +1473,12 @@ def test_main_guard_executes_with_mocked_deps(tmp_path: Path, monkeypatch: pytes
     openai_mod.OpenAI = DummyClient  # type: ignore[attr-defined]
 
     # And: insert fake modules into sys.modules so runpy will use them
-    monkeypatch.setitem(sys.modules, "moviepy.video.io.VideoFileClip", moviepy_vfc)  # type: ignore[attr-defined]
-    monkeypatch.setitem(sys.modules, "moviepy.audio.io.AudioFileClip", moviepy_afc)  # type: ignore[attr-defined]
-    monkeypatch.setitem(sys.modules, "openai", openai_mod)  # type: ignore[attr-defined]
+    # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "moviepy.video.io.VideoFileClip", moviepy_vfc)
+    # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "moviepy.audio.io.AudioFileClip", moviepy_afc)
+    # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "openai", openai_mod)
 
     # Run main.py as a __main__ module to hit the if __name__ == "__main__" guard
     monkeypatch.chdir(str(tmp_path))
