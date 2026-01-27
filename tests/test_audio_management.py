@@ -262,7 +262,7 @@ class TestTranscribeWithKeepAudio:
                 audio_path.write_text("x" * 1024)
 
                 with (
-                    patch.object(VideoTranscriber, "validate_video_file", return_value=video_path),
+                    patch.object(VideoTranscriber, "validate_input_file", return_value=video_path),
                     patch.object(VideoTranscriber, "extract_audio"),
                     patch("builtins.print"),
                 ):
@@ -289,7 +289,7 @@ class TestTranscribeWithKeepAudio:
                 audio_path.write_text("x" * 1024)
 
                 with (
-                    patch.object(VideoTranscriber, "validate_video_file", return_value=video_path),
+                    patch.object(VideoTranscriber, "validate_input_file", return_value=video_path),
                     patch.object(VideoTranscriber, "extract_audio"),
                     patch("builtins.print"),
                 ):
@@ -324,7 +324,7 @@ class TestTranscribeLargeWithKeepAudio:
                 chunk1.write_text("c1")
 
                 with (
-                    patch.object(VideoTranscriber, "validate_video_file", return_value=video_path),
+                    patch.object(VideoTranscriber, "validate_input_file", return_value=video_path),
                     patch.object(VideoTranscriber, "extract_audio"),
                     patch.object(VideoTranscriber, "get_audio_duration", return_value=600.0),
                     patch.object(VideoTranscriber, "extract_audio_chunk") as mock_extract,
@@ -358,7 +358,7 @@ class TestTranscribeLargeWithKeepAudio:
                 chunk1.write_text("c1")
 
                 with (
-                    patch.object(VideoTranscriber, "validate_video_file", return_value=video_path),
+                    patch.object(VideoTranscriber, "validate_input_file", return_value=video_path),
                     patch.object(VideoTranscriber, "extract_audio"),
                     patch.object(VideoTranscriber, "get_audio_duration", return_value=600.0),
                     patch.object(VideoTranscriber, "extract_audio_chunk") as mock_extract,
@@ -397,7 +397,7 @@ class TestTranscribeLargeWithKeepAudio:
                     chunk1.write_text("c1")
 
                     with (
-                        patch.object(VideoTranscriber, "validate_video_file", return_value=video_path),
+                        patch.object(VideoTranscriber, "validate_input_file", return_value=video_path),
                         patch.object(VideoTranscriber, "extract_audio"),
                         patch.object(VideoTranscriber, "get_audio_duration", return_value=600.0),
                         patch.object(VideoTranscriber, "extract_audio_chunk") as mock_extract,
@@ -421,7 +421,11 @@ class TestForceOverwriteWithExistingChunks:
             # Given existing audio and chunk files
             mock_client = MagicMock()
             mock_openai.return_value = mock_client
-            mock_client.audio.transcriptions.create.return_value = cast("TranscriptionVerbose", "new_transcript")  # type: ignore[arg-type]
+            mock_client.audio.transcriptions.create.return_value = cast(
+                # type: ignore[arg-type]
+                "TranscriptionVerbose",
+                "new_transcript",
+            )
 
             with tempfile.TemporaryDirectory() as tmpdir:
                 video_path = Path(tmpdir) / "video.mp4"
@@ -434,7 +438,7 @@ class TestForceOverwriteWithExistingChunks:
                 old_chunk1.write_text("old_chunk1")
 
                 with (
-                    patch.object(VideoTranscriber, "validate_video_file", return_value=video_path),
+                    patch.object(VideoTranscriber, "validate_input_file", return_value=video_path),
                     patch.object(VideoTranscriber, "extract_audio") as mock_extract,
                     patch("builtins.print"),
                 ):
