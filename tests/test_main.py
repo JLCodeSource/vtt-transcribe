@@ -403,6 +403,32 @@ class TestTranscribeAudioFile:
                 assert call_kwargs["response_format"] == "verbose_json"
 
 
+class TestDirectAudioTranscription:
+    """When a user provides an audio file as the primary input."""
+
+    def test_transcribe_direct_mp3_skips_extraction(self) -> None:
+        """Should skip audio extraction when input is already an .mp3 file."""
+        # Given an existing .mp3 file and a mocked OpenAI client
+        with patch("vtt.main.OpenAI") as mock_openai:
+            mock_client = MagicMock()
+            mock_openai.return_value = mock_client
+            mock_client.audio.transcriptions.create.return_value = cast("TranscriptionVerbose", "Test transcript")  # type: ignore[arg-type]
+
+            with tempfile.TemporaryDirectory() as tmpdir:
+                input_audio = Path(tmpdir) / "input_audio.mp3"
+                input_audio.write_text("x" * 1024)  # 1KB audio file
+
+                with patch.object(VideoTranscriber, "extract_audio") as mock_extract, patch("builtins.print"):
+                    transcriber = VideoTranscriber("key")
+
+                    # When transcribe is called with the audio file as the main input
+                    result = transcriber.transcribe(input_audio, audio_path=None)
+
+                    # Then extract_audio should not be called and transcript returned
+                    mock_extract.assert_not_called()
+                    assert result == "Test transcript"
+
+
 class TestTranscribeChunkedAudio:
     """Test chunked audio transcription."""
 

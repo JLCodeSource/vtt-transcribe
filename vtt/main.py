@@ -309,12 +309,19 @@ class VideoTranscriber:
         Returns:
             Transcribed text from the video audio
         """
-        # Validate inputs
-        video_path = self.validate_video_file(video_path)
-        audio_path = self.resolve_audio_path(video_path, audio_path)
+        # Check if input is already an audio file
+        is_audio_input = video_path.suffix.lower() in [".mp3", ".wav", ".ogg"]
 
-        # Extract audio
-        self.extract_audio(video_path, audio_path, force=force)
+        if is_audio_input:
+            # Direct audio input: use it directly, no extraction needed
+            audio_path = video_path
+        else:
+            # Validate inputs
+            video_path = self.validate_video_file(video_path)
+            audio_path = self.resolve_audio_path(video_path, audio_path)
+
+            # Extract audio
+            self.extract_audio(video_path, audio_path, force=force)
 
         # Get file size
         file_size_mb = audio_path.stat().st_size / (1024 * 1024)
