@@ -405,11 +405,11 @@ def display_result(transcript: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Transcribe video audio using OpenAI's Whisper model",
+        description="Transcribe video or audio files using OpenAI's Whisper model",
     )
     parser.add_argument(
         "video_file",
-        help="Path to the video file to transcribe",
+        help="Path to the video or audio file to transcribe (.mp4, .mp3, .wav, .ogg)",
     )
     parser.add_argument(
         "-k",
