@@ -320,6 +320,11 @@ class VideoTranscriber:
                 msg = f"Audio file not found: {video_path}"
                 raise FileNotFoundError(msg)
 
+            # Reject -o flag with audio input
+            if audio_path is not None:
+                msg = "Cannot specify -o/--output-audio when input is already an audio file"
+                raise ValueError(msg)
+
             # Direct audio input: use it directly, no extraction needed
             audio_path = video_path
 

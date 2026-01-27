@@ -466,6 +466,21 @@ class TestDirectAudioTranscription:
             # Then FileNotFoundError is raised with clear message
             assert "Audio file not found" in str(exc_info.value)
 
+    def test_transcribe_audio_with_output_audio_flag_raises_error(self) -> None:
+        """Should raise ValueError when -o flag is provided with audio input."""
+        # Given an existing audio file and a custom output audio path
+        with patch("vtt.main.OpenAI"):
+            transcriber = VideoTranscriber("key")
+
+            with tempfile.TemporaryDirectory() as tmpdir:
+                input_audio = Path(tmpdir) / "input.mp3"
+                input_audio.write_text("x" * 1024)
+                custom_output = Path(tmpdir) / "custom_output.mp3"
+
+                # When transcribe is called with audio input AND audio_path specified
+                with pytest.raises(ValueError, match=r"Cannot specify.*output-audio.*audio file"):
+                    transcriber.transcribe(input_audio, audio_path=custom_output)
+
     def test_scan_chunks_flag_processes_all_sibling_chunks(self) -> None:
         """Should detect and transcribe all sibling chunks when scan_chunks=True."""
         # Given multiple chunk files exist (chunk0, chunk1, chunk2)
