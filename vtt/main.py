@@ -420,6 +420,51 @@ def display_result(transcript: str) -> None:
     print(transcript)
 
 
+def handle_diarize_only_mode(input_path: Path, hf_token: str | None, save_path: Path | None) -> None:
+    """Handle --diarize-only mode: run diarization without transcription."""
+    if not input_path.exists():
+        msg = f"Audio file not found: {input_path}"
+        raise FileNotFoundError(msg)
+
+    diarizer = SpeakerDiarizer(hf_token=hf_token)
+    print(f"Running speaker diarization on: {input_path}")
+    segments = diarizer.diarize_audio(input_path)
+    result = format_diarization_output(segments)
+    display_result(result)
+
+    if save_path:
+        save_transcript(save_path, result)
+
+
+def handle_apply_diarization_mode(
+    input_path: Path, transcript_path: Path, hf_token: str | None, save_path: Path | None
+) -> None:
+    """Handle --apply-diarization mode: apply diarization to existing transcript."""
+    if not transcript_path.exists():
+        msg = f"Transcript file not found: {transcript_path}"
+        raise FileNotFoundError(msg)
+
+    if not input_path.exists():
+        msg = f"Audio file not found: {input_path}"
+        raise FileNotFoundError(msg)
+
+    # Load transcript
+    transcript = transcript_path.read_text()
+
+    # Run diarization
+    diarizer = SpeakerDiarizer(hf_token=hf_token)
+    print(f"Running speaker diarization on: {input_path}")
+    segments = diarizer.diarize_audio(input_path)
+
+    # Apply speakers to transcript
+    print("Applying speaker labels to transcript...")
+    result = diarizer.apply_speakers_to_transcript(transcript, segments)
+    display_result(result)
+
+    if save_path:
+        save_transcript(save_path, result)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Transcribe video or audio files using OpenAI's Whisper model",
@@ -473,25 +518,24 @@ def main() -> None:
         action="store_true",
         help="Run diarization on existing audio file without transcription",
     )
+    parser.add_argument(
+        "--apply-diarization",
+        help="Apply diarization to an existing transcript file",
+    )
 
     args = parser.parse_args()
 
     try:
         # Handle diarization-only mode
         if args.diarize_only:
-            input_path = Path(args.input_file)
-            if not input_path.exists():
-                msg = f"Audio file not found: {input_path}"
-                raise FileNotFoundError(msg)
+            save_path = Path(args.save_transcript) if args.save_transcript else None
+            handle_diarize_only_mode(Path(args.input_file), args.hf_token, save_path)
+            return
 
-            diarizer = SpeakerDiarizer(hf_token=args.hf_token)
-            print(f"Running speaker diarization on: {input_path}")
-            segments = diarizer.diarize_audio(input_path)
-            result = format_diarization_output(segments)
-            display_result(result)
-
-            if args.save_transcript:
-                save_transcript(Path(args.save_transcript), result)
+        # Handle apply-diarization mode
+        if args.apply_diarization:
+            save_path = Path(args.save_transcript) if args.save_transcript else None
+            handle_apply_diarization_mode(Path(args.input_file), Path(args.apply_diarization), args.hf_token, save_path)
             return
 
         # Standard transcription flow

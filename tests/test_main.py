@@ -1022,6 +1022,44 @@ class TestMainCliArgumentParsing:
                 mock_diarizer_class.assert_called_once_with(hf_token=None)
                 mock_diarizer.diarize_audio.assert_called_once_with(audio_path)
 
+    def test_main_with_apply_diarization_flag(self) -> None:
+        """Should apply diarization to existing transcript when --apply-diarization flag is provided."""
+        # Given audio file, transcript file, HF token, and --apply-diarization flag
+        with (
+            patch.dict(os.environ, {"HF_TOKEN": "hf-token"}),
+            tempfile.TemporaryDirectory() as tmpdir,
+        ):
+            audio_path = Path(tmpdir) / "audio.mp3"
+            audio_path.touch()
+            transcript_path = Path(tmpdir) / "transcript.txt"
+            transcript_path.write_text("[00:00 - 00:05] Hello world")
+
+            with (
+                patch(
+                    "sys.argv",
+                    ["main.py", str(audio_path), "--apply-diarization", str(transcript_path)],
+                ),
+                patch("vtt.main.SpeakerDiarizer") as mock_diarizer_class,
+                patch("builtins.print"),
+            ):
+                mock_diarizer = MagicMock()
+                mock_diarizer.diarize_audio.return_value = [(0.0, 5.0, "SPEAKER_00")]
+                mock_diarizer.apply_speakers_to_transcript.return_value = "[00:00 - 00:05] SPEAKER_00: Hello world"
+                mock_diarizer_class.return_value = mock_diarizer
+
+                # When main() is called with --apply-diarization flag
+                import contextlib
+
+                with contextlib.suppress(SystemExit):
+                    main()
+
+                # Then diarization is applied to the transcript
+                mock_diarizer_class.assert_called_once_with(hf_token=None)
+                mock_diarizer.diarize_audio.assert_called_once_with(audio_path)
+                mock_diarizer.apply_speakers_to_transcript.assert_called_once_with(
+                    "[00:00 - 00:05] Hello world", [(0.0, 5.0, "SPEAKER_00")]
+                )
+
 
 class TestMainErrorHandling:
     """Test main function error handling."""
