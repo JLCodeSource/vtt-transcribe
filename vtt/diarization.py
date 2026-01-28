@@ -119,3 +119,28 @@ class SpeakerDiarizer:
             if start <= time <= end:
                 return speaker
         return None
+
+
+def format_diarization_output(segments: list[tuple[float, float, str]]) -> str:
+    """Format diarization segments into human-readable output.
+
+    Args:
+        segments: List of (start_time, end_time, speaker_label) tuples.
+
+    Returns:
+        Formatted string with [MM:SS - MM:SS] Speaker format.
+    """
+
+    def format_time(seconds: float) -> str:
+        total_seconds = int(seconds)
+        minutes = total_seconds // 60
+        secs = total_seconds % 60
+        return f"{minutes:02d}:{secs:02d}"
+
+    lines = []
+    for start, end, speaker in segments:
+        start_str = format_time(start)
+        end_str = format_time(end)
+        lines.append(f"[{start_str} - {end_str}] {speaker}")
+
+    return "\n".join(lines)

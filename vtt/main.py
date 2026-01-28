@@ -11,7 +11,7 @@ from moviepy.video.io.VideoFileClip import VideoFileClip  # type: ignore
 from openai import OpenAI
 from openai.types.audio.transcription_verbose import TranscriptionVerbose
 
-from vtt.diarization import SpeakerDiarizer
+from vtt.diarization import SpeakerDiarizer, format_diarization_output
 
 
 class VideoTranscriber:
@@ -468,10 +468,33 @@ def main() -> None:
         "--hf-token",
         help="Hugging Face token for pyannote.audio models (defaults to HF_TOKEN environment variable)",
     )
+    parser.add_argument(
+        "--diarize-only",
+        action="store_true",
+        help="Run diarization on existing audio file without transcription",
+    )
 
     args = parser.parse_args()
 
     try:
+        # Handle diarization-only mode
+        if args.diarize_only:
+            input_path = Path(args.input_file)
+            if not input_path.exists():
+                msg = f"Audio file not found: {input_path}"
+                raise FileNotFoundError(msg)
+
+            diarizer = SpeakerDiarizer(hf_token=args.hf_token)
+            print(f"Running speaker diarization on: {input_path}")
+            segments = diarizer.diarize_audio(input_path)
+            result = format_diarization_output(segments)
+            display_result(result)
+
+            if args.save_transcript:
+                save_transcript(Path(args.save_transcript), result)
+            return
+
+        # Standard transcription flow
         api_key = get_api_key(args.api_key)
         transcriber = VideoTranscriber(api_key)
 

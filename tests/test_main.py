@@ -992,6 +992,36 @@ class TestMainCliArgumentParsing:
                 mock_diarizer.diarize_audio.assert_called_once()
                 mock_diarizer.apply_speakers_to_transcript.assert_called_once()
 
+    def test_main_with_diarize_only_flag(self) -> None:
+        """Should run diarization without transcription when --diarize-only flag is provided."""
+        # Given audio file, HF token, and --diarize-only flag
+        with (
+            patch.dict(os.environ, {"HF_TOKEN": "hf-token"}),
+            tempfile.TemporaryDirectory() as tmpdir,
+        ):
+            audio_path = Path(tmpdir) / "audio.mp3"
+            audio_path.touch()
+
+            with (
+                patch("sys.argv", ["main.py", str(audio_path), "--diarize-only"]),
+                patch("vtt.main.SpeakerDiarizer") as mock_diarizer_class,
+                patch("vtt.main.format_diarization_output", return_value="[00:00 - 00:05] SPEAKER_00"),
+                patch("builtins.print"),
+            ):
+                mock_diarizer = MagicMock()
+                mock_diarizer.diarize_audio.return_value = [(0.0, 5.0, "SPEAKER_00")]
+                mock_diarizer_class.return_value = mock_diarizer
+
+                # When main() is called with --diarize-only flag
+                import contextlib
+
+                with contextlib.suppress(SystemExit):
+                    main()
+
+                # Then only diarization is run (no transcription)
+                mock_diarizer_class.assert_called_once_with(hf_token=None)
+                mock_diarizer.diarize_audio.assert_called_once_with(audio_path)
+
 
 class TestMainErrorHandling:
     """Test main function error handling."""
