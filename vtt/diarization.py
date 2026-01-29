@@ -1,5 +1,6 @@
 """Speaker diarization using pyannote.audio."""
 
+import logging
 import os
 import re
 import warnings
@@ -7,6 +8,8 @@ from pathlib import Path
 
 import torch
 from pyannote.audio import Pipeline  # type: ignore[import-not-found]
+
+logger = logging.getLogger(__name__)
 
 
 def resolve_device(device: str) -> str:
@@ -44,12 +47,24 @@ class SpeakerDiarizer:
         self.pipeline: Pipeline | None = None
 
     def _load_pipeline(self) -> Pipeline:
-        """Lazy load the diarization pipeline."""
+        """Lazy load the diarization pipeline and move to device."""
         if self.pipeline is None:
             self.pipeline = Pipeline.from_pretrained(
                 "pyannote/speaker-diarization-3.1",
                 token=self.hf_token,
             )
+            # Resolve and set device
+            resolved_device = resolve_device(self.device)
+            device = torch.device(resolved_device)
+
+            # Try to move model to device with fallback
+            try:
+                assert self.pipeline is not None
+                if hasattr(self.pipeline, "model"):
+                    self.pipeline.model.to(device)
+            except Exception as e:
+                # Fallback to CPU if device move fails
+                logger.warning("Failed to move model to %s: %s. Using CPU.", resolved_device, e)
         assert self.pipeline is not None
         return self.pipeline
 

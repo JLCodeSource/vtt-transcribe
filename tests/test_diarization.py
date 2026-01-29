@@ -430,3 +430,26 @@ def test_resolve_device_explicit_cpu() -> None:
     from vtt.diarization import resolve_device  # type: ignore[attr-defined]
 
     assert resolve_device("cpu") == "cpu"
+
+
+def test_diarizer_device_move_failure_fallback() -> None:
+    """Test that diarizer handles device move failures gracefully."""
+    from vtt.diarization import SpeakerDiarizer
+
+    diarizer = SpeakerDiarizer(hf_token="test_token", device="cuda")  # noqa: S106
+
+    mock_pipeline = MagicMock()
+    mock_model = MagicMock()
+    mock_model.to.side_effect = RuntimeError("CUDA not available")
+    mock_pipeline.model = mock_model
+
+    with (
+        patch("vtt.diarization.Pipeline.from_pretrained", return_value=mock_pipeline),
+        patch("vtt.diarization.logger.warning") as mock_logger,
+    ):
+        pipeline = diarizer._load_pipeline()
+
+        # Verify warning was logged
+        mock_logger.assert_called_once()
+        assert "Failed to move model to" in mock_logger.call_args[0][0]
+        assert pipeline == mock_pipeline
