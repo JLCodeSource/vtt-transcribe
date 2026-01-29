@@ -482,17 +482,36 @@ def handle_review_speakers(input_path: Path, hf_token: str | None, save_path: Pa
         msg = f"Audio file not found: {input_path}"
         raise FileNotFoundError(msg)
 
-    # Run diarization
-    SpeakerDiarizer, format_diarization_output, get_unique_speakers, get_speaker_context_lines = _lazy_import_diarization()  # noqa: N806
-    diarizer = SpeakerDiarizer(hf_token=hf_token)
-    print(f"Running speaker diarization on: {input_path}")
-    segments = diarizer.diarize_audio(input_path)
+    _, _, _get_unique_speakers, get_speaker_context_lines = _lazy_import_diarization()
 
-    # Format diarization output as transcript
-    transcript = format_diarization_output(segments)
+    # Check if input is a transcript file (text file) or audio file
+    is_transcript = input_path.suffix.lower() in [".txt", ".srt", ".vtt"]
 
-    # Get unique speakers in order of appearance
-    speakers = get_unique_speakers(segments)
+    if is_transcript:
+        # Load transcript from file
+        print(f"Loading transcript from: {input_path}")
+        transcript = input_path.read_text()
+    else:
+        # Run diarization on audio file
+        SpeakerDiarizer, format_diarization_output, _, _ = _lazy_import_diarization()  # noqa: N806
+        diarizer = SpeakerDiarizer(hf_token=hf_token)
+        print(f"Running speaker diarization on: {input_path}")
+        segments = diarizer.diarize_audio(input_path)
+
+        # Format diarization output as transcript
+        transcript = format_diarization_output(segments)
+
+    # Extract unique speakers from transcript by parsing speaker labels
+    speakers = []
+    seen = set()
+    for line in transcript.split("\n"):
+        # Match pattern: [MM:SS - MM:SS] SPEAKER_XX: text
+        match = re.match(r"\[\d{2}:\d{2} - \d{2}:\d{2}\]\s+(SPEAKER_\d+):", line)
+        if match:
+            speaker = match.group(1)
+            if speaker not in seen:
+                seen.add(speaker)
+                speakers.append(speaker)
 
     print(f"\nFound {len(speakers)} speakers: {', '.join(speakers)}")
     print("\nReviewing speakers...")
@@ -507,7 +526,9 @@ def handle_review_speakers(input_path: Path, hf_token: str | None, save_path: Pa
         print(f"\n{'=' * 50}")
         print(f"Speaker: {speaker}")
         print(f"{'=' * 50}")
-        print(f"Number of segments: {len([s for s in segments if s[2] == speaker])}")
+        # Count occurrences in transcript
+        speaker_count = transcript.count(speaker)
+        print(f"Number of occurrences: {speaker_count}")
         print("\nContext (showing first occurrence):")
         if contexts:
             print(contexts[0])

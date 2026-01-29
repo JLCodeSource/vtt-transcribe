@@ -1256,6 +1256,35 @@ class TestDiarizationModeHandlers:
                 mock_review.assert_called_once()
                 assert mock_review.call_args[0][0] == audio_path
 
+    def test_review_speakers_with_transcript_file(self) -> None:
+        """Should review speakers from existing transcript file without running diarization."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            transcript_path = Path(tmpdir) / "transcript.txt"
+            transcript_path.write_text("[00:00 - 00:05] SPEAKER_00: Hello\n[00:05 - 00:10] SPEAKER_01: World")
+
+            with (
+                patch("sys.argv", ["main.py", str(transcript_path), "--review-speakers"]),
+                patch("vtt.main._lazy_import_diarization") as mock_lazy,
+                patch("builtins.input", side_effect=["Alice", "Bob"]),
+                patch("builtins.print"),
+            ):
+                mock_diarizer = MagicMock()
+                mock_diarizer_class = MagicMock(return_value=mock_diarizer)
+                mock_format = MagicMock()
+                mock_get_unique = MagicMock(return_value=["SPEAKER_00", "SPEAKER_01"])
+                mock_get_context = MagicMock(return_value=["context"])
+                mock_lazy.return_value = (mock_diarizer_class, mock_format, mock_get_unique, mock_get_context)
+
+                import contextlib
+
+                from vtt.main import main
+
+                with contextlib.suppress(SystemExit):
+                    main()
+
+                # Should NOT call diarize_audio for transcript files
+                mock_diarizer.diarize_audio.assert_not_called()
+
 
 class TestFormatTranscriptInternal:
     """Tests for internal transcript formatting branches in main.py."""
