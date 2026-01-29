@@ -26,11 +26,12 @@ def resolve_device(device: str) -> str:
 class SpeakerDiarizer:
     """Speaker diarization using pyannote.audio."""
 
-    def __init__(self, hf_token: str | None = None) -> None:
+    def __init__(self, hf_token: str | None = None, device: str = "auto") -> None:
         """Initialize diarizer with Hugging Face token.
 
         Args:
             hf_token: Hugging Face token for model access. If None, uses HF_TOKEN env var.
+            device: Device to use ("auto", "cuda", or "cpu"). Default is "auto".
 
         Raises:
             ValueError: If no token is provided and HF_TOKEN env var is not set.
@@ -39,6 +40,7 @@ class SpeakerDiarizer:
         if not self.hf_token:
             msg = "Hugging Face token not provided. Use --hf-token or set HF_TOKEN environment variable."
             raise ValueError(msg)
+        self.device = device
         self.pipeline: Pipeline | None = None
 
     def _load_pipeline(self) -> Pipeline:

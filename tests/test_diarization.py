@@ -49,6 +49,22 @@ def test_speaker_diarizer_initialization_no_token_raises_error() -> None:
         SpeakerDiarizer()
 
 
+def test_speaker_diarizer_initialization_with_device() -> None:
+    """Test SpeakerDiarizer can be initialized with a device."""
+    from vtt.diarization import SpeakerDiarizer  # type: ignore[import-not-found]
+
+    diarizer = SpeakerDiarizer(hf_token="test_token", device="cuda")  # noqa: S106  # type: ignore[call-arg,attr-defined]
+    assert diarizer.device == "cuda"  # type: ignore[attr-defined]
+
+
+def test_speaker_diarizer_default_device_is_auto() -> None:
+    """Test SpeakerDiarizer defaults to auto device."""
+    from vtt.diarization import SpeakerDiarizer  # type: ignore[import-not-found]
+
+    diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
+    assert diarizer.device == "auto"  # type: ignore[attr-defined]
+
+
 def test_diarize_audio_returns_speaker_segments() -> None:
     """Test diarize_audio returns list of speaker segments."""
     from vtt.diarization import SpeakerDiarizer  # type: ignore[import-not-found]
