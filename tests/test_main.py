@@ -1869,3 +1869,75 @@ def test_main_guard_executes_with_mocked_deps(tmp_path: Path, monkeypatch: pytes
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--cov=main", "--cov-report=term-missing", "--cov-report=html"])
+
+
+class TestLazyImportDiarization:
+    """Test _lazy_import_diarization import fallback."""
+
+    def test_lazy_import_normal_path(self) -> None:
+        """Should import from vtt.diarization normally."""
+        from vtt.main import _lazy_import_diarization
+
+        result = _lazy_import_diarization()
+
+        assert len(result) == 4
+        speaker_diarizer, format_output, get_unique, get_context = result
+        assert speaker_diarizer is not None
+        assert format_output is not None
+        assert get_unique is not None
+        assert get_context is not None
+
+    def test_lazy_import_fallback_path(self) -> None:
+        """Should fall back to direct import when vtt.diarization fails."""
+        import builtins
+        import sys
+        from importlib import reload
+        from unittest.mock import MagicMock
+
+        # Save original state
+        original_module = sys.modules.get("vtt.diarization")
+        original_import = builtins.__import__
+
+        # Create a mock diarization module
+        mock_diarization = MagicMock()
+        mock_diarization.SpeakerDiarizer = MagicMock()
+        mock_diarization.format_diarization_output = MagicMock()
+        mock_diarization.get_speaker_context_lines = MagicMock()
+        mock_diarization.get_unique_speakers = MagicMock()
+
+        try:
+            # Temporarily remove vtt.diarization from sys.modules
+            if "vtt.diarization" in sys.modules:
+                del sys.modules["vtt.diarization"]
+
+            # Mock the import to fail for vtt.diarization but succeed for diarization
+            def mock_import(name, *args, **kwargs):
+                if name == "vtt.diarization":
+                    msg = "Simulated import failure"
+                    raise ImportError(msg)
+                if name == "diarization":
+                    return mock_diarization
+                return original_import(name, *args, **kwargs)
+
+            builtins.__import__ = mock_import
+
+            # Re-import main to get fresh _lazy_import_diarization
+            import vtt.main
+
+            reload(vtt.main)
+
+            # This should use the fallback path
+            result = vtt.main._lazy_import_diarization()
+
+            assert len(result) == 4
+            # Verify we got the mock objects from the fallback import
+            assert result[0] == mock_diarization.SpeakerDiarizer
+            assert result[1] == mock_diarization.format_diarization_output
+        finally:
+            # Restore original state
+            builtins.__import__ = original_import
+            if original_module is not None:
+                sys.modules["vtt.diarization"] = original_module
+            import vtt.main
+
+            reload(vtt.main)
