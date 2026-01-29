@@ -344,3 +344,43 @@ def test_get_speaker_context_lines() -> None:
     assert "SPEAKER_02: Speaker two continues" in contexts[1]  # before
     assert "SPEAKER_01: Back to speaker one" in contexts[1]  # speaker segment
     assert "SPEAKER_01: Still speaker one" in contexts[1]  # same speaker continues
+
+
+def test_diarize_audio_sample_mismatch_error() -> None:
+    """Test that sample mismatch errors show helpful encoding message."""
+    from vtt.diarization import SpeakerDiarizer
+
+    diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
+
+    # Mock the pipeline to raise a sample mismatch error for a file > 10s
+    # Simulating a 15-second file with wrong sample count
+    # actual_samples = 500000 -> duration = 11.34s at 44.1kHz (> 10s threshold)
+    # expected_samples = 992250 for a 15s chunk
+    mock_pipeline = MagicMock()
+    mock_pipeline.return_value = MagicMock()
+    mock_pipeline.side_effect = ValueError(
+        "requested chunk [ 00:00:00.000 -->  00:00:15.000] resulted in 500000 samples instead of the expected 992250 samples"
+    )
+
+    with (
+        patch("vtt.diarization.Pipeline.from_pretrained", return_value=mock_pipeline),
+        pytest.raises(ValueError, match="Audio file sample mismatch error"),
+    ):
+        diarizer.diarize_audio(Path("/fake/audio.mp3"))
+
+
+def test_diarize_audio_other_value_error() -> None:
+    """Test that non-sample-mismatch ValueError is re-raised as-is."""
+    from vtt.diarization import SpeakerDiarizer
+
+    diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
+
+    # Mock the pipeline to raise a ValueError that doesn't match the pattern
+    mock_pipeline = MagicMock()
+    mock_pipeline.side_effect = ValueError("Some random ValueError")
+
+    with (
+        patch("vtt.diarization.Pipeline.from_pretrained", return_value=mock_pipeline),
+        pytest.raises(ValueError, match="Some random ValueError"),
+    ):
+        diarizer.diarize_audio(Path("/fake/audio.mp3"))

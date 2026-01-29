@@ -1285,6 +1285,69 @@ class TestDiarizationModeHandlers:
                 # Should NOT call diarize_audio for transcript files
                 mock_diarizer.diarize_audio.assert_not_called()
 
+    def test_review_speakers_with_missing_file(self) -> None:
+        """Should raise FileNotFoundError if input file doesn't exist."""
+        from vtt.main import handle_review_speakers
+
+        non_existent = Path("nonexistent_file_xyz123.txt")
+        with pytest.raises(FileNotFoundError, match="Audio file not found"):
+            handle_review_speakers(non_existent, None, None)
+
+    def test_review_speakers_with_audio_file(self) -> None:
+        """Should run diarization on audio files."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            audio_path = Path(tmpdir) / "test.mp3"
+            audio_path.write_text("fake audio")
+
+            with (
+                patch("vtt.main._lazy_import_diarization") as mock_lazy,
+                patch("builtins.input", side_effect=["Alice"]),
+                patch("builtins.print"),
+            ):
+                mock_diarizer = MagicMock()
+                mock_diarizer.diarize_audio.return_value = [(0.0, 5.0, "SPEAKER_00")]
+                mock_diarizer_class = MagicMock(return_value=mock_diarizer)
+                mock_format = MagicMock(return_value="[00:00 - 00:05] SPEAKER_00: Hello")
+                mock_get_unique = MagicMock(return_value=["SPEAKER_00"])
+                mock_get_context = MagicMock(return_value=["context"])
+                mock_lazy.return_value = (mock_diarizer_class, mock_format, mock_get_unique, mock_get_context)
+
+                from vtt.main import handle_review_speakers
+
+                handle_review_speakers(audio_path, "token", None)
+
+                # Should call diarize_audio for audio files
+                mock_diarizer.diarize_audio.assert_called_once_with(audio_path)
+                mock_format.assert_called_once()
+
+    def test_review_speakers_with_save_path(self) -> None:
+        """Should save transcript when save_path is provided."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            transcript_path = Path(tmpdir) / "transcript.txt"
+            transcript_path.write_text("[00:00 - 00:05] SPEAKER_00: Hello")
+            save_path = Path(tmpdir) / "output.txt"
+
+            with (
+                patch("vtt.main._lazy_import_diarization") as mock_lazy,
+                patch("builtins.input", return_value=""),  # Skip renaming
+                patch("builtins.print"),
+            ):
+                mock_diarizer = MagicMock()
+                mock_diarizer_class = MagicMock(return_value=mock_diarizer)
+                mock_format = MagicMock()
+                mock_get_unique = MagicMock(return_value=["SPEAKER_00"])
+                mock_get_context = MagicMock(return_value=["context"])
+                mock_lazy.return_value = (mock_diarizer_class, mock_format, mock_get_unique, mock_get_context)
+
+                from vtt.main import handle_review_speakers
+
+                handle_review_speakers(transcript_path, None, save_path)
+
+                # Should save the transcript
+                assert save_path.exists()
+                content = save_path.read_text()
+                assert "SPEAKER_00" in content
+
 
 class TestFormatTranscriptInternal:
     """Tests for internal transcript formatting branches in main.py."""
