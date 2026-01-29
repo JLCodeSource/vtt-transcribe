@@ -5,17 +5,16 @@ import os
 import re
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from moviepy.audio.io.AudioFileClip import AudioFileClip  # type: ignore
 from moviepy.video.io.VideoFileClip import VideoFileClip  # type: ignore
 from openai import OpenAI
 from openai.types.audio.transcription_verbose import TranscriptionVerbose
 
-# Handle both package and script execution
-try:
-    from vtt.diarization import SpeakerDiarizer, format_diarization_output
-except ImportError:
-    from diarization import SpeakerDiarizer, format_diarization_output  # type: ignore[import-not-found,no-redef]
+# Lazy imports for diarization to avoid loading torch on --help
+if TYPE_CHECKING:
+    from vtt.diarization import SpeakerDiarizer, format_diarization_output  # noqa: F401
 
 
 class VideoTranscriber:
@@ -424,12 +423,22 @@ def display_result(transcript: str) -> None:
     print(transcript)
 
 
+def _lazy_import_diarization():
+    """Lazy import diarization module to avoid loading torch on --help."""
+    try:
+        from vtt.diarization import SpeakerDiarizer, format_diarization_output
+    except ImportError:
+        from diarization import SpeakerDiarizer, format_diarization_output  # type: ignore[import-not-found]
+    return SpeakerDiarizer, format_diarization_output
+
+
 def handle_diarize_only_mode(input_path: Path, hf_token: str | None, save_path: Path | None) -> None:
     """Handle --diarize-only mode: run diarization without transcription."""
     if not input_path.exists():
         msg = f"Audio file not found: {input_path}"
         raise FileNotFoundError(msg)
 
+    SpeakerDiarizer, format_diarization_output = _lazy_import_diarization()  # noqa: N806
     diarizer = SpeakerDiarizer(hf_token=hf_token)
     print(f"Running speaker diarization on: {input_path}")
     segments = diarizer.diarize_audio(input_path)
@@ -456,6 +465,7 @@ def handle_apply_diarization_mode(
     transcript = transcript_path.read_text()
 
     # Run diarization
+    SpeakerDiarizer, _ = _lazy_import_diarization()  # noqa: N806
     diarizer = SpeakerDiarizer(hf_token=hf_token)
     print(f"Running speaker diarization on: {input_path}")
     segments = diarizer.diarize_audio(input_path)
@@ -555,6 +565,7 @@ def main() -> None:
 
         # Apply diarization if requested
         if args.diarize:
+            SpeakerDiarizer, _ = _lazy_import_diarization()  # noqa: N806
             diarizer = SpeakerDiarizer(hf_token=args.hf_token)
             # Determine the audio path used for transcription
             actual_audio_path = audio_path if audio_path else input_path.with_suffix(".mp3")

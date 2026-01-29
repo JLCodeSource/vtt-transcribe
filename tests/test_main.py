@@ -973,13 +973,15 @@ class TestMainCliArgumentParsing:
             with (
                 patch("sys.argv", ["main.py", str(video_path), "--diarize"]),
                 patch.object(VideoTranscriber, "transcribe", return_value="[00:00 - 00:05] Hello"),
-                patch("vtt.main.SpeakerDiarizer") as mock_diarizer_class,
+                patch("vtt.main._lazy_import_diarization") as mock_lazy_import,
                 patch("builtins.print"),
             ):
                 mock_diarizer = MagicMock()
                 mock_diarizer.diarize_audio.return_value = [(0.0, 5.0, "SPEAKER_00")]
                 mock_diarizer.apply_speakers_to_transcript.return_value = "[00:00 - 00:05] SPEAKER_00: Hello"
-                mock_diarizer_class.return_value = mock_diarizer
+                mock_diarizer_class = MagicMock(return_value=mock_diarizer)
+                mock_format = MagicMock()
+                mock_lazy_import.return_value = (mock_diarizer_class, mock_format)
 
                 # When main() is called with --diarize flag
                 import contextlib
@@ -1004,13 +1006,14 @@ class TestMainCliArgumentParsing:
 
             with (
                 patch("sys.argv", ["main.py", str(audio_path), "--diarize-only"]),
-                patch("vtt.main.SpeakerDiarizer") as mock_diarizer_class,
-                patch("vtt.main.format_diarization_output", return_value="[00:00 - 00:05] SPEAKER_00"),
+                patch("vtt.main._lazy_import_diarization") as mock_lazy_import,
                 patch("builtins.print"),
             ):
                 mock_diarizer = MagicMock()
                 mock_diarizer.diarize_audio.return_value = [(0.0, 5.0, "SPEAKER_00")]
-                mock_diarizer_class.return_value = mock_diarizer
+                mock_diarizer_class = MagicMock(return_value=mock_diarizer)
+                mock_format = MagicMock(return_value="[00:00 - 00:05] SPEAKER_00")
+                mock_lazy_import.return_value = (mock_diarizer_class, mock_format)
 
                 # When main() is called with --diarize-only flag
                 import contextlib
@@ -1039,13 +1042,15 @@ class TestMainCliArgumentParsing:
                     "sys.argv",
                     ["main.py", str(audio_path), "--apply-diarization", str(transcript_path)],
                 ),
-                patch("vtt.main.SpeakerDiarizer") as mock_diarizer_class,
+                patch("vtt.main._lazy_import_diarization") as mock_lazy_import,
                 patch("builtins.print"),
             ):
                 mock_diarizer = MagicMock()
                 mock_diarizer.diarize_audio.return_value = [(0.0, 5.0, "SPEAKER_00")]
                 mock_diarizer.apply_speakers_to_transcript.return_value = "[00:00 - 00:05] SPEAKER_00: Hello world"
-                mock_diarizer_class.return_value = mock_diarizer
+                mock_diarizer_class = MagicMock(return_value=mock_diarizer)
+                mock_format = MagicMock()
+                mock_lazy_import.return_value = (mock_diarizer_class, mock_format)
 
                 # When main() is called with --apply-diarization flag
                 import contextlib
@@ -1102,12 +1107,14 @@ class TestDiarizationModeHandlers:
             save_path = Path(tmpdir) / "output.txt"
 
             with (
-                patch("vtt.main.SpeakerDiarizer") as mock_diarizer_class,
+                patch("vtt.main._lazy_import_diarization") as mock_lazy_import,
                 patch("vtt.main.display_result"),
             ):
                 mock_diarizer = MagicMock()
                 mock_diarizer.diarize_audio.return_value = [(0.0, 5.0, "SPEAKER_00")]
-                mock_diarizer_class.return_value = mock_diarizer
+                mock_diarizer_class = MagicMock(return_value=mock_diarizer)
+                mock_format = MagicMock(return_value="[00:00 - 00:05] SPEAKER_00")
+                mock_lazy_import.return_value = (mock_diarizer_class, mock_format)
 
                 handle_diarize_only_mode(audio_path, None, save_path)
 
@@ -1150,13 +1157,15 @@ class TestDiarizationModeHandlers:
             save_path = Path(tmpdir) / "output.txt"
 
             with (
-                patch("vtt.main.SpeakerDiarizer") as mock_diarizer_class,
+                patch("vtt.main._lazy_import_diarization") as mock_lazy_import,
                 patch("vtt.main.display_result"),
             ):
                 mock_diarizer = MagicMock()
                 mock_diarizer.diarize_audio.return_value = [(0.0, 5.0, "SPEAKER_00")]
                 mock_diarizer.apply_speakers_to_transcript.return_value = "[00:00 - 00:05] SPEAKER_00: Hello"
-                mock_diarizer_class.return_value = mock_diarizer
+                mock_diarizer_class = MagicMock(return_value=mock_diarizer)
+                mock_format = MagicMock()
+                mock_lazy_import.return_value = (mock_diarizer_class, mock_format)
 
                 handle_apply_diarization_mode(audio_path, transcript_path, None, save_path)
 
@@ -1174,13 +1183,15 @@ class TestDiarizationModeHandlers:
             with (
                 patch("sys.argv", ["main.py", str(audio_path), "--diarize"]),
                 patch.object(VideoTranscriber, "transcribe", return_value="[00:00 - 00:05] Hello"),
-                patch("vtt.main.SpeakerDiarizer") as mock_diarizer_class,
+                patch("vtt.main._lazy_import_diarization") as mock_lazy_import,
                 patch("builtins.print"),
             ):
                 mock_diarizer = MagicMock()
                 mock_diarizer.diarize_audio.return_value = [(0.0, 5.0, "SPEAKER_00")]
                 mock_diarizer.apply_speakers_to_transcript.return_value = "[00:00 - 00:05] SPEAKER_00: Hello"
-                mock_diarizer_class.return_value = mock_diarizer
+                mock_diarizer_class = MagicMock(return_value=mock_diarizer)
+                mock_format = MagicMock()
+                mock_lazy_import.return_value = (mock_diarizer_class, mock_format)
 
                 import contextlib
 
