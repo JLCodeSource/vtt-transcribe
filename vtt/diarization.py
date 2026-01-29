@@ -5,7 +5,22 @@ import re
 import warnings
 from pathlib import Path
 
+import torch
 from pyannote.audio import Pipeline  # type: ignore[import-not-found]
+
+
+def resolve_device(device: str) -> str:
+    """Resolve device string to actual device (cuda or cpu).
+
+    Args:
+        device: Device specification ("auto", "cuda", or "cpu").
+
+    Returns:
+        Resolved device string ("cuda" or "cpu").
+    """
+    if device == "auto":
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    return device
 
 
 class SpeakerDiarizer:

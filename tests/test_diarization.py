@@ -384,3 +384,33 @@ def test_diarize_audio_other_value_error() -> None:
         pytest.raises(ValueError, match="Some random ValueError"),
     ):
         diarizer.diarize_audio(Path("/fake/audio.mp3"))
+
+
+def test_resolve_device_auto_with_cuda_available() -> None:
+    """Test device resolution: auto with CUDA available should return cuda."""
+    from vtt.diarization import resolve_device  # type: ignore[attr-defined]
+
+    with patch("torch.cuda.is_available", return_value=True):
+        assert resolve_device("auto") == "cuda"
+
+
+def test_resolve_device_auto_without_cuda() -> None:
+    """Test device resolution: auto without CUDA should return cpu."""
+    from vtt.diarization import resolve_device  # type: ignore[attr-defined]
+
+    with patch("torch.cuda.is_available", return_value=False):
+        assert resolve_device("auto") == "cpu"
+
+
+def test_resolve_device_explicit_cuda() -> None:
+    """Test device resolution: explicit cuda should return cuda."""
+    from vtt.diarization import resolve_device  # type: ignore[attr-defined]
+
+    assert resolve_device("cuda") == "cuda"
+
+
+def test_resolve_device_explicit_cpu() -> None:
+    """Test device resolution: explicit cpu should return cpu."""
+    from vtt.diarization import resolve_device  # type: ignore[attr-defined]
+
+    assert resolve_device("cpu") == "cpu"
