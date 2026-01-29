@@ -1221,6 +1221,29 @@ class TestDiarizationModeHandlers:
 
                 assert result == ""
 
+    def test_main_with_review_speakers_flag(self) -> None:
+        """Should call review_speakers when --review-speakers flag is provided."""
+        with (
+            patch.dict(os.environ, {"HF_TOKEN": "hf-test"}),
+            tempfile.TemporaryDirectory() as tmpdir,
+        ):
+            audio_path = Path(tmpdir) / "audio.mp3"
+            audio_path.touch()
+
+            with (
+                patch("sys.argv", ["main.py", str(audio_path), "--review-speakers"]),
+                patch("vtt.main.handle_review_speakers") as mock_review,  # type: ignore[attr-defined]
+                patch("builtins.print"),
+            ):
+                import contextlib
+
+                with contextlib.suppress(SystemExit):
+                    main()
+
+                # Should call handle_review_speakers with the audio path
+                mock_review.assert_called_once()
+                assert mock_review.call_args[0][0] == audio_path
+
 
 class TestFormatTranscriptInternal:
     """Tests for internal transcript formatting branches in main.py."""

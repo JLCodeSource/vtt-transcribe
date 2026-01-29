@@ -216,15 +216,13 @@ def get_unique_speakers(segments: list[tuple[float, float, str]]) -> list[str]:
 
 def get_speaker_context_lines(
     transcript: str,
-    segments: list[tuple[float, float, str]],
     speaker_label: str,
     context_lines: int = 5,
 ) -> list[str]:
     """Extract context lines for a specific speaker's segments from transcript.
 
     Args:
-        transcript: Transcript with [MM:SS - MM:SS] text format.
-        segments: List of (start_time, end_time, speaker_label) tuples.
+        transcript: Transcript with [MM:SS - MM:SS] SPEAKER_XX: text format.
         speaker_label: Speaker label to extract contexts for.
         context_lines: Number of lines to show before and after each speaker segment group.
 
@@ -234,25 +232,19 @@ def get_speaker_context_lines(
     # Split transcript into lines
     lines = transcript.split("\n")
 
-    # Build a mapping of line index to segment info
-    line_to_segment = {}
+    # Build a mapping of line index to speaker label by parsing the line
+    line_to_speaker = {}
     for i, line in enumerate(lines):
-        # Match timestamp pattern [MM:SS - MM:SS]
-        match = re.match(r"\[(\d{2}):(\d{2}) - (\d{2}):(\d{2})\]", line)
+        # Match pattern: [MM:SS - MM:SS] SPEAKER_XX: text
+        match = re.match(r"\[\d{2}:\d{2} - \d{2}:\d{2}\]\s+(SPEAKER_\d+):", line)
         if match:
-            start_min, start_sec, _, _ = match.groups()
-            start_time = int(start_min) * 60 + int(start_sec)
-            # Find which segment this line belongs to
-            for seg_start, seg_end, seg_speaker in segments:
-                if seg_start <= start_time < seg_end:
-                    line_to_segment[i] = seg_speaker
-                    break
+            line_to_speaker[i] = match.group(1)
 
     # Find groups of continuous segments for the speaker
     speaker_groups = []
     current_group = []
     for i in range(len(lines)):
-        if line_to_segment.get(i) == speaker_label:
+        if line_to_speaker.get(i) == speaker_label:
             current_group.append(i)
         elif current_group:
             # End of a group

@@ -322,34 +322,25 @@ def test_get_speaker_context_lines() -> None:
     """Test extracting context lines for a specific speaker from transcript."""
     from vtt.diarization import get_speaker_context_lines  # type: ignore[attr-defined]
 
-    transcript = """[00:00 - 00:05] Hello world
-[00:05 - 00:10] This is speaker one
-[00:10 - 00:15] More from speaker one
-[00:15 - 00:20] Now speaker two talking
-[00:20 - 00:25] Speaker two continues
-[00:25 - 00:30] Back to speaker one
-[00:30 - 00:35] Still speaker one"""
-
-    segments = [
-        (0.0, 5.0, "SPEAKER_00"),
-        (5.0, 10.0, "SPEAKER_01"),
-        (10.0, 15.0, "SPEAKER_01"),
-        (15.0, 20.0, "SPEAKER_02"),
-        (20.0, 25.0, "SPEAKER_02"),
-        (25.0, 30.0, "SPEAKER_01"),
-        (30.0, 35.0, "SPEAKER_01"),
-    ]
+    transcript = """[00:00 - 00:05] SPEAKER_00: Hello world
+[00:05 - 00:10] SPEAKER_01: This is speaker one
+[00:10 - 00:15] SPEAKER_01: More from speaker one
+[00:15 - 00:20] SPEAKER_02: Now speaker two talking
+[00:20 - 00:25] SPEAKER_02: Speaker two continues
+[00:25 - 00:30] SPEAKER_01: Back to speaker one
+[00:30 - 00:35] SPEAKER_01: Still speaker one"""
 
     # Get context for SPEAKER_01 with 1 line before/after
-    contexts = get_speaker_context_lines(transcript, segments, "SPEAKER_01", context_lines=1)
+    contexts = get_speaker_context_lines(transcript, "SPEAKER_01", context_lines=1)
 
     # Should have 2 contexts (first appearance and later appearance)
     assert len(contexts) == 2
     # First context should include line before and after
-    assert "[00:00 - 00:05]" in contexts[0]  # before
-    assert "[00:05 - 00:10]" in contexts[0]  # speaker segment
-    assert "[00:15 - 00:20]" in contexts[0]  # after
+    assert "SPEAKER_00: Hello world" in contexts[0]  # before
+    assert "SPEAKER_01: This is speaker one" in contexts[0]  # speaker segment
+    assert "SPEAKER_01: More from speaker one" in contexts[0]  # speaker continues
+    assert "SPEAKER_02: Now speaker two" in contexts[0]  # after
     # Second context
-    assert "[00:20 - 00:25]" in contexts[1]  # before
-    assert "[00:25 - 00:30]" in contexts[1]  # speaker segment
-    assert "[00:30 - 00:35]" in contexts[1]  # same speaker continues
+    assert "SPEAKER_02: Speaker two continues" in contexts[1]  # before
+    assert "SPEAKER_01: Back to speaker one" in contexts[1]  # speaker segment
+    assert "SPEAKER_01: Still speaker one" in contexts[1]  # same speaker continues

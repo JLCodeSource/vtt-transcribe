@@ -423,22 +423,13 @@ def display_result(transcript: str) -> None:
     print(transcript)
 
 
-def _lazy_import_diarization():
-    """Lazy import diarization module to avoid loading torch on --help."""
-    try:
-        from vtt.diarization import SpeakerDiarizer, format_diarization_output
-    except ImportError:
-        from diarization import SpeakerDiarizer, format_diarization_output  # type: ignore[import-not-found]
-    return SpeakerDiarizer, format_diarization_output
-
-
 def handle_diarize_only_mode(input_path: Path, hf_token: str | None, save_path: Path | None) -> None:
     """Handle --diarize-only mode: run diarization without transcription."""
     if not input_path.exists():
         msg = f"Audio file not found: {input_path}"
         raise FileNotFoundError(msg)
 
-    SpeakerDiarizer, format_diarization_output = _lazy_import_diarization()  # noqa: N806
+    SpeakerDiarizer, format_diarization_output, _, _ = _lazy_import_diarization()  # noqa: N806
     diarizer = SpeakerDiarizer(hf_token=hf_token)
     print(f"Running speaker diarization on: {input_path}")
     segments = diarizer.diarize_audio(input_path)
@@ -465,7 +456,7 @@ def handle_apply_diarization_mode(
     transcript = transcript_path.read_text()
 
     # Run diarization
-    SpeakerDiarizer, _ = _lazy_import_diarization()  # noqa: N806
+    SpeakerDiarizer, _, _, _ = _lazy_import_diarization()  # noqa: N806
     diarizer = SpeakerDiarizer(hf_token=hf_token)
     print(f"Running speaker diarization on: {input_path}")
     segments = diarizer.diarize_audio(input_path)
@@ -477,6 +468,81 @@ def handle_apply_diarization_mode(
 
     if save_path:
         save_transcript(save_path, result)
+
+
+def handle_review_speakers(input_path: Path, hf_token: str | None, save_path: Path | None) -> None:
+    """Handle --review-speakers mode: interactive speaker review and renaming.
+
+    Args:
+        input_path: Path to audio file for diarization.
+        hf_token: Hugging Face token for pyannote models.
+        save_path: Optional path to save final transcript.
+    """
+    if not input_path.exists():
+        msg = f"Audio file not found: {input_path}"
+        raise FileNotFoundError(msg)
+
+    # Run diarization
+    SpeakerDiarizer, format_diarization_output, get_unique_speakers, get_speaker_context_lines = _lazy_import_diarization()  # noqa: N806
+    diarizer = SpeakerDiarizer(hf_token=hf_token)
+    print(f"Running speaker diarization on: {input_path}")
+    segments = diarizer.diarize_audio(input_path)
+
+    # Format diarization output as transcript
+    transcript = format_diarization_output(segments)
+
+    # Get unique speakers in order of appearance
+    speakers = get_unique_speakers(segments)
+
+    print(f"\nFound {len(speakers)} speakers: {', '.join(speakers)}")
+    print("\nReviewing speakers...")
+
+    # Review each speaker interactively
+    speaker_mapping = {}
+    for speaker in speakers:
+        # Get context lines for this speaker
+        contexts = get_speaker_context_lines(transcript, speaker, context_lines=5)
+
+        # Show context
+        print(f"\n{'=' * 50}")
+        print(f"Speaker: {speaker}")
+        print(f"{'=' * 50}")
+        print(f"Number of segments: {len([s for s in segments if s[2] == speaker])}")
+        print("\nContext (showing first occurrence):")
+        if contexts:
+            print(contexts[0])
+
+        # Prompt for name
+        new_name = input(f"\nEnter name for {speaker} (or press Enter to keep): ").strip()
+        if new_name:
+            speaker_mapping[speaker] = new_name
+            # Apply mapping immediately so subsequent contexts show the new name
+            transcript = transcript.replace(speaker, new_name)
+            print(f"Renamed {speaker} -> {new_name}")
+
+    display_result(transcript)
+
+    if save_path:
+        save_transcript(save_path, transcript)
+
+
+def _lazy_import_diarization():
+    """Lazy import diarization module to avoid loading torch on --help."""
+    try:
+        from vtt.diarization import (
+            SpeakerDiarizer,
+            format_diarization_output,
+            get_speaker_context_lines,
+            get_unique_speakers,
+        )
+    except ImportError:
+        from diarization import (  # type: ignore[import-not-found]
+            SpeakerDiarizer,
+            format_diarization_output,
+            get_speaker_context_lines,
+            get_unique_speakers,
+        )
+    return SpeakerDiarizer, format_diarization_output, get_unique_speakers, get_speaker_context_lines
 
 
 def main() -> None:
@@ -536,10 +602,21 @@ def main() -> None:
         "--apply-diarization",
         help="Apply diarization to an existing transcript file",
     )
+    parser.add_argument(
+        "--review-speakers",
+        action="store_true",
+        help="Interactive review and rename speakers after diarization",
+    )
 
     args = parser.parse_args()
 
     try:
+        # Handle review-speakers mode
+        if args.review_speakers:
+            save_path = Path(args.save_transcript) if args.save_transcript else None
+            handle_review_speakers(Path(args.input_file), args.hf_token, save_path)
+            return
+
         # Handle diarization-only mode
         if args.diarize_only:
             save_path = Path(args.save_transcript) if args.save_transcript else None
@@ -565,7 +642,7 @@ def main() -> None:
 
         # Apply diarization if requested
         if args.diarize:
-            SpeakerDiarizer, _ = _lazy_import_diarization()  # noqa: N806
+            SpeakerDiarizer, _, _, _ = _lazy_import_diarization()  # noqa: N806
             diarizer = SpeakerDiarizer(hf_token=args.hf_token)
             # Determine the audio path used for transcription
             actual_audio_path = audio_path if audio_path else input_path.with_suffix(".mp3")
