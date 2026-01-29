@@ -30,7 +30,7 @@ class SpeakerDiarizer:
         if self.pipeline is None:
             self.pipeline = Pipeline.from_pretrained(
                 "pyannote/speaker-diarization-3.1",
-                use_auth_token=self.hf_token,  # type: ignore[call-arg]
+                token=self.hf_token,
             )
         assert self.pipeline is not None
         return self.pipeline
