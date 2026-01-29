@@ -27,4 +27,8 @@ dev = [
 [tool.pytest.ini_options]
 filterwarnings = [
     "ignore::UserWarning:pyannote.audio.core.io",
+    "ignore::UserWarning:pyannote.audio.models.blocks.pooling",
+]
+markers = [
+    "integration: marks tests as integration tests (require external services/models)",
 ]
