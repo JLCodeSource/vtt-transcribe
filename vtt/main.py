@@ -499,7 +499,65 @@ def handle_apply_diarization_mode(
     return result
 
 
-def handle_review_speakers(  # noqa: C901
+def _load_transcript_from_input(input_path: Path, hf_token: str | None, device: str) -> str:
+    """Load or generate transcript from input path."""
+    is_transcript = input_path.suffix.lower() in [".txt", ".srt", ".vtt"]
+
+    if is_transcript:
+        print(f"Loading transcript from: {input_path}")
+        return input_path.read_text()
+
+    # Run diarization on audio file
+    SpeakerDiarizer, format_diarization_output, _, _ = _lazy_import_diarization()  # noqa: N806
+    diarizer = SpeakerDiarizer(hf_token=hf_token, device=device)
+    print(f"Running speaker diarization on: {input_path}")
+    segments = diarizer.diarize_audio(input_path)
+    return format_diarization_output(segments)
+
+
+def _extract_speakers_from_transcript(transcript: str) -> list[str]:
+    """Extract unique speaker labels from transcript in order of appearance."""
+    speakers = []
+    seen = set()
+    for line in transcript.split("\n"):
+        # Match pattern: [MM:SS - MM:SS] SPEAKER_XX: text (with colon)
+        # or [MM:SS - MM:SS] SPEAKER_XX (without colon, from diarization-only output)
+        match = re.match(r"\[\d{2}:\d{2} - \d{2}:\d{2}\]\s+(SPEAKER_\d+):?", line)
+        if match:
+            speaker = match.group(1)
+            if speaker not in seen:
+                seen.add(speaker)
+                speakers.append(speaker)
+    return speakers
+
+
+def _review_speaker_interactively(speaker: str, transcript: str, get_speaker_context_lines) -> tuple[str, str | None]:
+    """Review a single speaker and prompt for renaming.
+
+    Returns:
+        Tuple of (updated_transcript, new_name_or_none)
+    """
+    contexts = get_speaker_context_lines(transcript, speaker, context_lines=5)
+
+    print(f"\n{'=' * 50}")
+    print(f"Speaker: {speaker}")
+    print(f"{'=' * 50}")
+    speaker_count = transcript.count(speaker)
+    print(f"Number of occurrences: {speaker_count}")
+    print("\nContext (showing first occurrence):")
+    if contexts:
+        print(contexts[0])
+
+    new_name = input(f"\nEnter name for {speaker} (or press Enter to keep): ").strip()
+    if new_name:
+        transcript = transcript.replace(speaker, new_name)
+        print(f"Renamed {speaker} -> {new_name}")
+        return transcript, new_name
+
+    return transcript, None
+
+
+def handle_review_speakers(
     input_path: Path | None = None,
     hf_token: str | None = None,
     save_path: Path | None = None,
@@ -524,76 +582,25 @@ def handle_review_speakers(  # noqa: C901
     """
     _, _, _get_unique_speakers, get_speaker_context_lines = _lazy_import_diarization()
 
-    # If transcript is provided, use it directly
+    # Determine final transcript source
     if transcript is not None:
         final_transcript = transcript
+    elif input_path is None:
+        msg = "Either input_path or transcript must be provided"
+        raise ValueError(msg)
+    elif not input_path.exists():
+        msg = f"Input file not found: {input_path}"
+        raise FileNotFoundError(msg)
     else:
-        # Need input_path if transcript not provided
-        if input_path is None:
-            msg = "Either input_path or transcript must be provided"
-            raise ValueError(msg)
+        final_transcript = _load_transcript_from_input(input_path, hf_token, device)
 
-        if not input_path.exists():
-            msg = f"Input file not found: {input_path}"
-            raise FileNotFoundError(msg)
-
-        # Check if input is a transcript file (text file) or audio file
-        is_transcript = input_path.suffix.lower() in [".txt", ".srt", ".vtt"]
-
-        if is_transcript:
-            # Load transcript from file
-            print(f"Loading transcript from: {input_path}")
-            final_transcript = input_path.read_text()
-        else:
-            # Run diarization on audio file
-            SpeakerDiarizer, format_diarization_output, _, _ = _lazy_import_diarization()  # noqa: N806
-            diarizer = SpeakerDiarizer(hf_token=hf_token, device=device)
-            print(f"Running speaker diarization on: {input_path}")
-            segments = diarizer.diarize_audio(input_path)
-
-            # Format diarization output as transcript
-            final_transcript = format_diarization_output(segments)
-
-    # Extract unique speakers from transcript by parsing speaker labels
-    speakers = []
-    seen = set()
-    for line in final_transcript.split("\n"):
-        # Match pattern: [MM:SS - MM:SS] SPEAKER_XX: text (with colon)
-        # or [MM:SS - MM:SS] SPEAKER_XX (without colon, from diarization-only output)
-        match = re.match(r"\[\d{2}:\d{2} - \d{2}:\d{2}\]\s+(SPEAKER_\d+):?", line)
-        if match:
-            speaker = match.group(1)
-            if speaker not in seen:
-                seen.add(speaker)
-                speakers.append(speaker)
-
+    # Extract and review speakers
+    speakers = _extract_speakers_from_transcript(final_transcript)
     print(f"\nFound {len(speakers)} speakers: {', '.join(speakers)}")
     print("\nReviewing speakers...")
 
-    # Review each speaker interactively
-    speaker_mapping = {}
     for speaker in speakers:
-        # Get context lines for this speaker
-        contexts = get_speaker_context_lines(final_transcript, speaker, context_lines=5)
-
-        # Show context
-        print(f"\n{'=' * 50}")
-        print(f"Speaker: {speaker}")
-        print(f"{'=' * 50}")
-        # Count occurrences in transcript
-        speaker_count = final_transcript.count(speaker)
-        print(f"Number of occurrences: {speaker_count}")
-        print("\nContext (showing first occurrence):")
-        if contexts:
-            print(contexts[0])
-
-        # Prompt for name
-        new_name = input(f"\nEnter name for {speaker} (or press Enter to keep): ").strip()
-        if new_name:
-            speaker_mapping[speaker] = new_name
-            # Apply mapping immediately so subsequent contexts show the new name
-            final_transcript = final_transcript.replace(speaker, new_name)
-            print(f"Renamed {speaker} -> {new_name}")
+        final_transcript, _ = _review_speaker_interactively(speaker, final_transcript, get_speaker_context_lines)
 
     display_result(final_transcript)
 
