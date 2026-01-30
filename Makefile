@@ -49,7 +49,7 @@ ruff-fix:
 	@uv run ruff format .
 
 mypy:
-	@uv run mypy .
+	@uv run mypy . --ignore-missing-imports --disallow-untyped-defs --disallow-incomplete-defs --check-untyped-defs --warn-unused-ignores --warn-redundant-casts
 
 lint: ruff-check mypy
 

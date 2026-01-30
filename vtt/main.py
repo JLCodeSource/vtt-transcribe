@@ -5,10 +5,10 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from moviepy.audio.io.AudioFileClip import AudioFileClip  # type: ignore
-from moviepy.video.io.VideoFileClip import VideoFileClip  # type: ignore
+from moviepy.audio.io.AudioFileClip import AudioFileClip
+from moviepy.video.io.VideoFileClip import VideoFileClip
 from openai import OpenAI
 from openai.types.audio.transcription_verbose import TranscriptionVerbose
 
@@ -65,7 +65,7 @@ class VideoTranscriber:
     def get_audio_duration(self, audio_path: Path) -> float:
         """Get duration of audio file in seconds."""
         with AudioFileClip(str(audio_path)) as audio_clip:
-            return float(audio_clip.duration)  # type: ignore
+            return float(audio_clip.duration)
 
     def find_existing_chunks(self, audio_path: Path) -> list[Path]:
         """Find all chunk files for a given audio file."""
@@ -170,7 +170,7 @@ class VideoTranscriber:
                 lines.append(f"[{start_time} - {end_time}] {text}")
         return lines
 
-    def _format_from_sdk(self, response) -> list[str]:
+    def _format_from_sdk(self, response: TranscriptionVerbose | dict | str) -> list[str]:
         """Format lines from an SDK-style response object."""
         lines: list[str] = []
         segments_attr = getattr(response, "segments", None)
@@ -529,7 +529,7 @@ def _extract_speakers_from_transcript(transcript: str) -> list[str]:
     return speakers
 
 
-def _review_speaker_interactively(speaker: str, transcript: str, get_speaker_context_lines) -> tuple[str, str | None]:
+def _review_speaker_interactively(speaker: str, transcript: str, get_speaker_context_lines: Any) -> tuple[str, str | None]:
     """Review a single speaker and prompt for renaming.
 
     Returns:
@@ -608,7 +608,7 @@ def handle_review_speakers(
     return final_transcript
 
 
-def _lazy_import_diarization():
+def _lazy_import_diarization() -> tuple:
     """Lazy import diarization module to avoid loading torch on --help."""
     try:
         from vtt.diarization import (
@@ -618,7 +618,8 @@ def _lazy_import_diarization():
             get_unique_speakers,
         )
     except ImportError:
-        from diarization import (  # type: ignore[import-not-found]
+        # Fallback for direct execution
+        from diarization import (  # type: ignore[no-redef]
             SpeakerDiarizer,
             format_diarization_output,
             get_speaker_context_lines,
@@ -627,7 +628,7 @@ def _lazy_import_diarization():
     return SpeakerDiarizer, format_diarization_output, get_unique_speakers, get_speaker_context_lines
 
 
-def _handle_standard_transcription(args, api_key: str) -> str:
+def _handle_standard_transcription(args: Any, api_key: str) -> str:
     """Handle standard transcription workflow with optional diarization.
 
     Returns:

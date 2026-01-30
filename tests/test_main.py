@@ -4,7 +4,7 @@ import os
 import runpy
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -22,7 +22,7 @@ from vtt.main import (
 
 
 # Helper function for common mock setup
-def create_mock_transcriber_with_response(response_text: str = "default transcript"):
+def create_mock_transcriber_with_response(response_text: str = "default transcript") -> tuple[VideoTranscriber, MagicMock]:
     """Create a VideoTranscriber with mocked OpenAI client.
 
     Args:
@@ -629,7 +629,7 @@ class TestChunkTimestampOffsetsMinute:
             transcriber = VideoTranscriber("key")
 
             # Fake extract_audio_chunk to create chunk files
-            def fake_extract(_audio_path, _start, _end, idx):
+            def fake_extract(_audio_path: Any, _start: float, _end: float, idx: int) -> Path:
                 p = tmp_path / f"chunk{idx}.mp3"
                 p.write_text("chunk")
                 return p
@@ -668,7 +668,7 @@ class TestChunkTimestampOffsetsVariable:
 
             transcriber = VideoTranscriber("key")
 
-            def fake_extract(_audio_path, _start, _end, idx):
+            def fake_extract(_audio_path: Any, _start: float, _end: float, idx: int) -> Path:
                 p = tmp_path / f"chunk{idx}.mp3"
                 p.write_text("chunk")
                 return p
@@ -856,7 +856,7 @@ class TestSaveTranscript:
 class TestDisplayResult:
     """Test result display."""
 
-    def test_display_result(self, capsys):
+    def test_display_result(self, capsys: Any) -> None:
         """Should display formatted result."""
         # Given transcript text to display
         transcript = "This is the transcription."
@@ -1335,13 +1335,13 @@ class TestFormatTranscriptInternal:
         """SDK-like response objects with `segments` attribute are handled."""
 
         class Seg:
-            def __init__(self, start, end, text) -> None:
+            def __init__(self, start: float, end: float, text: str) -> None:
                 self.start = start
                 self.end = end
                 self.text = text
 
         class Resp:
-            def __init__(self, segments) -> None:
+            def __init__(self, segments: list[Any]) -> None:
                 self.segments = segments
 
         with patch("vtt.main.OpenAI"):
@@ -1354,7 +1354,7 @@ class TestFormatTranscriptInternal:
         """If SDK response exposes `text` attribute, it's returned as fallback."""
 
         class Resp:
-            def __init__(self, text):
+            def __init__(self, text: str) -> None:
                 self.text = text
 
         with patch("vtt.main.OpenAI"):
@@ -1363,12 +1363,12 @@ class TestFormatTranscriptInternal:
             formatted = transcriber._format_transcript_with_timestamps(resp)  # type: ignore[arg-type]
             assert formatted == "Raw text fallback"
 
-    def test_transcribe_audio_file_debug_on_empty(self, capsys, tmp_path: Path) -> None:
+    def test_transcribe_audio_file_debug_on_empty(self, capsys: Any, tmp_path: Path) -> None:
         """When formatting yields empty string, debug preview prints are emitted."""
 
         # Create a dummy response object with no segments and no text, but meaningful __str__
         class Resp:
-            def __str__(self):
+            def __str__(self) -> str:
                 return "DummyPreview: verbose details here"
 
         with patch("vtt.main.OpenAI") as mock_openai:
@@ -1391,7 +1391,7 @@ class TestFormatTranscriptInternal:
 class TestCleanupFunctions:
     """Tests for cleanup_audio_files and cleanup_audio_chunks."""
 
-    def test_cleanup_audio_files_deletes_main_and_chunks(self, tmp_path: Path, capsys) -> None:
+    def test_cleanup_audio_files_deletes_main_and_chunks(self, tmp_path: Path, capsys: Any) -> None:
         # Use capsys fixture to silence unused-argument warnings
         _ = capsys
         with patch("vtt.main.OpenAI"):
@@ -1412,7 +1412,7 @@ class TestCleanupFunctions:
             assert not chunk0.exists()
             assert not chunk1.exists()
 
-    def test_cleanup_audio_chunks_only_delete_chunks(self, tmp_path: Path, capsys) -> None:
+    def test_cleanup_audio_chunks_only_delete_chunks(self, tmp_path: Path, capsys: Any) -> None:
         # Use capsys fixture to silence unused-argument warnings
         _ = capsys
         with patch("vtt.main.OpenAI"):
@@ -1435,7 +1435,7 @@ class TestCleanupFunctions:
 
 
 class TestTranscribeAudioFileDebugDict:
-    def test_debug_prints_for_dict_response_without_text(self, tmp_path: Path, capsys) -> None:
+    def test_debug_prints_for_dict_response_without_text(self, tmp_path: Path, capsys: Any) -> None:
         with patch("vtt.main.OpenAI") as mock_openai:
             mock_client = MagicMock()
             mock_openai.return_value = mock_client
@@ -1450,7 +1450,7 @@ class TestTranscribeAudioFileDebugDict:
             assert "DEBUG: Empty formatted transcript produced" in captured.out
             assert "DEBUG: response keys: []" in captured.out
 
-    def test_debug_prints_for_dict_response_with_text_key(self, tmp_path: Path, capsys) -> None:
+    def test_debug_prints_for_dict_response_with_text_key(self, tmp_path: Path, capsys: Any) -> None:
         with patch("vtt.main.OpenAI") as mock_openai:
             mock_client = MagicMock()
             mock_openai.return_value = mock_client
@@ -1721,10 +1721,10 @@ class TestTranscribeVerboseJson:
             assert expected_second in result
 
 
-def test_debug_print_exception_while_printing_response(tmp_path, capsys, monkeypatch):
+def test_debug_print_exception_while_printing_response(tmp_path: Any, capsys: Any, monkeypatch: Any) -> None:
     # Given a transcriber whose client returns an object that raises on __str__
     class BadRepr:
-        def __str__(self):
+        def __str__(self) -> str:
             msg = "bad repr"
             raise RuntimeError(msg)
 
@@ -1745,7 +1745,7 @@ def test_debug_print_exception_while_printing_response(tmp_path, capsys, monkeyp
     assert "DEBUG: error while printing response" in captured.out
 
 
-def test_format_timestamp_exception_branch():
+def test_format_timestamp_exception_branch() -> None:
     # Given a transcriber
     with patch("vtt.main.OpenAI"):
         transcriber = VideoTranscriber("key")
@@ -1785,10 +1785,10 @@ def test_main_guard_executes_with_mocked_deps(tmp_path: Path, monkeypatch: pytes
         def close(self) -> None:
             return None
 
-        def subclipped(self, _s, _e) -> "DummyAudio":
+        def subclipped(self, _s: float, _e: float) -> "DummyAudio":
             return self
 
-        def write_audiofile(self, *_args, **_kwargs) -> None:
+        def write_audiofile(self, *_args: Any, **_kwargs: Any) -> None:
             return None
 
     moviepy_afc.AudioFileClip = DummyAudio  # type: ignore[attr-defined]
@@ -1797,7 +1797,7 @@ def test_main_guard_executes_with_mocked_deps(tmp_path: Path, monkeypatch: pytes
     openai_mod = types.ModuleType("openai")
 
     class DummyClient:
-        def __init__(self, api_key=None) -> None:  # noqa: ARG002
+        def __init__(self, api_key: str | None = None) -> None:  # noqa: ARG002
             self.audio = types.SimpleNamespace(transcriptions=types.SimpleNamespace(create=lambda **_k: {"text": "ok"}))
 
     openai_mod.OpenAI = DummyClient  # type: ignore[attr-defined]
@@ -1865,7 +1865,7 @@ class TestLazyImportDiarization:
                 del sys.modules["vtt.diarization"]
 
             # Mock the import to fail for vtt.diarization but succeed for diarization
-            def mock_import(name, *args, **kwargs):
+            def mock_import(name: str, *args: Any, **kwargs: Any) -> Any:
                 if name == "vtt.diarization":
                     msg = "Simulated import failure"
                     raise ImportError(msg)
@@ -1900,7 +1900,7 @@ class TestLazyImportDiarization:
 class TestM4aAudioSupport:
     """Test .m4a audio format support."""
 
-    def test_m4a_recognized_as_audio_format(self):
+    def test_m4a_recognized_as_audio_format(self) -> None:
         """Test that .m4a files are recognized as audio (not video)."""
         assert ".m4a" in VideoTranscriber.SUPPORTED_AUDIO_FORMATS, ".m4a should be in SUPPORTED_AUDIO_FORMATS"
 
@@ -1908,7 +1908,7 @@ class TestM4aAudioSupport:
 class TestNoReviewSpeakersFlag:
     """Test --no-review-speakers flag disables automatic review."""
 
-    def test_diarize_only_runs_review_by_default(self, tmp_path):
+    def test_diarize_only_runs_review_by_default(self, tmp_path: Any) -> None:
         """Test that --diarize-only triggers review unless --no-review-speakers is used."""
         from unittest.mock import MagicMock, patch
 
@@ -1929,7 +1929,7 @@ class TestNoReviewSpeakersFlag:
             # Verify review WAS called (default behavior)
             mock_review.assert_called_once()
 
-    def test_no_review_speakers_disables_review_for_diarize_only(self, tmp_path):
+    def test_no_review_speakers_disables_review_for_diarize_only(self, tmp_path: Any) -> None:
         """Test that --no-review-speakers prevents review in --diarize-only mode."""
         from unittest.mock import MagicMock, patch
 
@@ -1950,7 +1950,7 @@ class TestNoReviewSpeakersFlag:
             # Verify review was NOT called
             mock_review.assert_not_called()
 
-    def test_no_review_speakers_disables_review_for_apply_diarization(self, tmp_path):
+    def test_no_review_speakers_disables_review_for_apply_diarization(self, tmp_path: Any) -> None:
         """Test that --no-review-speakers prevents review in --apply-diarization mode."""
         from unittest.mock import MagicMock, patch
 
@@ -1984,7 +1984,7 @@ class TestNoReviewSpeakersFlag:
             # Verify review was NOT called
             mock_review.assert_not_called()
 
-    def test_no_review_speakers_disables_review_for_diarize_transcribe(self, tmp_path):
+    def test_no_review_speakers_disables_review_for_diarize_transcribe(self, tmp_path: Any) -> None:
         """Test that --no-review-speakers prevents review in --diarize (transcribe+diarize) mode."""
         from unittest.mock import MagicMock, patch
 
@@ -2021,7 +2021,7 @@ class TestNoReviewSpeakersFlag:
             # Verify input() was NOT called (no interactive review)
             mock_input.assert_not_called()
 
-    def test_diarize_transcribe_runs_review_by_default(self, tmp_path):
+    def test_diarize_transcribe_runs_review_by_default(self, tmp_path: Any) -> None:
         """Test that --diarize triggers review by default."""
         from unittest.mock import MagicMock, patch
 
@@ -2055,7 +2055,7 @@ class TestNoReviewSpeakersFlag:
             # Verify input() WAS called (review happened)
             assert mock_input.called, "Review should run by default"
 
-    def test_diarize_transcribe_speaker_rename_with_input(self, tmp_path):
+    def test_diarize_transcribe_speaker_rename_with_input(self, tmp_path: Any) -> None:
         """Test that speaker renaming works when user provides input."""
         from unittest.mock import MagicMock, patch
 
