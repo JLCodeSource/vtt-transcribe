@@ -658,7 +658,8 @@ def main() -> None:
     args = parser.parse_args()
 
     try:
-        api_key = get_api_key(args.api_key) if not args.diarize_only else None
+        # When running only diarization or applying diarization, OpenAI API key is not required
+        api_key = None if args.diarize_only or args.apply_diarization else get_api_key(args.api_key)
 
         # Handle diarization-only mode
         if args.diarize_only:
