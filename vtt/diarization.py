@@ -49,6 +49,12 @@ class SpeakerDiarizer:
     def _load_pipeline(self) -> Pipeline:
         """Lazy load the diarization pipeline and move to device."""
         if self.pipeline is None:
+            # Suppress TF32 reproducibility warning from pyannote
+            # TF32 is disabled by pyannote for accuracy/reproducibility
+            import warnings
+
+            warnings.filterwarnings("ignore", category=UserWarning, module="pyannote.audio.utils.reproducibility")
+
             self.pipeline = Pipeline.from_pretrained(
                 "pyannote/speaker-diarization-3.1",
                 token=self.hf_token,
@@ -57,10 +63,23 @@ class SpeakerDiarizer:
             resolved_device = resolve_device(self.device)
             device = torch.device(resolved_device)
 
+            logger.info("Loading diarization pipeline on device: %s", resolved_device)
+
             # Move pipeline to device using its .to() method
             try:
                 assert self.pipeline is not None
                 self.pipeline.to(device)
+                logger.info("Successfully moved diarization pipeline to %s", resolved_device)
+
+                # Verify device placement by checking if GPU memory was allocated
+                if resolved_device == "cuda" and torch.cuda.is_available():
+                    mem_allocated = torch.cuda.memory_allocated(0) / 1024**2
+                    logger.info("GPU memory allocated: %.2f MB", mem_allocated)
+                    if mem_allocated < 1.0:
+                        logger.warning(
+                            "GPU memory allocation is very low (%.2f MB). Pipeline may still be on CPU.",
+                            mem_allocated,
+                        )
             except Exception as e:
                 # Fallback to CPU if device move fails
                 logger.warning("Failed to move pipeline to %s: %s. Using CPU.", resolved_device, e)
