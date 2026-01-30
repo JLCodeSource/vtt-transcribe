@@ -6,19 +6,28 @@ Last updated: 2026-01-27T10:24:11.434Z
 - .devcontainer structure: include a .devcontainer with recommended VS Code settings, extensions, and a consistent dev image for contributors.
 
 Features and behavior
-- Direct audio transcription: first-class support for audio-only inputs (.mp3, .ogg, .wav). If the provided file is an individual chunk, default to processing that chunk only; provide a --scan-chunks (or similar) flag to detect sibling chunk files and process them all in order when requested.
-- Speaker diarization: integrate or provide hooks for speaker identification/diarization so transcripts can label or cluster speech segments by speaker; when diarization is requested via a flag, offer to download required diarization models (show model sizes and links) or accept a path via an env var; expose a flag to enable/disable diarization and to choose diarization backends when available.
-- Local-only processing via ffmpeg + Whisper model: on first run, search PATH for ffmpeg, check its version (must be > v8) and notify the user if the system ffmpeg is too old, including instructions to set an environment variable to point to a different ffmpeg binary.
+- ✅ Direct audio transcription: first-class support for audio-only inputs (.mp3, .ogg, .wav, .m4a). If the provided file is an individual chunk, default to processing that chunk only; provide a --scan-chunks flag to detect sibling chunk files and process them all in order when requested.
+- ✅ Speaker diarization: integrate pyannote.audio for speaker identification/diarization so transcripts can label speech segments by speaker; requires HF_TOKEN environment variable or --hf-token flag (user must have accepted pyannote model access on Hugging Face); expose a --diarize flag to enable diarization, --device flag for GPU/CPU selection, and interactive speaker review.
+- ✅ Tests and validation: comprehensive unit and integration tests covering direct-audio paths, chunk scanning/ordering, diarization toggle, and various edge cases.
+
+Version 0.4 (local processing & packaging)
+Objective: add local-only Whisper processing and comprehensive packaging options for both connected and air-gapped environments.
+
+**Why deferred to 0.4:**
+- Local Whisper processing requires ffmpeg v8+, but current ecosystem tools (moviepy with imageio-ffmpeg and pyannote) don't yet support v8
+- This allows time for upstream dependencies to mature and for proper testing of ffmpeg version detection and fallback mechanisms
+- Packaging strategy can be finalized alongside local processing implementation
+
+Features and behavior
+- Local-only processing via ffmpeg + Whisper model: on first run, search PATH for ffmpeg, check its version (must be >= v8 for Whisper compatibility) and notify the user if the system ffmpeg is too old, including instructions to set an environment variable to point to a different ffmpeg binary.
   - Model handling: check for an env var (e.g., WHISPER_MODEL_PATH) that points to a local Whisper model; if absent, offer to download a selected optional Whisper model (show model size and a download link). If automatic download fails, present manual download instructions and ask the user to set the env var to the downloaded model path for next runs.
-
 - UX details: provide clear prompts and non-blocking flags to perform downloads or to skip them for air-gapped setups; surface helpful error messages and next steps when checks fail.
+- Tests and validation: add unit and integration tests covering ffmpeg version checks and model download/error flows.
 
-- Tests and validation: add unit and integration tests covering direct-audio paths, chunk scanning/ordering, diarization toggle, ffmpeg version checks, and model download/error flows.
+# Packaging options
 
-Version 0.4 (packaging)
-Objective: make distribution easy for both connected and air-gapped users by providing two packaging options.
+This needs a rethink given the new functionality, but initially, the intention was to use one of these approaches:
 
-Packaging options
 1) imageio-based ffmpeg (recommended default)
 - Rely on imageio-ffmpeg (used by moviepy) to download an ffmpeg binary on first run.
 - Advantages: smaller wheel/artifact, no need to ship a large ffmpeg binary, leverages imageio's single-download-per-environment behaviour.
