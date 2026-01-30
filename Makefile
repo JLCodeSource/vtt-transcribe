@@ -22,8 +22,7 @@ install:
 	@set -e; \
 	curl -LsSf https://astral.sh/uv/install.sh | sh; \
 	uv venv --clear && \
-	uv sync --no-install-project && \
-	uv pip install -e .
+	uv sync && \
 	uv run pre-commit install
 
 # Install with full diarization support (includes torch + pyannote.audio)
@@ -31,8 +30,7 @@ install-diarization:
 	@set -e; \
 	curl -LsSf https://astral.sh/uv/install.sh | sh; \
 	uv venv --clear && \
-	uv sync --no-install-project && \
-	uv pip install -e ".[diarization]"
+	uv sync --extra diarization && \
 	uv run pre-commit install
 
 # Use `uv run` for all runtime targets so commands run inside the project's environment
