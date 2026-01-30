@@ -629,7 +629,48 @@ def _lazy_import_diarization():
     return SpeakerDiarizer, format_diarization_output, get_unique_speakers, get_speaker_context_lines
 
 
-def main() -> None:  # noqa: C901
+def _handle_standard_transcription(args, api_key: str) -> str:
+    """Handle standard transcription workflow with optional diarization.
+
+    Returns:
+        The final transcript (with or without speaker labels).
+    """
+    transcriber = VideoTranscriber(api_key)
+
+    input_path = Path(args.input_file)
+    audio_path = Path(args.output_audio) if args.output_audio else None
+    keep_audio = not args.delete_audio
+    result = transcriber.transcribe(
+        input_path, audio_path, force=args.force, keep_audio=keep_audio, scan_chunks=args.scan_chunks
+    )
+
+    # Apply diarization if requested
+    if args.diarize:
+        SpeakerDiarizer, _, _, _ = _lazy_import_diarization()  # noqa: N806
+        diarizer = SpeakerDiarizer(hf_token=args.hf_token, device=args.device)
+        # Determine the audio path used for transcription
+        actual_audio_path = audio_path if audio_path else input_path.with_suffix(".mp3")
+        if input_path.suffix.lower() in VideoTranscriber.SUPPORTED_AUDIO_FORMATS:
+            actual_audio_path = input_path
+
+        print("\nRunning speaker diarization...")
+        segments = diarizer.diarize_audio(actual_audio_path)
+        result = diarizer.apply_speakers_to_transcript(result, segments)
+
+        # Run speaker review unless disabled
+        if not args.no_review_speakers:
+            result = handle_review_speakers(
+                input_path=None,
+                hf_token=args.hf_token,
+                save_path=None,  # Don't auto-save during review, we'll save at end
+                device=args.device,
+                transcript=result,
+            )
+
+    return result
+
+
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Transcribe video or audio files using OpenAI's Whisper model",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -774,38 +815,7 @@ Environment Variables:
         # Standard transcription flow
         # api_key was already obtained at line 691, no need to call get_api_key again
         assert api_key is not None  # Should be set by line 691 for this path
-        transcriber = VideoTranscriber(api_key)
-
-        input_path = Path(args.input_file)
-        audio_path = Path(args.output_audio) if args.output_audio else None
-        keep_audio = not args.delete_audio
-        result = transcriber.transcribe(
-            input_path, audio_path, force=args.force, keep_audio=keep_audio, scan_chunks=args.scan_chunks
-        )
-
-        # Apply diarization if requested
-        if args.diarize:
-            SpeakerDiarizer, _, _, _ = _lazy_import_diarization()  # noqa: N806
-            diarizer = SpeakerDiarizer(hf_token=args.hf_token, device=args.device)
-            # Determine the audio path used for transcription
-            actual_audio_path = audio_path if audio_path else input_path.with_suffix(".mp3")
-            if input_path.suffix.lower() in VideoTranscriber.SUPPORTED_AUDIO_FORMATS:
-                actual_audio_path = input_path
-
-            print("\nRunning speaker diarization...")
-            segments = diarizer.diarize_audio(actual_audio_path)
-            result = diarizer.apply_speakers_to_transcript(result, segments)
-
-            # Run speaker review unless disabled
-            if not args.no_review_speakers:
-                result = handle_review_speakers(
-                    input_path=None,
-                    hf_token=args.hf_token,
-                    save_path=None,  # Don't auto-save during review, we'll save at end
-                    device=args.device,
-                    transcript=result,
-                )
-
+        result = _handle_standard_transcription(args, api_key)
         display_result(result)
 
         if args.save_transcript:
