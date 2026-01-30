@@ -16,11 +16,24 @@ def resolve_device(device: str) -> str:
     """Resolve device string to actual device (cuda or cpu).
 
     Args:
-        device: Device specification ("auto", "cuda", or "cpu").
+        device: Device specification ("auto", "cuda", "gpu", or "cpu").
 
     Returns:
         Resolved device string ("cuda" or "cpu").
+
+    Note:
+        If DISABLE_GPU environment variable is set, always returns "cpu".
     """
+    import os
+
+    # Check if GPU is disabled via env var
+    if os.environ.get("DISABLE_GPU"):
+        return "cpu"
+
+    # Map "gpu" alias to "cuda"
+    if device == "gpu":
+        device = "cuda"
+
     if device == "auto":
         return "cuda" if torch.cuda.is_available() else "cpu"
     return device

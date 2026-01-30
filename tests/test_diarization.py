@@ -548,3 +548,35 @@ def test_load_pipeline_logs_device_info() -> None:
         assert mock_info.called
         call_args = str(mock_info.call_args_list)
         assert "cuda" in call_args.lower() or "device" in call_args.lower()
+
+
+def test_disable_gpu_via_env_var() -> None:
+    """Test that DISABLE_GPU env var forces CPU usage."""
+    import os
+
+    from vtt.diarization import resolve_device
+
+    # Set env var to disable GPU
+    os.environ["DISABLE_GPU"] = "1"
+
+    try:
+        # Even with cuda request, should return cpu
+        assert resolve_device("auto") == "cpu"
+        assert resolve_device("cuda") == "cpu"
+        assert resolve_device("gpu") == "cpu"
+
+        # Explicit cpu should still work
+        assert resolve_device("cpu") == "cpu"
+    finally:
+        del os.environ["DISABLE_GPU"]
+
+
+def test_gpu_alias_maps_to_cuda() -> None:
+    """Test that 'gpu' device string maps to 'cuda'."""
+    from unittest.mock import patch
+
+    from vtt.diarization import resolve_device
+
+    with patch("torch.cuda.is_available", return_value=True):
+        # 'gpu' should resolve to 'cuda' when available
+        assert resolve_device("gpu") == "cuda"

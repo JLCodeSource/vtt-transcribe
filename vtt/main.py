@@ -632,9 +632,12 @@ def main() -> None:
     )
     parser.add_argument(
         "--device",
-        choices=["auto", "cuda", "cpu"],
+        choices=["auto", "cuda", "gpu", "cpu"],
         default="auto",
-        help="Device to use for diarization (auto/cuda/cpu). Default: auto (uses CUDA if available)",
+        help=(
+            "Device for diarization: 'auto' (GPU if available), 'gpu'/'cuda' (force GPU), 'cpu'."
+            " Set DISABLE_GPU=1 to force CPU."
+        ),
     )
     parser.add_argument(
         "--diarize-only",
