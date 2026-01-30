@@ -57,14 +57,13 @@ class SpeakerDiarizer:
             resolved_device = resolve_device(self.device)
             device = torch.device(resolved_device)
 
-            # Try to move model to device with fallback
+            # Move pipeline to device using its .to() method
             try:
                 assert self.pipeline is not None
-                if hasattr(self.pipeline, "model"):
-                    self.pipeline.model.to(device)
+                self.pipeline.to(device)
             except Exception as e:
                 # Fallback to CPU if device move fails
-                logger.warning("Failed to move model to %s: %s. Using CPU.", resolved_device, e)
+                logger.warning("Failed to move pipeline to %s: %s. Using CPU.", resolved_device, e)
         assert self.pipeline is not None
         return self.pipeline
 
