@@ -561,9 +561,9 @@ class TestDirectAudioTranscription:
                 )
 
                 # Then timestamps are shifted and chunks separated with blank lines
-                assert "[00:00 - 00:02]" in result  # First chunk at 0s
+                assert "[00:00:00 - 00:00:02]" in result  # First chunk at 0s
                 # Second chunk offset by 10s
-                assert "[00:10 - 00:12]" in result
+                assert "[00:00:10 - 00:00:12]" in result
                 assert "\n\n" in result  # Blank line separator between chunks
 
 
@@ -645,8 +645,8 @@ class TestChunkTimestampOffsetsMinute:
                 )
 
                 # Then first chunk lines start at 00:00, second chunk lines offset by 01:00
-                assert "[00:00 - 00:01] First minute" in result
-                assert "[01:00 - 01:01] Second minute" in result
+                assert "[00:00:00 - 00:00:01] First minute" in result
+                assert "[00:01:00 - 00:01:01] Second minute" in result
 
 
 class TestChunkTimestampOffsetsVariable:
@@ -684,8 +684,8 @@ class TestChunkTimestampOffsetsVariable:
                 )
 
                 # Then second chunk timestamps are offset by 00:01
-                assert "[00:00 - 00:01] Short first" in result
-                assert "[00:01 - 00:03] Then second" in result
+                assert "[00:00:00 - 00:00:01] Short first" in result
+                assert "[00:00:01 - 00:00:03] Then second" in result
 
 
 class TestCalculateChunkParamsRounding:
@@ -966,13 +966,13 @@ class TestMainCliArgumentParsing:
 
             with (
                 patch("sys.argv", ["main.py", str(video_path), "--diarize"]),
-                patch.object(VideoTranscriber, "transcribe", return_value="[00:00 - 00:05] Hello"),
+                patch.object(VideoTranscriber, "transcribe", return_value="[00:00:00 - 00:00:05] Hello"),
                 patch("vtt.main._lazy_import_diarization") as mock_lazy_import,
                 patch("builtins.print"),
             ):
                 mock_diarizer = MagicMock()
                 mock_diarizer.diarize_audio.return_value = [(0.0, 5.0, "SPEAKER_00")]
-                mock_diarizer.apply_speakers_to_transcript.return_value = "[00:00 - 00:05] SPEAKER_00: Hello"
+                mock_diarizer.apply_speakers_to_transcript.return_value = "[00:00:00 - 00:00:05] SPEAKER_00: Hello"
                 mock_diarizer_class = MagicMock(return_value=mock_diarizer)
                 mock_format = MagicMock()
                 mock_get_unique = MagicMock()
@@ -1001,13 +1001,13 @@ class TestMainCliArgumentParsing:
 
             with (
                 patch("sys.argv", ["main.py", str(video_path), "--diarize", "--device", "cuda"]),
-                patch.object(VideoTranscriber, "transcribe", return_value="[00:00 - 00:05] Hello"),
+                patch.object(VideoTranscriber, "transcribe", return_value="[00:00:00 - 00:00:05] Hello"),
                 patch("vtt.main._lazy_import_diarization") as mock_lazy_import,
                 patch("builtins.print"),
             ):
                 mock_diarizer = MagicMock()
                 mock_diarizer.diarize_audio.return_value = [(0.0, 5.0, "SPEAKER_00")]
-                mock_diarizer.apply_speakers_to_transcript.return_value = "[00:00 - 00:05] SPEAKER_00: Hello"
+                mock_diarizer.apply_speakers_to_transcript.return_value = "[00:00:00 - 00:00:05] SPEAKER_00: Hello"
                 mock_diarizer_class = MagicMock(return_value=mock_diarizer)
                 mock_format = MagicMock()
                 mock_get_unique = MagicMock()
@@ -1040,7 +1040,7 @@ class TestMainCliArgumentParsing:
                 mock_diarizer = MagicMock()
                 mock_diarizer.diarize_audio.return_value = [(0.0, 5.0, "SPEAKER_00")]
                 mock_diarizer_class = MagicMock(return_value=mock_diarizer)
-                mock_format = MagicMock(return_value="[00:00 - 00:05] SPEAKER_00")
+                mock_format = MagicMock(return_value="[00:00:00 - 00:00:05] SPEAKER_00")
                 mock_get_unique = MagicMock()
                 mock_get_context = MagicMock()
                 mock_lazy_import.return_value = (mock_diarizer_class, mock_format, mock_get_unique, mock_get_context)
@@ -1064,7 +1064,7 @@ class TestMainCliArgumentParsing:
             audio_path = tmp_path / "audio.mp3"
             audio_path.touch()
             transcript_path = tmp_path / "transcript.txt"
-            transcript_path.write_text("[00:00 - 00:05] Hello world")
+            transcript_path.write_text("[00:00:00 - 00:00:05] Hello world")
 
             with (
                 patch(
@@ -1076,7 +1076,7 @@ class TestMainCliArgumentParsing:
             ):
                 mock_diarizer = MagicMock()
                 mock_diarizer.diarize_audio.return_value = [(0.0, 5.0, "SPEAKER_00")]
-                mock_diarizer.apply_speakers_to_transcript.return_value = "[00:00 - 00:05] SPEAKER_00: Hello world"
+                mock_diarizer.apply_speakers_to_transcript.return_value = "[00:00:00 - 00:00:05] SPEAKER_00: Hello world"
                 mock_diarizer_class = MagicMock(return_value=mock_diarizer)
                 mock_format = MagicMock()
                 mock_get_unique = MagicMock()
@@ -1093,7 +1093,7 @@ class TestMainCliArgumentParsing:
                 mock_diarizer_class.assert_called_once_with(hf_token=None, device="auto")
                 mock_diarizer.diarize_audio.assert_called_once_with(audio_path)
                 mock_diarizer.apply_speakers_to_transcript.assert_called_once_with(
-                    "[00:00 - 00:05] Hello world", [(0.0, 5.0, "SPEAKER_00")]
+                    "[00:00:00 - 00:00:05] Hello world", [(0.0, 5.0, "SPEAKER_00")]
                 )
 
 
@@ -1147,7 +1147,7 @@ class TestDiarizationModeHandlers:
                 mock_diarizer = MagicMock()
                 mock_diarizer.diarize_audio.return_value = [(0.0, 5.0, "SPEAKER_00")]
                 mock_diarizer_class = MagicMock(return_value=mock_diarizer)
-                mock_format = MagicMock(return_value="[00:00 - 00:05] SPEAKER_00")
+                mock_format = MagicMock(return_value="[00:00:00 - 00:00:05] SPEAKER_00")
                 mock_get_unique = MagicMock()
                 mock_get_context = MagicMock()
                 mock_lazy_import.return_value = (mock_diarizer_class, mock_format, mock_get_unique, mock_get_context)
@@ -1186,7 +1186,7 @@ class TestDiarizationModeHandlers:
             audio_path = tmp_path / "audio.mp3"
             audio_path.touch()
             transcript_path = tmp_path / "transcript.txt"
-            transcript_path.write_text("[00:00 - 00:05] Hello")
+            transcript_path.write_text("[00:00:00 - 00:00:05] Hello")
             save_path = tmp_path / "output.txt"
 
             with (
@@ -1195,7 +1195,7 @@ class TestDiarizationModeHandlers:
             ):
                 mock_diarizer = MagicMock()
                 mock_diarizer.diarize_audio.return_value = [(0.0, 5.0, "SPEAKER_00")]
-                mock_diarizer.apply_speakers_to_transcript.return_value = "[00:00 - 00:05] SPEAKER_00: Hello"
+                mock_diarizer.apply_speakers_to_transcript.return_value = "[00:00:00 - 00:00:05] SPEAKER_00: Hello"
                 mock_diarizer_class = MagicMock(return_value=mock_diarizer)
                 mock_format = MagicMock()
                 mock_get_unique = MagicMock()
@@ -1216,13 +1216,13 @@ class TestDiarizationModeHandlers:
 
             with (
                 patch("sys.argv", ["main.py", str(audio_path), "--diarize"]),
-                patch.object(VideoTranscriber, "transcribe", return_value="[00:00 - 00:05] Hello"),
+                patch.object(VideoTranscriber, "transcribe", return_value="[00:00:00 - 00:00:05] Hello"),
                 patch("vtt.main._lazy_import_diarization") as mock_lazy_import,
                 patch("builtins.print"),
             ):
                 mock_diarizer = MagicMock()
                 mock_diarizer.diarize_audio.return_value = [(0.0, 5.0, "SPEAKER_00")]
-                mock_diarizer.apply_speakers_to_transcript.return_value = "[00:00 - 00:05] SPEAKER_00: Hello"
+                mock_diarizer.apply_speakers_to_transcript.return_value = "[00:00:00 - 00:00:05] SPEAKER_00: Hello"
                 mock_diarizer_class = MagicMock(return_value=mock_diarizer)
                 mock_format = MagicMock()
                 mock_get_unique = MagicMock()
@@ -1274,7 +1274,7 @@ class TestDiarizationModeHandlers:
             mock_diarizer = MagicMock()
             mock_diarizer.diarize_audio.return_value = [(0.0, 5.0, "SPEAKER_00")]
             mock_diarizer_class = MagicMock(return_value=mock_diarizer)
-            mock_format = MagicMock(return_value="[00:00 - 00:05] SPEAKER_00: Hello")
+            mock_format = MagicMock(return_value="[00:00:00 - 00:00:05] SPEAKER_00: Hello")
             mock_get_unique = MagicMock(return_value=["SPEAKER_00"])
             mock_get_context = MagicMock(return_value=["context"])
             mock_lazy.return_value = (mock_diarizer_class, mock_format, mock_get_unique, mock_get_context)
@@ -1290,7 +1290,7 @@ class TestDiarizationModeHandlers:
     def test_review_speakers_with_save_path(self, tmp_path: Path) -> None:
         """Should save transcript when save_path is provided."""
         transcript_path = tmp_path / "transcript.txt"
-        transcript_path.write_text("[00:00 - 00:05] SPEAKER_00: Hello")
+        transcript_path.write_text("[00:00:00 - 00:00:05] SPEAKER_00: Hello")
         save_path = tmp_path / "output.txt"
 
         with (
@@ -1329,7 +1329,7 @@ class TestFormatTranscriptInternal:
             }
 
             formatted = transcriber._format_transcript_with_timestamps(response)  # type: ignore[arg-type]
-            assert "[00:00 - 00:02] Hello dict" in formatted
+            assert "[00:00:00 - 00:00:02] Hello dict" in formatted
 
     def test_format_transcript_with_sdk_segments(self) -> None:
         """SDK-like response objects with `segments` attribute are handled."""
@@ -1348,7 +1348,7 @@ class TestFormatTranscriptInternal:
             transcriber = VideoTranscriber("key")
             resp = Resp([Seg(5.0, 8.2, "SDK segment")])
             formatted = transcriber._format_transcript_with_timestamps(resp)  # type: ignore[arg-type]
-            assert "[00:05 - 00:08] SDK segment" in formatted
+            assert "[00:00:05 - 00:00:08] SDK segment" in formatted
 
     def test_format_transcript_with_text_attribute(self) -> None:
         """If SDK response exposes `text` attribute, it's returned as fallback."""
@@ -1715,8 +1715,8 @@ class TestTranscribeVerboseJson:
             result = transcriber.transcribe_audio_file(audio_path)
 
             # Then result should contain timestamped lines (expected format)
-            expected_first = "[00:00 - 00:01] Hello world"
-            expected_second = "[00:02 - 00:04] Second line"
+            expected_first = "[00:00:00 - 00:00:01] Hello world"
+            expected_second = "[00:00:02 - 00:00:04] Second line"
             assert expected_first in result
             assert expected_second in result
 
@@ -1752,7 +1752,7 @@ def test_format_timestamp_exception_branch() -> None:
         # When calling _format_timestamp with a non-int-convertible value
         result = transcriber._format_timestamp("not-a-number")  # type: ignore[arg-type]
         # Then fallback to 00:00 is returned
-        assert result == "00:00"
+        assert result == "00:00:00"
 
 
 def test_main_guard_executes_with_mocked_deps(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1957,7 +1957,7 @@ class TestNoReviewSpeakersFlag:
         audio_file = tmp_path / "test.mp3"
         audio_file.write_text("fake audio")
         transcript_file = tmp_path / "transcript.txt"
-        transcript_file.write_text("[00:00 - 00:05] SPEAKER_00: Hello")
+        transcript_file.write_text("[00:00:00 - 00:00:05] SPEAKER_00: Hello")
 
         with (
             patch(
@@ -2002,12 +2002,12 @@ class TestNoReviewSpeakersFlag:
             patch("builtins.print"),
         ):
             mock_transcriber = MagicMock()
-            mock_transcriber.transcribe.return_value = "[00:00 - 00:05] Hello"
+            mock_transcriber.transcribe.return_value = "[00:00:00 - 00:00:05] Hello"
             mock_transcriber_class.return_value = mock_transcriber
 
             mock_diarizer = MagicMock()
             mock_diarizer.diarize_audio.return_value = [(0.0, 5.0, "SPEAKER_00")]
-            mock_diarizer.apply_speakers_to_transcript.return_value = "[00:00 - 00:05] SPEAKER_00: Hello"
+            mock_diarizer.apply_speakers_to_transcript.return_value = "[00:00:00 - 00:00:05] SPEAKER_00: Hello"
 
             mock_diarization_import.return_value = (
                 lambda *_args, **_kwargs: mock_diarizer,
@@ -2036,12 +2036,12 @@ class TestNoReviewSpeakersFlag:
             patch("builtins.print"),
         ):
             mock_transcriber = MagicMock()
-            mock_transcriber.transcribe.return_value = "[00:00 - 00:05] Hello"
+            mock_transcriber.transcribe.return_value = "[00:00:00 - 00:00:05] Hello"
             mock_transcriber_class.return_value = mock_transcriber
 
             mock_diarizer = MagicMock()
             mock_diarizer.diarize_audio.return_value = [(0.0, 5.0, "SPEAKER_00")]
-            mock_diarizer.apply_speakers_to_transcript.return_value = "[00:00 - 00:05] SPEAKER_00: Hello"
+            mock_diarizer.apply_speakers_to_transcript.return_value = "[00:00:00 - 00:00:05] SPEAKER_00: Hello"
 
             mock_diarization_import.return_value = (
                 lambda *_args, **_kwargs: mock_diarizer,
@@ -2072,12 +2072,12 @@ class TestNoReviewSpeakersFlag:
             patch("builtins.print") as mock_print,
         ):
             mock_transcriber = MagicMock()
-            mock_transcriber.transcribe.return_value = "[00:00 - 00:05] Hello"
+            mock_transcriber.transcribe.return_value = "[00:00:00 - 00:00:05] Hello"
             mock_transcriber_class.return_value = mock_transcriber
 
             mock_diarizer = MagicMock()
             mock_diarizer.diarize_audio.return_value = [(0.0, 5.0, "SPEAKER_00")]
-            mock_diarizer.apply_speakers_to_transcript.return_value = "[00:00 - 00:05] SPEAKER_00: Hello"
+            mock_diarizer.apply_speakers_to_transcript.return_value = "[00:00:00 - 00:00:05] SPEAKER_00: Hello"
 
             mock_diarization_import.return_value = (
                 lambda *_args, **_kwargs: mock_diarizer,
@@ -2094,3 +2094,32 @@ class TestNoReviewSpeakersFlag:
             # Verify the rename message was printed
             print_calls = [str(call) for call in mock_print.call_args_list]
             assert any("Renamed SPEAKER_00 -> Alice" in call for call in print_calls), "Should print rename confirmation"
+
+
+def test_handle_review_speakers_missing_inputs() -> None:
+    """Test handle_review_speakers raises error when both input_path and transcript are None."""
+    import pytest
+
+    from vtt.main import handle_review_speakers
+
+    with pytest.raises(ValueError, match="Either input_path or transcript must be provided"):
+        handle_review_speakers(input_path=None, transcript=None)
+
+
+def test_cleanup_audio_files_prints_chunk_deletion(tmp_path: Path) -> None:
+    """Test that cleanup_audio_files prints deletion messages for chunks."""
+    from unittest.mock import patch
+
+    audio_path = tmp_path / "audio.mp3"
+    chunk_path = tmp_path / "audio_chunk0.mp3"
+    audio_path.write_text("audio")
+    chunk_path.write_text("chunk")
+
+    with patch("vtt.main.OpenAI"):
+        transcriber = VideoTranscriber("key")
+        with patch("builtins.print") as mock_print:
+            # Call cleanup which should print chunk deletions
+            transcriber.cleanup_audio_files(audio_path)
+            # Check that print was called (but chunks are already deleted by cleanup_files)
+            print_calls = [str(call) for call in mock_print.call_args_list]
+            assert any("Deleted audio file" in str(call) for call in print_calls)

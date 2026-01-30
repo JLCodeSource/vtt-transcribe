@@ -84,3 +84,33 @@ class TestAudioFileManager:
         assert audio_path.exists()
         assert not chunk0.exists()
         assert not chunk1.exists()
+
+
+def test_extract_from_video_skips_if_exists_and_not_force(tmp_path: Path) -> None:
+    """Test that extraction is skipped if audio exists and force=False."""
+    video_path = tmp_path / "video.mp4"
+    audio_path = tmp_path / "audio.mp3"
+    video_path.write_text("fake video")
+    audio_path.write_text("existing audio")
+
+    with patch("vtt.audio_manager.VideoFileClip"):
+        AudioFileManager.extract_from_video(video_path, audio_path, force=False)
+        # Should not have been overwritten
+        assert audio_path.read_text() == "existing audio"
+
+
+def test_extract_from_video_no_audio_track(tmp_path: Path) -> None:
+    """Test extraction when video has no audio track."""
+    video_path = tmp_path / "video.mp4"
+    audio_path = tmp_path / "audio.mp3"
+    video_path.write_text("fake video")
+
+    mock_clip = MagicMock()
+    mock_clip.__enter__ = MagicMock(return_value=mock_clip)
+    mock_clip.__exit__ = MagicMock(return_value=False)
+    mock_clip.audio = None
+
+    with patch("vtt.audio_manager.VideoFileClip", return_value=mock_clip):
+        AudioFileManager.extract_from_video(video_path, audio_path, force=True)
+        # Should not create audio file
+        assert not audio_path.exists()

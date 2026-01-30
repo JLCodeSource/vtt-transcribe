@@ -1,6 +1,5 @@
 import argparse
 import contextlib
-import math
 import os
 import re
 import sys
@@ -8,12 +7,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from openai import OpenAI
-from openai.types.audio.transcription_verbose import TranscriptionVerbose
 
+from vtt.audio_chunker import AudioChunker
 from vtt.audio_manager import AudioFileManager
+from vtt.transcript_formatter import TranscriptFormatter
 
-# Lazy imports for diarization to avoid loading torch on --help
 if TYPE_CHECKING:
+    from openai.types.audio.transcription_verbose import TranscriptionVerbose
+
     from vtt.diarization import SpeakerDiarizer, format_diarization_output  # noqa: F401
 
 # Constants
@@ -71,53 +72,32 @@ class VideoTranscriber:
         return AudioFileManager.get_duration(audio_path)
 
     def find_existing_chunks(self, audio_path: Path) -> list[Path]:
-        """Find all chunk files for a given audio file."""
-        if not audio_path.parent.exists():
-            return []
-
-        stem = audio_path.stem
-        chunks = list(audio_path.parent.glob(f"{stem}_chunk*.mp3"))
-        return sorted(chunks, key=lambda p: int(p.stem.split("_chunk")[1]))
+        """Find all chunk files (delegates to AudioFileManager)."""
+        return AudioFileManager.find_chunks(audio_path)
 
     def cleanup_audio_files(self, audio_path: Path) -> None:
-        """Delete audio file and any associated chunks."""
-        # Delete main audio file
-        if audio_path.exists():
-            audio_path.unlink()
-            print(f"Deleted audio file: {audio_path}")
+        """Delete audio file and chunks (delegates to AudioFileManager)."""
+        # Find chunks before deleting
+        chunks = AudioFileManager.find_chunks(audio_path)
 
-        # Delete chunk files
-        chunks = self.find_existing_chunks(audio_path)
+        # Delete everything
+        AudioFileManager.cleanup_files(audio_path)
+
+        # Report what was deleted
+        print(f"Deleted audio file: {audio_path}")
         for chunk in chunks:
-            chunk.unlink()
             print(f"Deleted chunk file: {chunk}")
 
     def cleanup_audio_chunks(self, audio_path: Path) -> None:
-        """Delete only chunk files, keep the main audio file."""
-        chunks = self.find_existing_chunks(audio_path)
-        for chunk in chunks:
-            chunk.unlink()
-
+        """Delete only chunk files (delegates to AudioFileManager)."""
+        chunks = AudioFileManager.find_chunks(audio_path)
+        AudioFileManager.cleanup_chunks_only(audio_path)
         if chunks:
             print(f"Deleted {len(chunks)} chunk files")
 
     def calculate_chunk_params(self, file_size_mb: float, duration: float) -> tuple[int, float]:
-        """Calculate optimal chunk parameters based on file size and duration."""
-        if file_size_mb <= self.MAX_SIZE_MB:
-            return 1, duration
-
-        # Calculate chunk duration: (MAX_SIZE_MB / file_size_mb) * duration * CHUNK_SAFETY_FACTOR (safety margin)
-        # Base chunk duration calculation with safety margin
-        raw_chunk_duration: float = (self.MAX_SIZE_MB / file_size_mb) * duration * CHUNK_SAFETY_FACTOR
-
-        # Prefer round-minute chunk sizes for nicer timestamps: round to nearest 60s
-        # Use floor division to prefer smaller (floor) minute chunks
-        minutes = max(1, int(raw_chunk_duration // SECONDS_PER_MINUTE))
-        chunk_duration: float = float(minutes * SECONDS_PER_MINUTE)
-
-        num_chunks: int = math.ceil(duration / chunk_duration)
-
-        return num_chunks, chunk_duration
+        """Calculate chunk parameters (delegates to AudioChunker)."""
+        return AudioChunker.calculate_chunk_params(file_size_mb, duration)
 
     def extract_audio_chunk(self, audio_path: Path, start_time: float, end_time: float, chunk_index: int) -> Path:
         """Extract audio chunk (delegates to AudioFileManager)."""
@@ -155,68 +135,14 @@ class VideoTranscriber:
 
         return formatted
 
-    def _format_from_dict(self, response: dict) -> list[str]:
-        """Format lines from a dict-like verbose response."""
-        lines: list[str] = []
-        segments = response.get("segments", [])
-        for segment in segments:
-            start_time = self._format_timestamp(segment.get("start", 0))
-            end_time = self._format_timestamp(segment.get("end", 0))
-            text = segment.get("text", "").strip()
-            if text:
-                lines.append(f"[{start_time} - {end_time}] {text}")
-        return lines
-
-    def _format_from_sdk(self, response: TranscriptionVerbose | dict | str) -> list[str]:
-        """Format lines from an SDK-style response object."""
-        lines: list[str] = []
-        segments_attr = getattr(response, "segments", None)
-        if not segments_attr:
-            return lines
-
-        for segment in segments_attr:
-            start = getattr(segment, "start", None)
-            end = getattr(segment, "end", None)
-            text = getattr(segment, "text", "") or ""
-            start_time = self._format_timestamp(start or 0)
-            end_time = self._format_timestamp(end or 0)
-            text = str(text).strip()
-            if text:
-                lines.append(f"[{start_time} - {end_time}] {text}")
-        return lines
-
-    def _format_transcript_with_timestamps(self, response: TranscriptionVerbose) -> str:
-        """Format verbose JSON response with timestamps."""
-        if isinstance(response, str):
-            return response
-
-        if isinstance(response, dict):
-            dict_lines = self._format_from_dict(response)
-            if dict_lines:
-                return "\n".join(dict_lines)
-            if "text" in response:
-                return response.get("text", "")
-
-        sdk_lines = self._format_from_sdk(response)
-        if sdk_lines:
-            return "\n".join(sdk_lines)
-
-        text_attr = getattr(response, "text", None)
-        if text_attr:
-            return str(text_attr)
-
-        return ""
+    def _format_transcript_with_timestamps(self, response: "TranscriptionVerbose") -> str:
+        """Format transcript with timestamps (delegates to TranscriptFormatter)."""
+        lines = TranscriptFormatter.format(response, include_timestamps=True)
+        return "\n".join(lines)
 
     def _format_timestamp(self, seconds: float) -> str:
-        """Convert seconds to MM:SS format (floor seconds)."""
-        try:
-            total_seconds = int(seconds)
-        except Exception:
-            total_seconds = 0
-
-        minutes = total_seconds // 60
-        secs = total_seconds % 60
-        return f"{minutes:02d}:{secs:02d}"
+        """Format timestamp (delegates to TranscriptFormatter)."""
+        return TranscriptFormatter._format_timestamp(seconds)  # noqa: SLF001
 
     def transcribe_chunked_audio(
         self,
@@ -278,17 +204,10 @@ class VideoTranscriber:
         return transcripts
 
     def _shift_formatted_timestamps(self, formatted: str, offset_seconds: float) -> str:
-        """Shift MM:SS timestamps in formatted transcript by offset_seconds."""
-
-        def repl(match: re.Match) -> str:
-            m1_min, m1_sec, m2_min, m2_sec = match.groups()
-            start_secs = int(m1_min) * SECONDS_PER_MINUTE + int(m1_sec)
-            end_secs = int(m2_min) * SECONDS_PER_MINUTE + int(m2_sec)
-            new_start = self._format_timestamp(start_secs + int(offset_seconds))
-            new_end = self._format_timestamp(end_secs + int(offset_seconds))
-            return f"[{new_start} - {new_end}]"
-
-        return re.sub(r"\[(\d{2}):(\d{2}) - (\d{2}):(\d{2})\]", repl, formatted)
+        """Shift timestamps in formatted transcript (delegates to TranscriptFormatter)."""
+        lines = formatted.split("\n")
+        adjusted_lines = TranscriptFormatter.adjust_timestamps(lines, offset_seconds)
+        return "\n".join(adjusted_lines)
 
     def _transcribe_sibling_chunks(self, base_audio_path: Path) -> str:
         """Transcribe all sibling chunks with timestamp shifting."""
@@ -515,9 +434,9 @@ def _extract_speakers_from_transcript(transcript: str) -> list[str]:
     speakers = []
     seen = set()
     for line in transcript.split("\n"):
-        # Match pattern: [MM:SS - MM:SS] SPEAKER_XX: text (with colon)
-        # or [MM:SS - MM:SS] SPEAKER_XX (without colon, from diarization-only output)
-        match = re.match(r"\[\d{2}:\d{2} - \d{2}:\d{2}\]\s+(SPEAKER_\d+):?", line)
+        # Match pattern: [HH:MM:SS - HH:MM:SS] SPEAKER_XX: text (with colon)
+        # or [HH:MM:SS - HH:MM:SS] SPEAKER_XX (without colon, from diarization-only output)
+        match = re.match(r"\[\d{2}:\d{2}:\d{2} - \d{2}:\d{2}:\d{2}\]\s+(SPEAKER_\d+):?", line)
         if match:
             speaker = match.group(1)
             if speaker not in seen:
