@@ -21,7 +21,7 @@ class VideoTranscriber:
     """Transcribe video audio using OpenAI's Whisper model."""
 
     MAX_SIZE_MB = 25
-    SUPPORTED_AUDIO_FORMATS = (".mp3", ".wav", ".ogg")
+    SUPPORTED_AUDIO_FORMATS = (".mp3", ".wav", ".ogg", ".m4a")
 
     def __init__(self, api_key: str) -> None:
         """Initialize transcriber with API key."""
@@ -588,7 +588,7 @@ def main() -> None:
     )
     parser.add_argument(
         "input_file",
-        help="Path to the video or audio file to transcribe (.mp4, .mp3, .wav, .ogg)",
+        help="Path to the video or audio file to transcribe (.mp4, .mp3, .wav, .ogg, .m4a)",
     )
     parser.add_argument(
         "-k",

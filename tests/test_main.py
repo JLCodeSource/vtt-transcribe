@@ -1975,3 +1975,13 @@ class TestLazyImportDiarization:
             import vtt.main
 
             reload(vtt.main)
+
+
+class TestM4aAudioSupport:
+    """Test .m4a audio format support."""
+
+    def test_m4a_recognized_as_audio_format(self):
+        """Test that .m4a files are recognized as audio (not video)."""
+        from vtt.main import VideoTranscriber
+
+        assert ".m4a" in VideoTranscriber.SUPPORTED_AUDIO_FORMATS, ".m4a should be in SUPPORTED_AUDIO_FORMATS"
