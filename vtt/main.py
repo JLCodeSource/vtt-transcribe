@@ -1,3 +1,4 @@
+# ruff: noqa: C901
 import argparse
 import contextlib
 import math
@@ -649,24 +650,26 @@ def main() -> None:
         help="Apply diarization to an existing transcript file",
     )
     parser.add_argument(
-        "--review-speakers",
+        "--no-review-speakers",
         action="store_true",
-        help="Interactive review and rename speakers after diarization",
+        help="Skip interactive speaker review (default: review is ON for all diarization modes)",
     )
 
     args = parser.parse_args()
 
     try:
-        # Handle review-speakers mode
-        if args.review_speakers:
-            save_path = Path(args.save_transcript) if args.save_transcript else None
-            handle_review_speakers(Path(args.input_file), args.hf_token, save_path, args.device)
-            return
+        api_key = get_api_key(args.api_key) if not args.diarize_only else None
 
         # Handle diarization-only mode
         if args.diarize_only:
             save_path = Path(args.save_transcript) if args.save_transcript else None
             handle_diarize_only_mode(Path(args.input_file), args.hf_token, save_path, args.device)
+
+            # Run review unless disabled
+            if not args.no_review_speakers:
+                input_path = Path(args.input_file)
+                review_path = save_path if save_path and save_path.exists() else input_path
+                handle_review_speakers(review_path, args.hf_token, save_path, args.device)
             return
 
         # Handle apply-diarization mode
@@ -675,6 +678,12 @@ def main() -> None:
             handle_apply_diarization_mode(
                 Path(args.input_file), Path(args.apply_diarization), args.hf_token, save_path, args.device
             )
+
+            # Run review unless disabled
+            if not args.no_review_speakers:
+                transcript_path = save_path if save_path else Path(args.apply_diarization)
+                if transcript_path.exists():
+                    handle_review_speakers(transcript_path, args.hf_token, save_path, args.device)
             return
 
         # Standard transcription flow
@@ -700,6 +709,29 @@ def main() -> None:
             print("\nRunning speaker diarization...")
             segments = diarizer.diarize_audio(actual_audio_path)
             result = diarizer.apply_speakers_to_transcript(result, segments)
+
+            # Run speaker review unless disabled
+            if not args.no_review_speakers:
+                _, _, get_unique_speakers, get_speaker_context_lines = _lazy_import_diarization()
+                speakers = get_unique_speakers(segments)
+                print(f"\nFound {len(speakers)} speakers: {', '.join(speakers)}")
+                print("\nReviewing speakers...")
+
+                for speaker in speakers:
+                    contexts = get_speaker_context_lines(result, speaker, context_lines=5)
+                    print(f"\n{'=' * 50}")
+                    print(f"Speaker: {speaker}")
+                    print(f"{'=' * 50}")
+                    speaker_count = result.count(speaker)
+                    print(f"Number of occurrences: {speaker_count}")
+                    if contexts:
+                        print("\nContext (showing first occurrence):")
+                        print(contexts[0])
+
+                    new_name = input(f"\nEnter name for {speaker} (or press Enter to keep): ").strip()
+                    if new_name:
+                        result = result.replace(speaker, new_name)
+                        print(f"Renamed {speaker} -> {new_name}")
 
         display_result(result)
 
