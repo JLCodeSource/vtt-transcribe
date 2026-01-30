@@ -1277,7 +1277,7 @@ class TestDiarizationModeHandlers:
         from vtt.main import handle_review_speakers
 
         non_existent = Path("nonexistent_file_xyz123.txt")
-        with pytest.raises(FileNotFoundError, match="Audio file not found"):
+        with pytest.raises(FileNotFoundError, match="Input file not found"):
             handle_review_speakers(non_existent, None, None)
 
     def test_review_speakers_with_audio_file(self) -> None:
