@@ -1,4 +1,10 @@
-"""Speaker diarization using pyannote.audio."""
+"""Speaker diarization using pyannote.audio.
+
+Timestamp Format:
+    The primary timestamp format used throughout this module is HH:MM:SS (hours:minutes:seconds).
+    This aligns with the TranscriptFormatter output format. Some functions maintain backward
+    compatibility with the legacy MM:SS format for parsing existing transcripts.
+"""
 
 import logging
 import os
@@ -296,6 +302,7 @@ def get_speaker_context_lines(
 
     Args:
         transcript: Transcript with [HH:MM:SS - HH:MM:SS] SPEAKER_XX: text format.
+                   Also accepts legacy [MM:SS - MM:SS] format for backward compatibility.
         speaker_label: Speaker label to extract contexts for.
         context_lines: Number of lines to show before and after each speaker segment group.
 
@@ -308,7 +315,8 @@ def get_speaker_context_lines(
     # Build a mapping of line index to speaker label by parsing the line
     line_to_speaker = {}
     for i, line in enumerate(lines):
-        # Match pattern: [HH:MM:SS - HH:MM:SS] SPEAKER_XX: text or [MM:SS - MM:SS] SPEAKER_XX: text
+        # Match pattern: [HH:MM:SS - HH:MM:SS] SPEAKER_XX: text
+        # The optional (?:\d{2}:)? group provides backward compatibility with legacy [MM:SS - MM:SS] format
         match = re.match(r"\[(?:\d{2}:)?\d{2}:\d{2} - (?:\d{2}:)?\d{2}:\d{2}\]\s+(SPEAKER_\d+):?", line)
         if match:
             line_to_speaker[i] = match.group(1)
