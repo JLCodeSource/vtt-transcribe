@@ -102,26 +102,26 @@ class TestTranscriptFormatter:
     def test_format_timestamp_hours_minutes_seconds(self) -> None:
         """Should format timestamp as HH:MM:SS."""
         # 1 hour, 23 minutes, 45 seconds
-        result = TranscriptFormatter._format_timestamp(5025.0)
+        result = TranscriptFormatter.format_timestamp(5025.0)
 
         assert result == "01:23:45"
 
     def test_format_timestamp_only_minutes_seconds(self) -> None:
         """Should format timestamp with zero hours."""
         # 5 minutes, 30 seconds
-        result = TranscriptFormatter._format_timestamp(330.0)
+        result = TranscriptFormatter.format_timestamp(330.0)
 
         assert result == "00:05:30"
 
     def test_format_timestamp_only_seconds(self) -> None:
         """Should format timestamp with zero hours and minutes."""
-        result = TranscriptFormatter._format_timestamp(45.0)
+        result = TranscriptFormatter.format_timestamp(45.0)
 
         assert result == "00:00:45"
 
     def test_format_timestamp_zero(self) -> None:
         """Should format zero correctly."""
-        result = TranscriptFormatter._format_timestamp(0.0)
+        result = TranscriptFormatter.format_timestamp(0.0)
 
         assert result == "00:00:00"
 

@@ -132,7 +132,7 @@ class VideoTranscriber:
 
     def _format_timestamp(self, seconds: float) -> str:
         """Format timestamp (delegates to TranscriptFormatter)."""
-        return TranscriptFormatter._format_timestamp(seconds)  # noqa: SLF001
+        return TranscriptFormatter.format_timestamp(seconds)
 
     def transcribe_chunked_audio(
         self,

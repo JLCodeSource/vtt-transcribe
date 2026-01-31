@@ -52,8 +52,8 @@ class TranscriptFormatter:
             if include_timestamps:
                 start = segment.get("start", 0)
                 end = segment.get("end", 0)
-                start_time = TranscriptFormatter._format_timestamp(start)
-                end_time = TranscriptFormatter._format_timestamp(end)
+                start_time = TranscriptFormatter.format_timestamp(start)
+                end_time = TranscriptFormatter.format_timestamp(end)
                 lines.append(f"[{start_time} - {end_time}] {text}")
             else:
                 lines.append(text)
@@ -81,8 +81,8 @@ class TranscriptFormatter:
             if include_timestamps:
                 start = getattr(segment, "start", 0)
                 end = getattr(segment, "end", 0)
-                start_time = TranscriptFormatter._format_timestamp(start)
-                end_time = TranscriptFormatter._format_timestamp(end)
+                start_time = TranscriptFormatter.format_timestamp(start)
+                end_time = TranscriptFormatter.format_timestamp(end)
                 lines.append(f"[{start_time} - {end_time}] {text}")
             else:
                 lines.append(text)
@@ -90,7 +90,7 @@ class TranscriptFormatter:
         return lines
 
     @staticmethod
-    def _format_timestamp(seconds: float) -> str:
+    def format_timestamp(seconds: float) -> str:
         """Convert seconds to HH:MM:SS format.
 
         Args:
@@ -133,8 +133,8 @@ class TranscriptFormatter:
                 end_total = end_h * 3600 + end_m * 60 + end_s + offset_seconds
 
                 # Format new timestamps
-                new_start = TranscriptFormatter._format_timestamp(start_total)
-                new_end = TranscriptFormatter._format_timestamp(end_total)
+                new_start = TranscriptFormatter.format_timestamp(start_total)
+                new_end = TranscriptFormatter.format_timestamp(end_total)
 
                 # Replace timestamps in line
                 text = line[match.end() :].strip()
