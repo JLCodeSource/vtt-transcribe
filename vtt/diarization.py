@@ -199,21 +199,29 @@ class SpeakerDiarizer:
         Returns:
             Line with speaker label added, or original line if no match.
         """
-        # Match timestamp pattern [MM:SS - MM:SS]
-        match = re.match(r"\[(\d{2}):(\d{2}) - (\d{2}):(\d{2})\] (.+)", line)
-        if not match:
-            return line
-
-        start_min, start_sec, end_min, end_sec, text = match.groups()
-        start_time = int(start_min) * 60 + int(start_sec)
-        end_time = int(end_min) * 60 + int(end_sec)
+        # Match timestamp pattern [HH:MM:SS - HH:MM:SS] or [MM:SS - MM:SS]
+        match = re.match(r"\[(\d{2}):(\d{2}):(\d{2}) - (\d{2}):(\d{2}):(\d{2})\] (.+)", line)
+        if match:
+            start_hr, start_min, start_sec, end_hr, end_min, end_sec, text = match.groups()
+            start_time = int(start_hr) * 3600 + int(start_min) * 60 + int(start_sec)
+            end_time = int(end_hr) * 3600 + int(end_min) * 60 + int(end_sec)
+            timestamp = f"{start_hr}:{start_min}:{start_sec} - {end_hr}:{end_min}:{end_sec}"
+        else:
+            # Try MM:SS format
+            match = re.match(r"\[(\d{2}):(\d{2}) - (\d{2}):(\d{2})\] (.+)", line)
+            if not match:
+                return line
+            start_min, start_sec, end_min, end_sec, text = match.groups()
+            start_time = int(start_min) * 60 + int(start_sec)
+            end_time = int(end_min) * 60 + int(end_sec)
+            timestamp = f"{start_min}:{start_sec} - {end_min}:{end_sec}"
 
         # Find speaker for this segment (use midpoint for matching)
         midpoint = (start_time + end_time) / 2
         speaker = self._find_speaker_at_time(midpoint, speaker_segments)
 
         if speaker:
-            return f"[{start_min}:{start_sec} - {end_min}:{end_sec}] {speaker}: {text}"
+            return f"[{timestamp}] {speaker}: {text}"
         return line
 
     def _find_speaker_at_time(
@@ -300,8 +308,8 @@ def get_speaker_context_lines(
     # Build a mapping of line index to speaker label by parsing the line
     line_to_speaker = {}
     for i, line in enumerate(lines):
-        # Match pattern: [MM:SS - MM:SS] SPEAKER_XX: text
-        match = re.match(r"\[\d{2}:\d{2} - \d{2}:\d{2}\]\s+(SPEAKER_\d+):", line)
+        # Match pattern: [HH:MM:SS - HH:MM:SS] SPEAKER_XX: text or [MM:SS - MM:SS] SPEAKER_XX: text
+        match = re.match(r"\[(?:\d{2}:)?\d{2}:\d{2} - (?:\d{2}:)?\d{2}:\d{2}\]\s+(SPEAKER_\d+):?", line)
         if match:
             line_to_speaker[i] = match.group(1)
 
