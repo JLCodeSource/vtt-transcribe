@@ -1,4 +1,10 @@
-"""Speaker diarization using pyannote.audio."""
+"""Speaker diarization using pyannote.audio.
+
+Timestamp Format:
+    The primary timestamp format used throughout this module is HH:MM:SS (hours:minutes:seconds).
+    This aligns with the TranscriptFormatter output format. Some functions maintain backward
+    compatibility with the legacy MM:SS format for parsing existing transcripts.
+"""
 
 import logging
 import os
@@ -7,7 +13,7 @@ import warnings
 from pathlib import Path
 
 import torch
-from pyannote.audio import Pipeline  # type: ignore[import-not-found]
+from pyannote.audio import Pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -176,11 +182,11 @@ class SpeakerDiarizer:
         """Apply speaker labels to timestamped transcript.
 
         Args:
-            transcript: Transcript with [MM:SS - MM:SS] text format.
+            transcript: Transcript with [HH:MM:SS - HH:MM:SS] text format.
             speaker_segments: List of (start_time, end_time, speaker_label) tuples.
 
         Returns:
-            Transcript with speaker labels: [MM:SS - MM:SS] Speaker: text
+            Transcript with speaker labels: [HH:MM:SS - HH:MM:SS] Speaker: text
         """
         if not speaker_segments:
             return transcript
@@ -199,21 +205,29 @@ class SpeakerDiarizer:
         Returns:
             Line with speaker label added, or original line if no match.
         """
-        # Match timestamp pattern [MM:SS - MM:SS]
-        match = re.match(r"\[(\d{2}):(\d{2}) - (\d{2}):(\d{2})\] (.+)", line)
-        if not match:
-            return line
-
-        start_min, start_sec, end_min, end_sec, text = match.groups()
-        start_time = int(start_min) * 60 + int(start_sec)
-        end_time = int(end_min) * 60 + int(end_sec)
+        # Match timestamp pattern [HH:MM:SS - HH:MM:SS] or [MM:SS - MM:SS]
+        match = re.match(r"\[(\d{2}):(\d{2}):(\d{2}) - (\d{2}):(\d{2}):(\d{2})\] (.+)", line)
+        if match:
+            start_hr, start_min, start_sec, end_hr, end_min, end_sec, text = match.groups()
+            start_time = int(start_hr) * 3600 + int(start_min) * 60 + int(start_sec)
+            end_time = int(end_hr) * 3600 + int(end_min) * 60 + int(end_sec)
+            timestamp = f"{start_hr}:{start_min}:{start_sec} - {end_hr}:{end_min}:{end_sec}"
+        else:
+            # Try MM:SS format
+            match = re.match(r"\[(\d{2}):(\d{2}) - (\d{2}):(\d{2})\] (.+)", line)
+            if not match:
+                return line
+            start_min, start_sec, end_min, end_sec, text = match.groups()
+            start_time = int(start_min) * 60 + int(start_sec)
+            end_time = int(end_min) * 60 + int(end_sec)
+            timestamp = f"{start_min}:{start_sec} - {end_min}:{end_sec}"
 
         # Find speaker for this segment (use midpoint for matching)
         midpoint = (start_time + end_time) / 2
         speaker = self._find_speaker_at_time(midpoint, speaker_segments)
 
         if speaker:
-            return f"[{start_min}:{start_sec} - {end_min}:{end_sec}] {speaker}: {text}"
+            return f"[{timestamp}] {speaker}: {text}"
         return line
 
     def _find_speaker_at_time(
@@ -287,7 +301,8 @@ def get_speaker_context_lines(
     """Extract context lines for a specific speaker's segments from transcript.
 
     Args:
-        transcript: Transcript with [MM:SS - MM:SS] SPEAKER_XX: text format.
+        transcript: Transcript with [HH:MM:SS - HH:MM:SS] SPEAKER_XX: text format.
+                   Also accepts legacy [MM:SS - MM:SS] format for backward compatibility.
         speaker_label: Speaker label to extract contexts for.
         context_lines: Number of lines to show before and after each speaker segment group.
 
@@ -300,8 +315,9 @@ def get_speaker_context_lines(
     # Build a mapping of line index to speaker label by parsing the line
     line_to_speaker = {}
     for i, line in enumerate(lines):
-        # Match pattern: [MM:SS - MM:SS] SPEAKER_XX: text
-        match = re.match(r"\[\d{2}:\d{2} - \d{2}:\d{2}\]\s+(SPEAKER_\d+):", line)
+        # Match pattern: [HH:MM:SS - HH:MM:SS] SPEAKER_XX: text
+        # The optional (?:\d{2}:)? group provides backward compatibility with legacy [MM:SS - MM:SS] format
+        match = re.match(r"\[(?:\d{2}:)?\d{2}:\d{2} - (?:\d{2}:)?\d{2}:\d{2}\]\s+(SPEAKER_\d+):?", line)
         if match:
             line_to_speaker[i] = match.group(1)
 

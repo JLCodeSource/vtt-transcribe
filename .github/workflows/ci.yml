@@ -21,7 +21,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          make install
+          make install-diarization
 
       - name: Lint
         run: make lint

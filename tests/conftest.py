@@ -12,7 +12,7 @@ if env_path.exists():
 
 
 @pytest.fixture(scope="session", autouse=True)
-def load_env():
+def load_env() -> None:
     """Ensure environment variables are loaded from .env file."""
     env_path = Path(__file__).parent.parent / ".env"
     if env_path.exists():
