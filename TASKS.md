@@ -73,13 +73,13 @@
 - [ ] T070_005: Verify package on PyPI: https://pypi.org/project/vtt-transcribe/
 
 ## T075: Runtime Validation & Documentation
-- [ ] T075_000: Update all documentation for vtt-transcribe rebranding
-- [ ] T075_001: Add ffmpeg runtime validation for --diarize option
-- [ ] T075_002: Update README with new branding and installation instructions
-- [ ] T075_003: Document .env file support for environment variables
-- [ ] T075_004: Document build and publish workflows in CONTRIBUTING.md
-- [ ] T075_005: Update CONTRIBUTING.md with development setup
-- [ ] T075_006: Research and document torch/CUDA installation options
+- [x] T075_000: Update all documentation for vtt-transcribe rebranding
+- [x] T075_001: Add ffmpeg runtime validation for --diarize option
+- [x] T075_002: Update README with new branding and installation instructions
+- [x] T075_003: Document .env file support for environment variables
+- [x] T075_004: Document build and publish workflows in CONTRIBUTING.md
+- [x] T075_005: Update CONTRIBUTING.md with development setup
+- [x] T075_006: Research and document torch/CUDA installation options
 
 ## T080: Post-Release Validation
 - [ ] T080_000: Test installation from PyPI: pip install vtt-transcribe
