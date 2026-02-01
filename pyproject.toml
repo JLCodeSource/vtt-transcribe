@@ -41,3 +41,14 @@ filterwarnings = [
 markers = [
     "integration: marks tests as integration tests (require external services/models)",
 ]
+
+[tool.hatch.build.targets.wheel]
+packages = ["vtt_transcribe"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/vtt_transcribe",
+  "/tests",
+  "/README.md",
+  "/LICENSE",
+]
