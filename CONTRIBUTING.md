@@ -42,6 +42,11 @@ If not using the dev container:
    ```bash
    OPENAI_API_KEY="your-openai-api-key"
    HF_TOKEN="your-huggingface-token"  # Required for diarization features
+   
+   # For publishing to PyPI (maintainers only)
+   TWINE_USERNAME=__token__
+   TESTPYPI_API_TOKEN=your-testpypi-token
+   PYPI_API_TOKEN=your-pypi-token
    ```
 
 4. **Install pre-commit hooks:**

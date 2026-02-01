@@ -118,9 +118,20 @@ export HF_TOKEN="your-huggingface-token"  # Only needed for --diarize
 # Create a .env file in your project directory
 echo 'OPENAI_API_KEY="your-openai-key"' > .env
 echo 'HF_TOKEN="your-huggingface-token"' >> .env
+
+# For publishing to PyPI (developers only)
+echo 'TWINE_USERNAME=__token__' >> .env
+echo 'TESTPYPI_API_TOKEN=your-testpypi-token' >> .env
+echo 'PYPI_API_TOKEN=your-pypi-token' >> .env
 ```
 
 The tool will automatically load variables from `.env` if the file exists.
+
+**Publishing Environment Variables (Developers Only):**
+- `TWINE_USERNAME`: Should always be `__token__` for PyPI token authentication
+- `TESTPYPI_API_TOKEN`: Your TestPyPI API token
+- `PYPI_API_TOKEN`: Your PyPI API token
+- These are only needed if you're building and publishing packages using `make build`, `make publish-test`, or `make publish`
 
 ## Usage
 
@@ -172,6 +183,9 @@ Makefile targets
  - `make lint` — runs both `ruff` and `mypy` (alias for `ruff-check mypy`)
  - `make format` — runs the automatic ruff-format step (`ruff format .`)
  - `make clean` — remove compiled python artifacts
+ - `make build` — build distribution packages (requires TWINE credentials in environment)
+ - `make publish-test` — publish to TestPyPI (requires TWINE_TEST_USERNAME and TWINE_TEST_PASSWORD)
+ - `make publish` — publish to PyPI (requires TWINE_USERNAME and TWINE_PASSWORD)
 
 Notes on linting and typing
  - `ruff` is configured in `ruff.toml`. The rule `COM812` is disabled to avoid
