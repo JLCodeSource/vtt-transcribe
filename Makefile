@@ -65,7 +65,7 @@ clean:
 # Build distribution packages (wheel + source distribution)
 build:
 	@echo "Installing build dependencies..."
-	@uv sync --extra build
+	@uv sync --extra diarization --extra build
 	@echo "Building distribution packages..."
 	@uv run python -m build --sdist --wheel
 	@echo "Build complete! Artifacts in dist/"
