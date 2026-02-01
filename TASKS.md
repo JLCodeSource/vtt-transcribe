@@ -40,22 +40,22 @@
 - [x] T030_004: Verify package_dir: dist in pypa/gh-action-pypi-publish
 
 ## T040: Testing & Validation
-- [x] - [ ] T040_000: Run existing test suite: uv run pytest
-- [x] - [ ] T040_001: Add test for CLI entry point (import and execute)
-- [x] - [ ] T040_002: Add test for package import: import vtt_transcribe
-- [x] - [ ] T040_003: Run type checking: uv run mypy vtt_transcribe/
-- [x] - [ ] T040_004: Run linting: uv run ruff check
-- [x] - [ ] T040_005: Update pre-commit hooks for new package name (vtt_transcribe)
-- [x] - [ ] T040_006: Verify pre-commit hooks pass
-- [x] - [ ] T040_007: Test that vtt command works after local install
+- [x] - [x] - [ ] T040_000: Run existing test suite: uv run pytest
+- [x] - [x] - [ ] T040_001: Add test for CLI entry point (import and execute)
+- [x] - [x] - [ ] T040_002: Add test for package import: import vtt_transcribe
+- [x] - [x] - [ ] T040_003: Run type checking: uv run mypy vtt_transcribe/
+- [x] - [x] - [ ] T040_004: Run linting: uv run ruff check
+- [x] - [x] - [ ] T040_005: Update pre-commit hooks for new package name (vtt_transcribe)
+- [x] - [x] - [ ] T040_006: Verify pre-commit hooks pass
+- [x] - [x] - [ ] T040_007: Test that vtt command works after local install
 
 ## T050: Documentation & Release Prep
-- [x] - [ ] T050_000: Update README.md installation: pip install vtt-transcribe
-- [x] - [ ] T050_001: Update README.md usage examples (vtt, uv run vtt)
-- [x] - [ ] T050_002: Update CHANGELOG.md for v0.3.0b1 release
-- [x] - [ ] T050_003: Update pyproject.toml version to 0.3.0b1
-- [x] - [ ] T050_004: Add PyPI classifiers and project URLs to pyproject.toml
-- [x] - [ ] T050_005: Review and update project description/keywords
+- [x] - [x] - [ ] T050_000: Update README.md installation: pip install vtt-transcribe
+- [x] - [x] - [ ] T050_001: Update README.md usage examples (vtt, uv run vtt)
+- [x] - [x] - [ ] T050_002: Update CHANGELOG.md for v0.3.0b1 release
+- [x] - [x] - [ ] T050_003: Update pyproject.toml version to 0.3.0b1
+- [x] - [x] - [ ] T050_004: Add PyPI classifiers and project URLs to pyproject.toml
+- [x] - [x] - [ ] T050_005: Review and update project description/keywords
 
 ## T060: PyPI Configuration
 - [x] T060_000: Verify PyPI project "vtt-transcribe" is registered
