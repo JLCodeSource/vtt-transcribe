@@ -1,7 +1,5 @@
 name: Release
 
-run-name: ${{ github.ref_name }}
-
 on:
   push:
     tags:
@@ -9,7 +7,6 @@ on:
 
 jobs:
   build-and-release:
-    name: ${{ github.ref_name }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
