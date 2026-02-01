@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0b1] - 2026-02-01
+
+### Changed
+- **Package name**: Renamed from `vtt` to `vtt_transcribe` for PyPI publication
+  - All imports updated: `from vtt.` → `from vtt_transcribe.`
+  - CLI command remains `vtt` for ease of use
+- **Build system**: Migrated to Hatch for modern Python packaging
+  - Added `hatchling` as build backend
+  - Configured package discovery in `pyproject.toml`
+  - Added explicit Python version requirement (>=3.13)
+- **GitHub Actions**: Configured OIDC publishing workflow for PyPI
+  - Added workflow_dispatch trigger for testing
+  - Automated publishing on release creation
+- **Dependencies**: Added `hatch` and `build` to dev dependencies
+- **Testing**: Added comprehensive package structure tests
+  - Test CLI entry point
+  - Test package imports
+  - 207 tests passing with 95% coverage
+
+### Added
+- PyPI publication support with Trusted Publishers (OIDC)
+- Automated build and publish workflow
+- Package structure validation tests
+
 ## [0.3.0b0] - 2026-01-31
 
 ### Added

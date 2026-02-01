@@ -73,6 +73,26 @@ Quick start
 
 1. Ensure ffmpeg is installed on your system (see Prerequisites above)
 
+## Installation
+
+### From PyPI (Recommended)
+
+```bash
+# Basic installation (transcription only)
+pip install vtt-transcribe
+
+# OR: With diarization support
+pip install vtt-transcribe[diarization]
+
+# Using uv (faster)
+uv pip install vtt-transcribe
+uv pip install vtt-transcribe[diarization]
+```
+
+### From Source
+
+1. Ensure ffmpeg is installed on your system (see Prerequisites above)
+
 2. Run the installer which installs `uv` and creates the project's virtual environment:
 
 ```bash
@@ -83,14 +103,16 @@ make install
 make install-diarization
 ```
 
-3. Set required environment variables:
+### Setup Environment Variables
 
 ```bash
 export OPENAI_API_KEY="your-openai-key"
 export HF_TOKEN="your-huggingface-token"  # Only needed for --diarize
 ```
 
-3. Run the CLI (simple example):
+## Usage
+
+### Command Line
 
 ```bash
 # Basic transcription
@@ -101,9 +123,10 @@ vtt path/to/input.mp4 --diarize
 
 # Direct audio transcription
 vtt path/to/audio.mp3 --diarize
-```
 
-Note: You can also run with `uv run python -m vtt.main` or `uv run python vtt/main.py` if preferred.
+# Using uv run (if installed from source)
+uv run vtt path/to/input.mp4
+```
 
 CLI options
 
