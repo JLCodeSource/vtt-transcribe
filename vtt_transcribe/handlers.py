@@ -251,7 +251,7 @@ def _lazy_import_diarization() -> tuple:
             # Save reference to original exception for potential re-raise
             original_exception = e
             try:
-                from diarization import (  # type: ignore[import-not-found, no-redef]
+                from diarization import (  # type: ignore[no-redef]
                     SpeakerDiarizer,
                     format_diarization_output,
                     get_speaker_context_lines,
