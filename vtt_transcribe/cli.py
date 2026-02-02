@@ -8,6 +8,7 @@ from vtt_transcribe import __version__
 def create_parser() -> argparse.ArgumentParser:
     """Create and configure the argument parser."""
     parser = argparse.ArgumentParser(
+        prog="vtt",
         description="Transcribe video or audio files using OpenAI's Whisper model",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
@@ -86,11 +87,14 @@ Environment Variables:
     )
 
     # Diarization options
-    diarize_group = parser.add_argument_group("Speaker Diarization Options")
+    diarize_group = parser.add_argument_group(
+        "Speaker Diarization Options",
+        "Note: Diarization features require additional dependencies. Install with: pip install vtt-transcribe[diarization]",
+    )
     diarize_group.add_argument(
         "--diarize",
         action="store_true",
-        help="Enable speaker diarization using pyannote.audio",
+        help="Enable speaker diarization using pyannote.audio (requires diarization extras)",
     )
     diarize_group.add_argument(
         "--device",
@@ -104,11 +108,11 @@ Environment Variables:
     diarize_group.add_argument(
         "--diarize-only",
         action="store_true",
-        help="Run diarization on existing audio file without transcription",
+        help="Run diarization on existing audio file without transcription (requires diarization extras)",
     )
     diarize_group.add_argument(
         "--apply-diarization",
-        help="Apply diarization to an existing transcript file",
+        help="Apply diarization to an existing transcript file (requires diarization extras)",
     )
     diarize_group.add_argument(
         "--no-review-speakers",

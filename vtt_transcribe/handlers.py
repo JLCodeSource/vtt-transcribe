@@ -11,6 +11,13 @@ if TYPE_CHECKING:
 AUDIO_EXTENSION = ".mp3"
 TRANSCRIPT_EXTENSION = ".txt"
 
+# Error message for missing diarization dependencies
+DIARIZATION_DEPS_ERROR_MSG = (
+    "Diarization dependencies not installed. "
+    "Install with: pip install vtt-transcribe[diarization] "
+    "or: uv pip install vtt-transcribe[diarization]"
+)
+
 
 def save_transcript(output_path: Path, transcript: str) -> None:
     """Save transcript to a file, ensuring .txt extension."""
@@ -225,14 +232,47 @@ def _lazy_import_diarization() -> tuple:
             get_speaker_context_lines,
             get_unique_speakers,
         )
-    except ImportError:
-        # Fallback for direct execution
-        from diarization import (  # type: ignore[no-redef]
-            SpeakerDiarizer,
-            format_diarization_output,
-            get_speaker_context_lines,
-            get_unique_speakers,
+    except (ImportError, ModuleNotFoundError) as e:
+        # Handle missing module scenarios for both package installation and direct execution
+        is_missing_package_module = isinstance(e, ModuleNotFoundError) and e.name in (
+            "vtt_transcribe.diarization",
+            "vtt_transcribe",
         )
+        is_missing_dependency = isinstance(e, ModuleNotFoundError) and not is_missing_package_module
+
+        # Plain ImportError (without a .name attribute) could be:
+        # 1. Direct execution fallback scenario (module not found as package)
+        # 2. Real implementation bugs (e.g., "cannot import name X")
+        # We try the fallback path first for (1), and if that fails, we know it's (2)
+        is_plain_import_error = isinstance(e, ImportError) and not isinstance(e, ModuleNotFoundError)
+
+        if is_missing_package_module or is_plain_import_error:
+            # Fallback for direct execution when package module doesn't exist
+            # Save reference to original exception for potential re-raise
+            original_exception = e
+            try:
+                from diarization import (  # type: ignore[no-redef]
+                    SpeakerDiarizer,
+                    format_diarization_output,
+                    get_speaker_context_lines,
+                    get_unique_speakers,
+                )
+            except ImportError as e2:
+                # If fallback also fails, check if original was missing deps
+                # or if this is a real bug that should be re-raised
+                if is_plain_import_error:
+                    # Original was plain ImportError - this is likely a real bug
+                    # Explicitly raise the original exception to preserve its traceback
+                    # and chain the fallback failure as the cause
+                    raise original_exception from e2
+                # Original was missing package module, fallback failed too
+                raise ImportError(DIARIZATION_DEPS_ERROR_MSG) from e2
+        elif is_missing_dependency:
+            # Missing dependency within the diarization module (e.g., torch, pyannote.audio)
+            raise ImportError(DIARIZATION_DEPS_ERROR_MSG) from e
+        else:
+            # Should never reach here, but re-raise just in case
+            raise
     return SpeakerDiarizer, format_diarization_output, get_unique_speakers, get_speaker_context_lines
 
 
