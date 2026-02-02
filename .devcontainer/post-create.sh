@@ -6,22 +6,24 @@ make install
 
 # Quick sanity output
 uv run python -V
-# Install beads CLI for issue tracking
+
+# Install beads CLI for issue tracking (downloads pre-built binary from GitHub releases)
 echo "Installing beads (bd)..."
 if ! command -v bd &> /dev/null; then
     curl -fsSL https://raw.githubusercontent.com/steveyegge/beads/main/scripts/install.sh | bash
     
-    # Add Go bin to PATH if needed
-    if [[ ":$PATH:" != *":$HOME/go/bin:"* ]]; then
-        export PATH="$PATH:$HOME/go/bin"
-        echo 'export PATH="$PATH:$HOME/go/bin"' >> ~/.bashrc
+    # The install script places the binary in ~/.local/bin (no Go required)
+    # Add to PATH if needed
+    if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+        export PATH="$PATH:$HOME/.local/bin"
+        echo 'export PATH="$PATH:$HOME/.local/bin"' >> ~/.bashrc
     fi
     
     # Verify installation
     if command -v bd &> /dev/null; then
         echo "✓ beads installed: $(bd version)"
     else
-        echo "⚠ beads installation completed but 'bd' not in PATH. Add \$HOME/go/bin to PATH."
+        echo "⚠ beads installation completed but 'bd' not found in PATH"
     fi
 else
     echo "✓ beads already installed: $(bd version)"
