@@ -1,13 +1,13 @@
-# Video To Text
+# vtt-transcribe
 
 Takes a video file, extracts or splits the audio, and transcribes the audio to text
 using OpenAI's Whisper model (via the `openai` Python client).
 
-This repository provides a small CLI tool (`main.py`) and a set of helper
+This repository provides a small CLI tool (`vtt`) and a set of helper
 functions for handling audio extraction, chunking large audio files, and
 formatting verbose JSON transcripts into readable timestamped output.
 
-Features
+## Features
  - Extract audio from video files (writes `.mp3` by default) or transcribe audio directly (.mp3, .wav, .ogg, .m4a)
  - Prefer minute-aligned chunk durations for large audio files exceeding 25MB API limit
  - Transcribe audio via OpenAI's Whisper API with `verbose_json` response format
@@ -17,7 +17,7 @@ Features
  - Keep or delete intermediate audio/chunk files based on flags
  - Interactive speaker review to rename/merge speakers after diarization
 
-Dependencies
+## Dependencies
  - Python 3.13+
  - **ffmpeg** (required for video/audio processing via moviepy)
  - moviepy (audio/video helpers)
@@ -26,7 +26,7 @@ Dependencies
  - torch (required for pyannote.audio)
  - Dev / test: pytest, mypy, ruff, pre-commit, coverage, python-dotenv
 
-Prerequisites
+## Prerequisites
  - **ffmpeg must be installed** on your system for video/audio processing
  - **Recommended approach**: Use the provided `.devcontainer` which includes:
    - Pre-configured ffmpeg installation
@@ -38,7 +38,7 @@ Prerequisites
    - macOS: `brew install ffmpeg`
    - Windows: Download from https://ffmpeg.org/download.html
 
-Speaker Diarization
+## Speaker Diarization
  - The speaker diarization feature (`--diarize`) identifies and labels different speakers in audio
  - **Requirements:**
    - Hugging Face token (set `HF_TOKEN` environment variable or use `--hf-token` flag)
