@@ -85,6 +85,8 @@ uv pip install vtt-transcribe
 uv pip install vtt-transcribe[diarization]
 ```
 
+> **Note:** Installing with `[diarization]` extras adds PyTorch and pyannote.audio, which significantly increases the package size (several GB including model files). Only install these if you need speaker identification features.
+
 ### From Source
 
 1. Ensure ffmpeg is installed on your system (see Prerequisites above)
