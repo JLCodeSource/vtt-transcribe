@@ -12,6 +12,7 @@ def create_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  %(prog)s -v                                  # Show version
   %(prog)s video.mp4                           # Basic transcription
   %(prog)s audio.mp3 --diarize                 # Audio with speaker identification
   %(prog)s video.mp4 --diarize -s output.txt   # Save diarized transcript
@@ -27,6 +28,7 @@ Environment Variables:
 
     # Version
     parser.add_argument(
+        "-v",
         "--version",
         action="version",
         version=f"%(prog)s {__version__}",
