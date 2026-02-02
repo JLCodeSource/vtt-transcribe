@@ -57,15 +57,15 @@ formatting verbose JSON transcripts into readable timestamped output.
 
 
 
-Quick start
+## Quick Start
 
-**Option 1: Using devcontainer (Recommended)**
+### Option 1: Using devcontainer (Recommended)
 1. Open project in VS Code
 2. Install "Dev Containers" extension
 3. Click "Reopen in Container" when prompted (or use Command Palette: "Dev Containers: Reopen in Container")
 4. The devcontainer includes ffmpeg, GPU support, and all dependencies pre-configured
 
-**Option 2: Manual setup**
+### Option 2: Manual setup
 
 1. Ensure ffmpeg is installed on your system (see Prerequisites above)
 
@@ -151,7 +151,7 @@ vtt path/to/audio.mp3 --diarize
 uv run vtt path/to/input.mp4
 ```
 
-CLI options
+### CLI options
 
 **Input/Output:**
  - `input_file`: positional path to the input video or audio file (.mp4, .mp3, .wav, .ogg, .m4a)
@@ -172,7 +172,7 @@ CLI options
  - `--apply-diarization PATH`: apply diarization to an existing transcript file
  - `--no-review-speakers`: skip interactive speaker review (default: review is enabled)
 
-Makefile targets
+### Makefile targets
  - `make install` — installs `uv` and basic dependencies (transcription only, no diarization)
  - `make install-diarization` — installs `uv` and all dependencies including diarization support
  - `make test` — runs the test suite (`pytest`)
@@ -187,30 +187,30 @@ Makefile targets
  - `make publish-test` — publish to TestPyPI (requires `TESTPYPI_API_TOKEN` in environment)
  - `make publish` — publish to PyPI (requires `PYPI_API_TOKEN` in environment)
 
-Notes on linting and typing
+### Notes on linting and typing
  - `ruff` is configured in `ruff.toml`. The rule `COM812` is disabled to avoid
 	 conflicts with formatters. A per-file ignore exists for tests to allow certain
 	 private-member accesses used in unit tests.
  - Some tests use light mypy `# type: ignore[...]` annotations to accommodate
 	 test doubles and dynamically injected modules.
 
-Testing
+### Testing
  - Run the full test suite with `make test`. The project includes comprehensive
 	 unit tests for audio extraction, chunking, timestamp formatting, and the CLI
 	 wiring.
  - Note: The project has only been tested on Linux (and WSL2)
 
-Continuous Integration
+### Continuous Integration
  - The repository includes a GitHub Actions workflow (`.github/workflows/ci.yml`) that
    runs `make install` followed by `make lint` and `make test` on pushes and pull
    requests to `main`. This mirrors the recommended local `make install` setup.
 
-Acknowledgements
+### Acknowledgements
  - This project was developed with test-driven iterations and linting guidance.
  - Parts of the implementation and assistance during development were produced
 	 with help from GitHub Copilot.
 
-Files of interest
+### Files of interest
  - [CHANGELOG.md](CHANGELOG.md) — version history and upgrade instructions
  - [main.py](main.py) — CLI entrypoint and `VideoTranscriber` implementation
  - [test_main.py](test_main.py) — main test suite (integration + unit tests)
@@ -219,7 +219,7 @@ Files of interest
  - [ruff.toml](ruff.toml) — ruff configuration
  - [.pre-commit-config.yaml](.pre-commit-config.yaml) — pre-commit hooks for formatting/linting
 
-Contributing
+### Contributing
  - Please run `make format` and `make lint` before submitting a PR.
  - Run `make test` to ensure all tests pass locally.
  - See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development setup and workflow.
@@ -245,6 +245,6 @@ make publish-test
 
 For complete build and publish workflow documentation, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-License
+### License
  - See the `LICENSE` file in the repository root.
 
