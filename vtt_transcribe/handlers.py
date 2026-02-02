@@ -225,10 +225,15 @@ def _lazy_import_diarization() -> tuple:
             get_speaker_context_lines,
             get_unique_speakers,
         )
-    except ModuleNotFoundError as e:
-        # Only catch ModuleNotFoundError for the package module itself
-        if e.name in ("vtt_transcribe.diarization", "vtt_transcribe"):
-            # Fallback for direct execution
+    except (ImportError, ModuleNotFoundError) as e:
+        # Handle missing module scenarios for both package installation and direct execution
+        is_missing_package_module = (
+            isinstance(e, ModuleNotFoundError) and e.name in ("vtt_transcribe.diarization", "vtt_transcribe")
+        )
+        is_missing_dependency = isinstance(e, ModuleNotFoundError) and not is_missing_package_module
+
+        if is_missing_package_module:
+            # Fallback for direct execution when package module doesn't exist
             try:
                 from diarization import (  # type: ignore[no-redef]
                     SpeakerDiarizer,
@@ -243,7 +248,7 @@ def _lazy_import_diarization() -> tuple:
                     "or: uv pip install vtt-transcribe[diarization]"
                 )
                 raise ImportError(msg) from e2
-        else:
+        elif is_missing_dependency:
             # Missing dependency within the diarization module (e.g., torch, pyannote.audio)
             msg = (
                 "Diarization dependencies not installed. "
@@ -251,11 +256,11 @@ def _lazy_import_diarization() -> tuple:
                 "or: uv pip install vtt-transcribe[diarization]"
             )
             raise ImportError(msg) from e
-    # Note: We intentionally do NOT catch generic ImportError here.
-    # Other ImportErrors (e.g., "cannot import name X" due to refactoring bugs,
-    # or version/ABI compatibility issues) should propagate with their original
-    # error messages to aid debugging, rather than being masked by the generic
-    # "dependencies not installed" message.
+        else:
+            # Plain ImportError (not ModuleNotFoundError) indicates a real bug
+            # (e.g., "cannot import name X" due to refactoring, or version/ABI issues).
+            # Re-raise with original message to aid debugging.
+            raise
     return SpeakerDiarizer, format_diarization_output, get_unique_speakers, get_speaker_context_lines
 
 
