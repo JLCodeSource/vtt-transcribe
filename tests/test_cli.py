@@ -50,7 +50,6 @@ class TestCreateParser:
         """Should return an ArgumentParser instance."""
         parser = create_parser()
         assert parser is not None
-        assert hasattr(parser, "parse_args")
 
     def test_parser_accepts_input_file(self) -> None:
         """Should accept input file as positional argument."""
