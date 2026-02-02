@@ -2,6 +2,8 @@
 
 import argparse
 
+from vtt_transcribe import __version__
+
 
 def create_parser() -> argparse.ArgumentParser:
     """Create and configure the argument parser."""
@@ -10,6 +12,7 @@ def create_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  %(prog)s -v                                  # Show version
   %(prog)s video.mp4                           # Basic transcription
   %(prog)s audio.mp3 --diarize                 # Audio with speaker identification
   %(prog)s video.mp4 --diarize -s output.txt   # Save diarized transcript
@@ -23,9 +26,18 @@ Environment Variables:
         """,
     )
 
+    # Version
+    parser.add_argument(
+        "-v",
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
+
     # Positional arguments
     parser.add_argument(
         "input_file",
+        nargs="?",
         help="Path to the video or audio file to transcribe (.mp4, .mp3, .wav, .ogg, .m4a)",
     )
 

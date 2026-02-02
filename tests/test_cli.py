@@ -150,6 +150,22 @@ class TestCreateParser:
         args = parser.parse_args(["audio.mp3", "--hf-token", "test-token"])
         assert args.hf_token == "test-token"  # noqa: S105
 
+    def test_parser_accepts_version_flag(self) -> None:
+        """Should accept --version flag and exit."""
+        parser = create_parser()
+        with pytest.raises(SystemExit) as exc_info:
+            parser.parse_args(["--version"])
+        assert exc_info.value.code == 0
+
+    def test_parser_requires_input_file_when_not_version(self) -> None:
+        """Should require input_file when not using --version."""
+        parser = create_parser()
+        # Parser accepts optional input_file (nargs="?") to support --version without input_file.
+        # However, this allows parse_args to succeed without input_file, returning None.
+        # The validation in main.py catches this and provides a proper error message.
+        args = parser.parse_args([])
+        assert args.input_file is None
+
 
 class TestApiKeyHandling:
     """Test API key handling in main()."""
@@ -389,3 +405,73 @@ class TestMainCliArgumentParsing:
                 mock_diarizer.apply_speakers_to_transcript.assert_called_once_with(
                     "[00:00:00 - 00:00:05] Hello world", [(0.0, 5.0, "SPEAKER_00")]
                 )
+
+    def test_main_with_apply_diarization_with_review(self, tmp_path: Path) -> None:
+        """Should apply diarization with review when flag is not provided."""
+        with (
+            patch.dict(os.environ, {"HF_TOKEN": "hf-token"}),
+        ):
+            audio_path = tmp_path / "audio.mp3"
+            audio_path.touch()
+            transcript_path = tmp_path / "transcript.txt"
+            transcript_path.write_text("[00:00:00 - 00:00:05] Hello world")
+
+            with (
+                patch(
+                    "sys.argv",
+                    ["main.py", str(audio_path), "--apply-diarization", str(transcript_path)],
+                ),
+                patch("vtt_transcribe.handlers._lazy_import_diarization") as mock_lazy_import,
+                patch("vtt_transcribe.main.handle_review_speakers") as mock_review,
+                patch("builtins.print"),
+            ):
+                mock_diarizer = MagicMock()
+                mock_diarizer.diarize_audio.return_value = [(0.0, 5.0, "SPEAKER_00")]
+                mock_diarizer.apply_speakers_to_transcript.return_value = "[00:00:00 - 00:00:05] SPEAKER_00: Hello world"
+                mock_diarizer_class = MagicMock(return_value=mock_diarizer)
+                mock_format = MagicMock()
+                mock_get_unique = MagicMock()
+                mock_get_context = MagicMock()
+                mock_lazy_import.return_value = (mock_diarizer_class, mock_format, mock_get_unique, mock_get_context)
+
+                import contextlib
+
+                with contextlib.suppress(SystemExit):
+                    main()
+
+                # Verify review was called
+                mock_review.assert_called_once()
+                call_kwargs = mock_review.call_args.kwargs
+                assert call_kwargs["input_path"] is None
+                assert call_kwargs["transcript"] == "[00:00:00 - 00:00:05] SPEAKER_00: Hello world"
+
+    def test_main_as_module_entry_point(self, tmp_path: Path) -> None:
+        """Test that main() can be executed as module entry point."""
+        video_path = tmp_path / "video.mp4"
+        video_path.touch()
+
+        with (
+            patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}),
+            patch("sys.argv", ["vtt", str(video_path)]),
+            patch("vtt_transcribe.main.handle_standard_transcription", return_value="Test transcript") as mock_transcribe,
+            patch("builtins.print"),
+        ):
+            # Call main directly to simulate __main__ execution
+            import contextlib
+
+            with contextlib.suppress(SystemExit):
+                from vtt_transcribe.main import main
+
+                main()
+
+            mock_transcribe.assert_called_once()
+
+    def test_main_without_input_file_shows_error(self) -> None:
+        """Should show error message when input_file is not provided."""
+        from vtt_transcribe.main import main
+
+        with patch("sys.argv", ["vtt"]), pytest.raises(SystemExit) as exc_info:
+            main()
+
+        # Should exit with error code (argparse.error exits with code 2)
+        assert exc_info.value.code == 2
