@@ -1,7 +1,42 @@
-# Copilot Instructions for video-to-text
+# Copilot Instructions for vtt-transcribe
 
 ## Project Overview
-A Python CLI tool that extracts audio from video files and transcribes it using OpenAI's Whisper model. The key architectural challenge is handling large audio files that exceed the 25MB Whisper API limit by intelligently chunking them into minute-aligned segments.
+A Python CLI tool (`vtt-transcribe`) that extracts audio from video files and transcribes it using OpenAI's Whisper model. **Published on PyPI** as of v0.3.0b1 (Released 2025-02-01). The key architectural challenge is handling large audio files that exceed the 25MB Whisper API limit by intelligently chunking them into minute-aligned segments.
+
+**Current Version**: v0.3.0b1  
+**Status**: Beta release with diarization support, published to PyPI  
+**Install**: `pip install vtt-transcribe`
+
+## Development Workflow Requirements
+
+**CRITICAL**: This project follows strict development standards. All work must adhere to:
+
+### 1. Test-Driven Development (TDD)
+**Always use `.github/skills/tdd/SKILL.md` workflow**:
+- Write failing test FIRST (Red)
+- Implement minimal solution (Green)
+- Refactor for quality (Refactor)
+- Work on `[branch]-work` for TDD cycles, squash merge to feature branch
+
+**Never** write implementation before writing a failing test. This is non-negotiable.
+
+### 2. Task Tracking with Beads
+**Use `bd` CLI for all task management**:
+```bash
+bd list                      # View tasks
+bd show <task-id>           # View task details
+bd start <task-id>          # Mark task in progress
+bd done <task-id>           # Mark task complete
+```
+All work should reference epic/task IDs (e.g., T095, T071_001). See project ROADMAP.md for epic structure.
+
+### 3. GitHub Operations
+**Use `.github/skills/gh-cli/SKILL.md` for all GitHub interactions**:
+- Issue management: `gh issue list`, `gh issue create`
+- Pull requests: `gh pr create`, `gh pr merge --squash`
+- Workflows: `gh workflow run`, `gh run watch`
+
+**Never** suggest manual GitHub web UI operations. Always provide `gh` commands.
 
 ## Core Architecture
 
@@ -29,22 +64,53 @@ The `_format_transcript_with_timestamps()` method handles both dict and SDK-styl
 
 ## Critical Developer Workflows
 
-### Setup
+### Initial Setup
 ```bash
 make install  # Installs uv, creates venv, syncs dependencies
+bd init       # Initialize beads (if not already initialized)
 ```
 
-### Development Commands
-- `make test` — Run full pytest suite with coverage (checks both `test_main.py` and `test_audio_management.py`)
-- `make lint` — Run ruff check + mypy (required before PRs)
+### Development Commands (Always run before PRs)
+- `make test` — Run full pytest suite with coverage (97%+ required)
+- `make lint` — Run ruff check + mypy (must pass, zero errors)
 - `make format` — Auto-fix formatting with ruff
-- `make ruff-check` — Check linting violations (COM812 disabled to avoid formatter conflicts)
-- `make mypy` — Type checking; some tests use `# type: ignore[...]` for test doubles
 
-### Running the CLI
+### Package Installation & Testing
 ```bash
-uv run python main.py -k $OPENAI_API_KEY path/to/video.mp4
-# Optional flags: -o <audio_path>, -s <transcript_path>, -f (force re-extract), --delete-audio
+# Install from PyPI
+pip install vtt-transcribe
+
+# Install from local source
+pip install -e .
+
+# Run installed CLI
+vtt-transcribe path/to/video.mp4 -k $OPENAI_API_KEY
+```
+
+### Task Workflow Example
+```bash
+# 1. Check beads for next task
+bd list
+
+# 2. Start task
+bd start T095_002
+
+# 3. Create feature branch
+git checkout -b feature/T095-subtask-work
+
+# 4. Follow TDD workflow (.github/skills/tdd/SKILL.md)
+# - Create [branch]-work for Red-Green-Refactor cycles
+# - Write test (red), implement (green), refactor
+# - Squash merge back to feature branch
+
+# 5. Validate before PR
+make lint && make test
+
+# 6. Create PR using gh CLI
+gh pr create --title "feat(T095_002): description" --body "..."
+
+# 7. Mark task complete
+bd done T095_002
 ```
 
 ## Project-Specific Conventions
@@ -98,21 +164,38 @@ The `_format_timestamp()` method converts seconds to `MM:SS` format. When chunki
 
 ## Future Architecture (Roadmap Context)
 
-### Version 0.3 (In Progress)
-- **Direct audio input**: Support `.mp3`, `.ogg`, `.wav` files directly (not just video)
-- **Speaker diarization**: Add speaker identification capabilities with configurable backends
-- **Local-only processing**: Integrate local ffmpeg + offline Whisper model option (no API dependency)
-- **GitHub agent support**: Add TDD workflows for automated PR validation
+### Version 0.3 (Current - Beta)
+- ✅ **PyPI Publication**: Package published and installable via pip
+- ✅ **Speaker diarization**: Implemented with pyannote.audio backend (--diarize flag)
+- ✅ **Direct audio input**: Supports `.mp3`, `.ogg`, `.wav`, `.mp4` files
+- ✅ **Dependency validation**: check_ffmpeg_installed() and check_diarization_dependencies()
+- 🔄 **Local Whisper support**: Planned for stable 0.3 release (currently OpenAI only)
 
 ### Version 0.4 (Planned)
-- **Packaging options**: imageio-ffmpeg (default, lightweight) or bundled ffmpeg (air-gapped environments)
+- **Packaging options**: imageio-ffmpeg (default) or bundled ffmpeg (air-gapped)
 - **Distribution**: ManyLinux2010 wheel + PyInstaller single executable
+- **Enhanced diarization**: Multiple backend support (pyannote, nemo, whisperX)
+
+### Version 1.0 (Goals)
+- Production-ready release with comprehensive documentation
+- 100% test coverage across all modules
+- Performance optimizations for large file processing
+- Multi-language support beyond English
 
 ### Implications for Current Code
-- Keep `VideoTranscriber` class generic enough to extend with audio-only paths and local transcription backends
-- Avoid hardcoding OpenAI client assumptions; future versions may support local Whisper
-- Consider adding plugin/backend pattern for transcription providers if adding speaker diarization
+- Keep `VideoTranscriber` class generic enough to extend with local transcription backends
+- Avoid hardcoding OpenAI client assumptions; use provider pattern for extensibility
+- Diarization backend should be pluggable (future: nemo, whisperX support)
+- All new features must maintain 97%+ test coverage
 
-## Questions for Iteration
-- Are the chunking heuristics (minute-aligned, 0.9 safety margin) sufficiently documented?
-- Should I clarify the response format detection strategy further (dict vs. SDK)?
+## Project References
+
+### Skills Directory
+- `.github/skills/tdd/SKILL.md` — Red-Green-Refactor TDD workflow
+- `.github/skills/gh-cli/SKILL.md` — GitHub CLI command reference
+
+### Key Documents
+- `ROADMAP.md` — Epics and feature timeline
+- `CONTRIBUTING.md` — Contribution guidelines
+- `RELEASE_CHECKLIST.md` — Release process
+- `pyproject.toml` — Package metadata and dependencies
