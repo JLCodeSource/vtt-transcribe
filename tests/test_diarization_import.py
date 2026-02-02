@@ -19,18 +19,20 @@ class TestDiarizationImportHandling:
         audio_file.write_text("dummy audio")
 
         # Mock the transcription to succeed so we can test diarization import failure
+        # Simulate missing torch dependency (the actual scenario when optional deps not installed)
         with (
             patch("vtt_transcribe.transcriber.VideoTranscriber") as mock_transcriber,
-            patch.dict(sys.modules, {"vtt_transcribe.diarization": None}),
+            patch.dict(sys.modules, {"torch": None}),
             patch("sys.argv", ["vtt", str(audio_file), "--diarize"]),
             patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"}),
-            pytest.raises(SystemExit) as exc_info,
         ):
             # Mock transcription to return a dummy transcript
             mock_transcriber.return_value.transcribe.return_value = "dummy transcript"
-            main()
 
-        # Should exit with error
+            # Should exit with error
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+
         assert exc_info.value.code == 1
 
         # Capture output to check error message (errors print to stdout, not stderr)
@@ -42,12 +44,13 @@ class TestDiarizationImportHandling:
         audio_file = tmp_path / "test.mp3"
         audio_file.write_text("dummy audio")
 
-        with (
-            patch.dict(sys.modules, {"vtt_transcribe.diarization": None}),
+        # Simulate missing pyannote.audio dependency (the actual scenario)
+        with (  # noqa: SIM117
+            patch.dict(sys.modules, {"pyannote.audio": None}),
             patch("sys.argv", ["vtt", str(audio_file), "--diarize-only"]),
-            pytest.raises(SystemExit) as exc_info,
         ):
-            main()
+            with pytest.raises(SystemExit) as exc_info:
+                main()
 
         assert exc_info.value.code == 1
 
@@ -58,11 +61,12 @@ class TestDiarizationImportHandling:
         transcript_file = tmp_path / "transcript.txt"
         transcript_file.write_text("dummy transcript")
 
-        with (
-            patch.dict(sys.modules, {"vtt_transcribe.diarization": None}),
+        # Simulate missing torch dependency (the actual scenario)
+        with (  # noqa: SIM117
+            patch.dict(sys.modules, {"torch": None}),
             patch("sys.argv", ["vtt", str(audio_file), "--apply-diarization", str(transcript_file)]),
-            pytest.raises(SystemExit) as exc_info,
         ):
-            main()
+            with pytest.raises(SystemExit) as exc_info:
+                main()
 
         assert exc_info.value.code == 1
