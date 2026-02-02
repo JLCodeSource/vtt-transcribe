@@ -1,7 +1,7 @@
-"""Health checks and dependency validation for vtt-transcribe.
+"""System dependency checks for vtt-transcribe.
 
-This module provides preflight checks to ensure all required dependencies
-are available before executing transcription workflow.
+This module validates that required external dependencies (ffmpeg, torch, pyannote)
+are installed before executing transcription workflows.
 """
 
 import shutil

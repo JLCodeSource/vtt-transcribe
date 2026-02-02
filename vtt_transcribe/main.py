@@ -1,10 +1,12 @@
 import os
 import sys
+from argparse import Namespace
 from pathlib import Path
 
 from dotenv import load_dotenv
 
 from vtt_transcribe.cli import create_parser
+from vtt_transcribe.dependencies import check_diarization_dependencies, check_ffmpeg_installed
 from vtt_transcribe.handlers import (
     display_result,
     handle_apply_diarization_mode,
@@ -13,7 +15,6 @@ from vtt_transcribe.handlers import (
     handle_standard_transcription,
     save_transcript,
 )
-from vtt_transcribe.health import check_diarization_dependencies, check_ffmpeg_installed
 
 # Load environment variables from .env file
 load_dotenv()
@@ -28,7 +29,46 @@ def get_api_key(api_key_arg: str | None) -> str:
     return api_key
 
 
-def main() -> None:  # noqa: C901
+def handle_diarization_modes(args: Namespace) -> bool:
+    """Handle diarization-only and apply-diarization modes. Returns True if handled."""
+    save_path = Path(args.save_transcript) if args.save_transcript else None
+
+    # Handle diarization-only mode
+    if args.diarize_only:
+        diarization_result = handle_diarize_only_mode(Path(args.input_file), args.hf_token, save_path, args.device)
+
+        # Run review unless disabled
+        if not args.no_review_speakers:
+            handle_review_speakers(
+                input_path=None,
+                hf_token=args.hf_token,
+                save_path=save_path,
+                device=args.device,
+                transcript=diarization_result,
+            )
+        return True
+
+    # Handle apply-diarization mode
+    if args.apply_diarization:
+        apply_result = handle_apply_diarization_mode(
+            Path(args.input_file), Path(args.apply_diarization), args.hf_token, save_path, args.device
+        )
+
+        # Run review unless disabled
+        if not args.no_review_speakers:
+            handle_review_speakers(
+                input_path=None,
+                hf_token=args.hf_token,
+                save_path=save_path,
+                device=args.device,
+                transcript=apply_result,
+            )
+        return True
+
+    return False
+
+
+def main() -> None:
     parser = create_parser()
     args = parser.parse_args()
 
@@ -47,48 +87,12 @@ def main() -> None:  # noqa: C901
         check_diarization_dependencies()
 
     try:
-        # When running only diarization or applying diarization, OpenAI API key is not required
-        api_key = None if args.diarize_only or args.apply_diarization else get_api_key(args.api_key)
-
-        # Handle diarization-only mode
-        if args.diarize_only:
-            save_path = Path(args.save_transcript) if args.save_transcript else None
-            diarization_result = handle_diarize_only_mode(Path(args.input_file), args.hf_token, save_path, args.device)
-
-            # Run review unless disabled
-            if not args.no_review_speakers:
-                # Pass the diarization result directly to avoid redundant diarization
-                handle_review_speakers(
-                    input_path=None,
-                    hf_token=args.hf_token,
-                    save_path=save_path,
-                    device=args.device,
-                    transcript=diarization_result,
-                )
-            return
-
-        # Handle apply-diarization mode
-        if args.apply_diarization:
-            save_path = Path(args.save_transcript) if args.save_transcript else None
-            apply_result = handle_apply_diarization_mode(
-                Path(args.input_file), Path(args.apply_diarization), args.hf_token, save_path, args.device
-            )
-
-            # Run review unless disabled
-            if not args.no_review_speakers:
-                # Pass the result directly to avoid redundant file I/O
-                handle_review_speakers(
-                    input_path=None,
-                    hf_token=args.hf_token,
-                    save_path=save_path,
-                    device=args.device,
-                    transcript=apply_result,
-                )
+        # Handle diarization modes first (they don't require OpenAI API key)
+        if handle_diarization_modes(args):
             return
 
         # Standard transcription flow
-        # api_key was already obtained at line 36, no need to call get_api_key again
-        assert api_key is not None  # Should be set by line 36 for this path
+        api_key = get_api_key(args.api_key)
         result = handle_standard_transcription(args, api_key)
         display_result(result)
 
