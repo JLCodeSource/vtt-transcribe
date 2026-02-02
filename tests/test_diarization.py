@@ -6,6 +6,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from vtt_transcribe.handlers import DIARIZATION_DEPS_ERROR_MSG
+
 # Suppress torchcodec warning
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning:pyannote.audio.core.io")
 
@@ -24,12 +26,7 @@ class TestDiarizationImportHandling:
         # Mock the transcription to succeed so we can test diarization import failure
         # Simulate missing torch dependency (the actual scenario when optional deps not installed)
         def mock_lazy_import() -> None:
-            msg = (
-                "Diarization dependencies not installed. "
-                "Install with: pip install vtt-transcribe[diarization] "
-                "or: uv pip install vtt-transcribe[diarization]"
-            )
-            raise ImportError(msg)
+            raise ImportError(DIARIZATION_DEPS_ERROR_MSG)
 
         with (
             patch("vtt_transcribe.transcriber.VideoTranscriber") as mock_transcriber,
@@ -59,12 +56,7 @@ class TestDiarizationImportHandling:
 
         # Simulate missing pyannote.audio dependency (the actual scenario)
         def mock_lazy_import() -> None:
-            msg = (
-                "Diarization dependencies not installed. "
-                "Install with: pip install vtt-transcribe[diarization] "
-                "or: uv pip install vtt-transcribe[diarization]"
-            )
-            raise ImportError(msg)
+            raise ImportError(DIARIZATION_DEPS_ERROR_MSG)
 
         with (
             patch("vtt_transcribe.handlers._lazy_import_diarization", side_effect=mock_lazy_import),
@@ -86,12 +78,7 @@ class TestDiarizationImportHandling:
 
         # Simulate missing torch dependency (the actual scenario)
         def mock_lazy_import() -> None:
-            msg = (
-                "Diarization dependencies not installed. "
-                "Install with: pip install vtt-transcribe[diarization] "
-                "or: uv pip install vtt-transcribe[diarization]"
-            )
-            raise ImportError(msg)
+            raise ImportError(DIARIZATION_DEPS_ERROR_MSG)
 
         with (
             patch("vtt_transcribe.handlers._lazy_import_diarization", side_effect=mock_lazy_import),
