@@ -17,10 +17,6 @@ Features
  - Keep or delete intermediate audio/chunk files based on flags
  - Interactive speaker review to rename/merge speakers after diarization
 
-## Upgrading from 0.2.0
-
-**Important:** Version 0.3.0 introduces optional dependencies for speaker diarization. If you are upgrading from 0.2.0 and want to use diarization features, you need to explicitly install the `[diarization]` extra. See the [CHANGELOG](CHANGELOG.md) for detailed upgrade instructions.
-
 Dependencies
  - Python 3.13+
  - **ffmpeg** (required for video/audio processing via moviepy)
