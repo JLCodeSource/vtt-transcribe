@@ -7,8 +7,9 @@ import pytest
 
 def test_check_ffmpeg_installed_when_available() -> None:
     """Test check_ffmpeg_installed() passes when ffmpeg is available."""
-    # Mock torch import to avoid dependency
-    with patch.dict("sys.modules", {"torch": MagicMock(), "pyannote.audio": MagicMock()}):
+    # Mock torch and pyannote imports to avoid dependency
+    # Both pyannote and pyannote.audio must be mocked for Python's import machinery
+    with patch.dict("sys.modules", {"torch": MagicMock(), "pyannote": MagicMock(), "pyannote.audio": MagicMock()}):
         from vtt_transcribe.diarization import check_ffmpeg_installed
 
         # Simulate ffmpeg being installed by mocking shutil.which to return a path
@@ -19,8 +20,9 @@ def test_check_ffmpeg_installed_when_available() -> None:
 
 def test_check_ffmpeg_installed_when_missing() -> None:
     """Test check_ffmpeg_installed() exits with helpful message when ffmpeg missing."""
-    # Mock torch import to avoid dependency
-    with patch.dict("sys.modules", {"torch": MagicMock(), "pyannote.audio": MagicMock()}):
+    # Mock torch and pyannote imports to avoid dependency
+    # Both pyannote and pyannote.audio must be mocked for Python's import machinery
+    with patch.dict("sys.modules", {"torch": MagicMock(), "pyannote": MagicMock(), "pyannote.audio": MagicMock()}):
         from vtt_transcribe.diarization import check_ffmpeg_installed
 
         with patch("vtt_transcribe.diarization.shutil.which", return_value=None):
@@ -32,8 +34,9 @@ def test_check_ffmpeg_installed_when_missing() -> None:
 
 def test_speaker_diarizer_checks_ffmpeg() -> None:
     """Test SpeakerDiarizer.__init__() checks for ffmpeg."""
-    # Mock torch import to avoid dependency
-    with patch.dict("sys.modules", {"torch": MagicMock(), "pyannote.audio": MagicMock()}):
+    # Mock torch and pyannote imports to avoid dependency
+    # Both pyannote and pyannote.audio must be mocked for Python's import machinery
+    with patch.dict("sys.modules", {"torch": MagicMock(), "pyannote": MagicMock(), "pyannote.audio": MagicMock()}):
         from vtt_transcribe.diarization import SpeakerDiarizer
 
         with (
