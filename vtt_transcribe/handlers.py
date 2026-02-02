@@ -225,30 +225,40 @@ def _lazy_import_diarization() -> tuple:
             get_speaker_context_lines,
             get_unique_speakers,
         )
+    except ModuleNotFoundError as e:
+        # Only catch ModuleNotFoundError for the package module itself
+        if e.name in ("vtt_transcribe.diarization", "vtt_transcribe"):
+            # Fallback for direct execution
+            try:
+                from diarization import (  # type: ignore[no-redef]
+                    SpeakerDiarizer,
+                    format_diarization_output,
+                    get_speaker_context_lines,
+                    get_unique_speakers,
+                )
+            except ImportError as e2:
+                msg = (
+                    "Diarization dependencies not installed. "
+                    "Install with: pip install vtt-transcribe[diarization] "
+                    "or: uv pip install vtt-transcribe[diarization]"
+                )
+                raise ImportError(msg) from e2
+        else:
+            # Re-raise if it's a missing dependency within the diarization module
+            msg = (
+                "Diarization dependencies not installed. "
+                "Install with: pip install vtt-transcribe[diarization] "
+                "or: uv pip install vtt-transcribe[diarization]"
+            )
+            raise ImportError(msg) from e
     except ImportError as e:
-        # Check if this is a missing diarization dependencies error
-        if "pyannote" in str(e) or "torch" in str(e):
-            msg = (
-                "Diarization dependencies not installed. "
-                "Install with: pip install vtt-transcribe[diarization] "
-                "or: uv pip install vtt-transcribe[diarization]"
-            )
-            raise ImportError(msg) from e
-        # Fallback for direct execution
-        try:
-            from diarization import (  # type: ignore[no-redef]
-                SpeakerDiarizer,
-                format_diarization_output,
-                get_speaker_context_lines,
-                get_unique_speakers,
-            )
-        except ImportError:
-            msg = (
-                "Diarization dependencies not installed. "
-                "Install with: pip install vtt-transcribe[diarization] "
-                "or: uv pip install vtt-transcribe[diarization]"
-            )
-            raise ImportError(msg) from e
+        # Any other ImportError (e.g., missing torch/pyannote inside the module)
+        msg = (
+            "Diarization dependencies not installed. "
+            "Install with: pip install vtt-transcribe[diarization] "
+            "or: uv pip install vtt-transcribe[diarization]"
+        )
+        raise ImportError(msg) from e
     return SpeakerDiarizer, format_diarization_output, get_unique_speakers, get_speaker_context_lines
 
 
