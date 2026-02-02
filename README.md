@@ -85,7 +85,7 @@ uv pip install vtt-transcribe
 uv pip install vtt-transcribe[diarization]
 ```
 
-> **Note:** Installing with `[diarization]` extras adds PyTorch and pyannote.audio, which significantly increases the package size (several GB including model files). Only install these if you need speaker identification features.
+> **Note:** Installing with `[diarization]` extras adds large dependencies such as PyTorch and `pyannote.audio`, which significantly increases the download and install size of your environment. The actual diarization model weights are typically downloaded at runtime (e.g., via the Hugging Face cache) on first use, so overall disk usage for diarization (dependencies + cached models) can reach several GB. Only install these extras if you need speaker identification features.
 
 ### From Source
 
