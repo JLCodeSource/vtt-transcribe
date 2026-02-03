@@ -13,7 +13,7 @@ Use `bd` for all task and issue tracking. Issues are chained together like beads
 ### Quick Commands
 ```bash
 bd ready                             # Find available work (no blockers)
-bd update <id> --claim               # Claim work
+bd update <id> --status in_progress  # Claim work
 bd close <id>                        # Complete work
 bd sync                              # Sync with git (export to JSONL)
 ```
@@ -114,7 +114,7 @@ bd ready                             # Find work with no blockers
 bd list --ready --pretty             # Alternative with tree view
 
 # 2. Start work on a task
-bd update <id> --claim               # Atomic claim
+bd update <id> --status in_progress  # Claim work
 
 # 3. View task details
 bd show <id>
