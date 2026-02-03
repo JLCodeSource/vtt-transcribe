@@ -34,9 +34,9 @@ bd list --label bug                  # Filter by label
 
 ### View Issue Details
 ```bash
-bd show T095_002                     # Show issue details
-bd show T095_002 --children          # Show with children
-bd show T095_002 --refs              # Show reverse references
+bd show <id>                         # Show issue details
+bd show <id> --children              # Show with children
+bd show <id> --refs                  # Show reverse references
 ```
 
 ### Create Issues
@@ -50,13 +50,13 @@ bd create "Subtask" --parent T095               # Create child issue
 
 ### Update Issues
 ```bash
-bd update T095_002 --status in_progress   # Start working
-bd update T095_002 --status closed        # Complete task
-bd update --claim                         # Claim last touched issue
-bd update T095_002 --assignee @me         # Assign to yourself
-bd update T095_002 --priority P1          # Change priority
-bd update T095_002 --add-label bug        # Add label
-bd update T095_002 --title "New title"    # Update title
+bd update <id> --status in_progress   # Start working
+bd update <id> --status closed        # Complete task
+bd update --claim                     # Claim last touched issue
+bd update <id> --assignee @me         # Assign to yourself
+bd update <id> --priority P1          # Change priority
+bd update <id> --add-label bug        # Add label
+bd update <id> --title "New title"    # Update title
 ```
 
 ### Quick Status Changes
@@ -70,9 +70,9 @@ bd update <id> --status closed            # Complete
 
 ### Dependencies & Structure
 ```bash
-bd dep add T095_002 --blocks T095_003     # Add dependency
-bd dep list T095_002                      # List dependencies
-bd children T095                          # List child issues
+bd dep add <id> --blocks <other-id>   # Add dependency
+bd dep list <id>                      # List dependencies
+bd children <id>                      # List child issues
 bd graph                                  # Show dependency graph
 bd epic list                              # List epics
 ```
@@ -129,14 +129,14 @@ bd ready                             # Find work with no blockers
 bd list --ready --pretty             # Alternative with tree view
 
 # 2. Start work on a task
-bd update T095_002 --claim           # Atomic claim
+bd update <id> --claim               # Atomic claim
 
 # 3. View task details
-bd show T095_002
+bd show <id>
 
 # 4. Mark complete
-bd close T095_002                    # Quick close
-bd update T095_002 --status closed   # Alternative
+bd close <id>                        # Quick close
+bd update <id> --status closed       # Alternative
 ```
 
 ## Session Completion (Landing the Plane)
