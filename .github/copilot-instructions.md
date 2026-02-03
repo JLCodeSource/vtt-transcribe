@@ -29,6 +29,21 @@ The `_format_transcript_with_timestamps()` method handles both dict and SDK-styl
 
 ## Critical Developer Workflows
 
+### Git & PR Workflow
+
+**⚠️ CRITICAL RULE: NEVER merge directly to main without a Pull Request!**
+
+All changes to main MUST go through PRs:
+1. Create feature branch from main
+2. Make changes and commit
+3. Push branch to remote
+4. Create Pull Request on GitHub
+5. Wait for CI/PR checks to pass
+6. Get review if needed
+7. Merge PR (NOT direct git merge to main)
+
+Direct merges to main bypass CI checks and code review processes.
+
 ### Setup
 ```bash
 make install  # Installs uv, creates venv, syncs dependencies
