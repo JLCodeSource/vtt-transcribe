@@ -12,7 +12,7 @@ A Python CLI tool (`vtt-transcribe`) that extracts audio from video files and tr
 **CRITICAL**: This project follows strict development standards. All work must adhere to:
 
 ### 1. Test-Driven Development (TDD)
-**Always use `.github/skills/tdd/SKILL.md` workflow**:
+**Always use `.github/skills/pytest-tdd/SKILL.md` workflow**:
 - Write failing test FIRST (Red)
 - Implement minimal solution (Green)
 - Refactor for quality (Refactor)
@@ -21,12 +21,12 @@ A Python CLI tool (`vtt-transcribe`) that extracts audio from video files and tr
 **Never** write implementation before writing a failing test. This is non-negotiable.
 
 ### 2. Task Tracking with Beads
-**Use `bd` CLI for all task management**:
+**Use `.github/skills/beads/SKILL.md` for `bd` CLI reference**:
 ```bash
-bd list                      # View tasks
-bd show <task-id>           # View task details
-bd start <task-id>          # Mark task in progress
-bd done <task-id>           # Mark task complete
+bd list                              # View tasks
+bd show <task-id>                   # View task details
+bd update <task-id> --claim         # Start working (sets in_progress)
+bd update <task-id> --status closed # Mark complete
 ```
 All work should reference epic/task IDs (e.g., T095, T071_001). See project ROADMAP.md for epic structure.
 
@@ -90,15 +90,15 @@ vtt-transcribe path/to/video.mp4 -k $OPENAI_API_KEY
 ### Task Workflow Example
 ```bash
 # 1. Check beads for next task
-bd list
+bd list --ready
 
 # 2. Start task
-bd start T095_002
+bd update T095_002 --claim
 
 # 3. Create feature branch
 git checkout -b feature/T095-subtask-work
 
-# 4. Follow TDD workflow (.github/skills/tdd/SKILL.md)
+# 4. Follow TDD workflow (.github/skills/pytest-tdd/SKILL.md)
 # - Create [branch]-work for Red-Green-Refactor cycles
 # - Write test (red), implement (green), refactor
 # - Squash merge back to feature branch
@@ -110,7 +110,7 @@ make lint && make test
 gh pr create --title "feat(T095_002): description" --body "..."
 
 # 7. Mark task complete
-bd done T095_002
+bd update T095_002 --status closed
 ```
 
 ## Project-Specific Conventions
@@ -191,7 +191,8 @@ The `_format_timestamp()` method converts seconds to `MM:SS` format. When chunki
 ## Project References
 
 ### Skills Directory
-- `.github/skills/tdd/SKILL.md` — Red-Green-Refactor TDD workflow
+- `.github/skills/pytest-tdd/SKILL.md` — Red-Green-Refactor TDD workflow
+- `.github/skills/beads/SKILL.md` — Beads CLI (bd) task tracking reference
 - `.github/skills/gh-cli/SKILL.md` — GitHub CLI command reference
 
 ### Key Documents
