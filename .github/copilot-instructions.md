@@ -1,7 +1,7 @@
 # Copilot Instructions for vtt-transcribe
 
 ## Project Overview
-A Python CLI tool (`vtt-transcribe`) that extracts audio from video files and transcribes it using OpenAI's Whisper model. **Published on PyPI** as of v0.3.0b1 (Released 2025-02-01). The key architectural challenge is handling large audio files that exceed the 25MB Whisper API limit by intelligently chunking them into minute-aligned segments.
+A Python CLI tool (`vtt-transcribe`) that extracts audio from video files and transcribes it using OpenAI's Whisper model. **Published on PyPI** as of v0.3.0b1 (Released 2026-02-01). The key architectural challenge is handling large audio files that exceed the 25MB Whisper API limit by intelligently chunking them into minute-aligned segments.
 
 **Current Version**: v0.3.0b1  
 **Status**: Beta release with diarization support, published to PyPI  
