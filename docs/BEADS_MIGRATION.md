@@ -13,8 +13,8 @@ Successfully migrated all 123 GitHub issues to beads issue tracking system while
 ## Migration Statistics
 
 ### Total Issues: 123
-- **Open**: 14 issues
-- **Closed**: 109 issues
+- **Open**: 15 issues
+- **Closed**: 108 issues
 
 ### Issue Types
 - **Epics**: 67 (including 11 with children)
