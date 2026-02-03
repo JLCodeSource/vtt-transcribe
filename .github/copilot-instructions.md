@@ -28,7 +28,7 @@ bd show <task-id>                   # View task details
 bd update <task-id> --claim         # Start working (sets in_progress)
 bd update <task-id> --status closed # Mark complete
 ```
-All work should reference epic/task IDs (e.g., T095, T071_001). See project ROADMAP.md for epic structure.
+All work should reference epic/task IDs (e.g., T095, T071_001). See project docs/ROADMAP.md for epic structure.
 
 ### 3. GitHub Operations
 **Use `.github/skills/gh-cli/SKILL.md` for all GitHub interactions**:
@@ -196,7 +196,7 @@ The `_format_timestamp()` method converts seconds to `MM:SS` format. When chunki
 - `.github/skills/gh-cli/SKILL.md` — GitHub CLI command reference
 
 ### Key Documents
-- `ROADMAP.md` — Epics and feature timeline
-- `CONTRIBUTING.md` — Contribution guidelines
+- `docs/ROADMAP.md` — Epics and feature timeline
+- `docs/CONTRIBUTING.md` — Contribution guidelines
 - `RELEASE_CHECKLIST.md` — Release process
 - `pyproject.toml` — Package metadata and dependencies
