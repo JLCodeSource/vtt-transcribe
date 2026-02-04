@@ -7,6 +7,12 @@ A Python CLI tool (`vtt-transcribe`) that extracts audio from video files and tr
 **Status**: Beta release with diarization support, published to PyPI  
 **Install**: `pip install vtt-transcribe`
 
+**⚠️ BLOCKING ISSUE**: Test isolation broken after stdin mode implementation (vtt-transcribe-ufr)
+- 31 tests failing due to missing `sys.stdin.isatty()` mocks
+- Affects: test_cli.py, test_handlers.py, test_main.py, test_diarization.py, test_transcriber.py
+- **DO NOT merge any PR until this is resolved**
+- Fix in progress on branch: `fix/test-isolation-stdin-mode`
+
 ## Development Workflow Requirements
 
 **CRITICAL**: This project follows strict development standards. All work must adhere to:
