@@ -128,15 +128,26 @@ setup() {
     [[ "$output" =~ "stdin mode is incompatible" ]]
 }
 
-@test "stdin mode: rejects interactive diarization" {
-    run bash -c "cd /workspaces/vtt-transcribe && echo '' | uv run vtt_transcribe/main.py --diarize 2>&1"
+@test "stdin mode: auto-enables --no-review-speakers for diarization" {
+    # Skip if OPENAI_API_KEY not set (needed for transcription)
+    if [[ -z "$OPENAI_API_KEY" ]]; then
+        skip "OPENAI_API_KEY not set (set in environment or .env file)"
+    fi
     
-    [ "$status" -eq 2 ]
-    [[ "$output" =~ "stdin mode is incompatible" ]]
-    [[ "$output" =~ "TTY" ]]
+    # Skip if HF_TOKEN not set (needed for diarization)
+    if [[ -z "$HF_TOKEN" ]]; then
+        skip "HF_TOKEN not set (set in environment or .env file)"
+    fi
+    
+    # Test that --diarize without --no-review-speakers auto-enables it
+    run bash -c "export OPENAI_API_KEY='$OPENAI_API_KEY' HF_TOKEN='$HF_TOKEN' && cd /workspaces/vtt-transcribe && cat '$TEST_AUDIO' | uv run vtt_transcribe/main.py --diarize --hf-token '$HF_TOKEN' 2>&1"
+    
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "Automatically enabling --no-review-speakers" ]]
+    [[ "$output" =~ "SPEAKER" ]]
 }
 
-@test "stdin mode: accepts diarization flag" {
+@test "stdin mode: accepts diarization with explicit --no-review-speakers" {
     # Skip if OPENAI_API_KEY not set (needed for transcription)
     if [[ -z "$OPENAI_API_KEY" ]]; then
         skip "OPENAI_API_KEY not set (set in environment or .env file)"

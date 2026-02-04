@@ -112,20 +112,21 @@ docker run --rm -v $(pwd):/workspace \
   /workspace/input.mp4
 
 # With diarization (use diarization image, requires HF_TOKEN)
+# Note: Interactive review disabled in file mode, use --diarize flag only
 docker run --rm -v $(pwd):/workspace \
   -e OPENAI_API_KEY="your-key" \
   -e HF_TOKEN="your-hf-token" \
   jlcodesource/vtt-transcribe:diarization \
-  /workspace/input.mp4 --diarize --no-review-speakers
+  /workspace/input.mp4 --diarize
 
 # GPU support for diarization (requires nvidia-docker)
 docker run --rm --gpus all -v $(pwd):/workspace \
   -e OPENAI_API_KEY="your-key" \
   -e HF_TOKEN="your-hf-token" \
   jlcodesource/vtt-transcribe:diarization \
-  /workspace/input.mp4 --diarize --device cuda --no-review-speakers
+  /workspace/input.mp4 --diarize --device cuda
 
-# Stdin mode (pipe audio directly)
+# Stdin mode (pipe audio directly, --no-review-speakers auto-enabled)
 cat audio.mp3 | docker run -i -e OPENAI_API_KEY jlcodesource/vtt-transcribe:latest
 ```
 
@@ -215,11 +216,11 @@ cat audio.mp3 | vtt
 # With Docker
 cat audio.mp3 | docker run -i -e OPENAI_API_KEY vtt:latest
 
-# With diarization in Docker
+# With diarization in Docker (--no-review-speakers auto-enabled)
 cat audio.mp3 | docker run -i \
   -e OPENAI_API_KEY \
   -e HF_TOKEN \
-  vtt:diarization --diarize --no-review-speakers
+  vtt:diarization --diarize
 
 # In a pipeline
 cat audio.mp3 | vtt > transcript.txt
@@ -232,7 +233,7 @@ cat recording.mp3 | vtt | tee transcript.txt | grep "SPEAKER_00"
 - Stdin mode is auto-detected when input is piped (non-TTY)
 - Output goes to stdout instead of saving to file
 - The `-s/--save-transcript` and `-o/--output-audio` flags are incompatible with stdin mode
-- **Diarization in stdin mode requires `--no-review-speakers`** (interactive speaker review needs TTY)
+- **Diarization automatically enables `--no-review-speakers` in stdin mode** (interactive speaker review requires TTY)
 
 ### CLI options
 
