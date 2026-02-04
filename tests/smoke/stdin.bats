@@ -36,6 +36,12 @@ setup() {
     
     run bash -c "cat '$TEST_AUDIO' | vtt"
     
+    # Debug output on failure
+    if [ "$status" -ne 0 ]; then
+        echo "Exit status: $status"
+        echo "Output: $output"
+    fi
+    
     [ "$status" -eq 0 ]
     [[ "$output" =~ "hello world" ]] || [[ "$output" =~ "Hello world" ]]
 }
@@ -55,7 +61,7 @@ setup() {
         skip "OPENAI_API_KEY not set"
     fi
     
-    run bash -c "cat '$TEST_AUDIO' | docker run -i -e OPENAI_API_KEY vtt:latest"
+    run bash -c "cat '$TEST_AUDIO' | docker run -i -e OPENAI_API_KEY=\"\$OPENAI_API_KEY\" vtt:latest"
     
     [ "$status" -eq 0 ]
     [[ "$output" =~ "hello world" ]] || [[ "$output" =~ "Hello world" ]]
@@ -80,7 +86,7 @@ setup() {
     TEMP_TRANSCRIPT=$(mktemp)
     
     # Run with output redirect
-    cat "$TEST_AUDIO" | docker run -i -e OPENAI_API_KEY vtt:latest > "$TEMP_TRANSCRIPT"
+    cat "$TEST_AUDIO" | docker run -i -e OPENAI_API_KEY="$OPENAI_API_KEY" vtt:latest > "$TEMP_TRANSCRIPT"
     
     # Check output file
     [[ -s "$TEMP_TRANSCRIPT" ]]

@@ -51,6 +51,7 @@ Tests require:
 - `OPENAI_API_KEY` environment variable (for transcription tests)
 - `HF_TOKEN` environment variable (for diarization tests)
 - Test audio file: `tests/hello_conversation.mp3`
-- Docker image `vtt:latest` (for Docker tests)
+- Docker image `vtt:latest` (for Docker tests) - build with `docker build -t vtt:latest .`
+- Installed `vtt` command (for installed package tests) - install with `uv pip install -e .`
 
 Tests will skip gracefully if requirements are not met.
