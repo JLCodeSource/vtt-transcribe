@@ -89,6 +89,9 @@ def main() -> None:  # noqa: C901
             incompatible_flags.append("--apply-diarization")
         if args.scan_chunks:
             incompatible_flags.append("--scan-chunks")
+        # Interactive speaker review requires a TTY
+        if args.diarize and not args.no_review_speakers:
+            incompatible_flags.append("--diarize without --no-review-speakers (interactive review requires TTY)")
 
         if incompatible_flags:
             parser.error(

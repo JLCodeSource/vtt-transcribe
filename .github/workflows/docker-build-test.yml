@@ -44,7 +44,7 @@ jobs:
       
       - name: Verify non-root user
         run: |
-          USER_ID=$(docker run --rm vtt-transcribe:test sh -c "id -u")
+          USER_ID=$(docker run --rm --entrypoint sh vtt-transcribe:test -c "id -u")
           if [ "$USER_ID" = "1000" ]; then
             echo "✓ Running as non-root user (UID: $USER_ID)"
           else
@@ -113,7 +113,7 @@ jobs:
       
       - name: Verify non-root user
         run: |
-          USER_ID=$(docker run --rm vtt-transcribe:diarization-test sh -c "id -u")
+          USER_ID=$(docker run --rm --entrypoint sh vtt-transcribe:diarization-test -c "id -u")
           if [ "$USER_ID" = "1000" ]; then
             echo "✓ Running as non-root user (UID: $USER_ID)"
           else
@@ -123,7 +123,7 @@ jobs:
       
       - name: Check diarization dependencies
         run: |
-          docker run --rm vtt-transcribe:diarization-test sh -c "python -c 'import torch; import pyannote.audio; print(f\"torch={torch.__version__}, pyannote.audio available\")'"
+          docker run --rm --entrypoint python vtt-transcribe:diarization-test -c "import torch; import pyannote.audio; print(f'torch={torch.__version__}, pyannote.audio available')"
           echo "✓ Diarization dependencies installed"
       
       - name: Check image size

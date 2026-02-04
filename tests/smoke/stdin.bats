@@ -128,6 +128,14 @@ setup() {
     [[ "$output" =~ "stdin mode is incompatible" ]]
 }
 
+@test "stdin mode: rejects interactive diarization" {
+    run bash -c "cd /workspaces/vtt-transcribe && echo '' | uv run vtt_transcribe/main.py --diarize 2>&1"
+    
+    [ "$status" -eq 2 ]
+    [[ "$output" =~ "stdin mode is incompatible" ]]
+    [[ "$output" =~ "TTY" ]]
+}
+
 @test "stdin mode: accepts diarization flag" {
     # Skip if OPENAI_API_KEY not set (needed for transcription)
     if [[ -z "$OPENAI_API_KEY" ]]; then
