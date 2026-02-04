@@ -42,7 +42,11 @@ formatting verbose JSON transcripts into readable timestamped output.
  - The speaker diarization feature (`--diarize`) identifies and labels different speakers in audio
  - **Requirements:**
    - Hugging Face token (set `HF_TOKEN` environment variable or use `--hf-token` flag)
-   - **User must accept pyannote model access at https://huggingface.co/pyannote/speaker-diarization-3.1**
+   - **Accept pyannote model terms**: Before using diarization, you must accept the terms for the following models on Hugging Face:
+     - [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) (main model)
+     - [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0) (dependency)
+     - Visit each model page while logged into Hugging Face and accept the terms
+     - Without accepting terms, you'll get authentication errors when attempting diarization
    - Minimum audio duration: ~10 seconds (shorter files may fail)
  - **GPU Support (Optional):**
    - Can leverage CUDA GPUs for faster processing (10-100x speedup)
@@ -86,6 +90,58 @@ uv pip install vtt-transcribe[diarization]
 ```
 
 > **Note:** Installing with `[diarization]` extras adds large dependencies such as PyTorch and `pyannote.audio`, which significantly increases the download and install size of your environment. The actual diarization model weights are typically downloaded at runtime (e.g., via the Hugging Face cache) on first use, so overall disk usage for diarization (dependencies + cached models) can reach several GB. Only install these extras if you need speaker identification features.
+
+### Using Docker (Alternative)
+
+Docker images are available on Docker Hub and GitHub Container Registry in two variants:
+
+- **Base image** (`latest`): Fast, lightweight, transcription-only (~27s build)
+- **Diarization image** (`diarization`): Full feature set with PyTorch and speaker diarization
+
+```bash
+# Pull from Docker Hub (base image)
+docker pull jlcodesource/vtt-transcribe:latest
+
+# Pull diarization image
+docker pull jlcodesource/vtt-transcribe:diarization
+
+# OR: Pull from GitHub Container Registry
+docker pull ghcr.io/jlcodesource/vtt-transcribe:latest
+docker pull ghcr.io/jlcodesource/vtt-transcribe:diarization
+
+# Run with volume mount for input/output files
+docker run --rm -v $(pwd):/workspace \
+  -e OPENAI_API_KEY="your-key" \
+  jlcodesource/vtt-transcribe:latest \
+  /workspace/input.mp4
+
+# With diarization (use diarization image, requires HF_TOKEN)
+# Note: Interactive review disabled in file mode, use --diarize flag only
+docker run --rm -v $(pwd):/workspace \
+  -e OPENAI_API_KEY="your-key" \
+  -e HF_TOKEN="your-hf-token" \
+  jlcodesource/vtt-transcribe:diarization \
+  /workspace/input.mp4 --diarize
+
+# GPU support for diarization (requires nvidia-docker)
+docker run --rm --gpus all -v $(pwd):/workspace \
+  -e OPENAI_API_KEY="your-key" \
+  -e HF_TOKEN="your-hf-token" \
+  jlcodesource/vtt-transcribe:diarization \
+  /workspace/input.mp4 --diarize --device cuda
+
+# Stdin mode (pipe audio directly, --no-review-speakers auto-enabled)
+cat audio.mp3 | docker run -i -e OPENAI_API_KEY="$OPENAI_API_KEY" jlcodesource/vtt-transcribe:latest
+```
+
+**Docker Image Tags:**
+- `latest` - Latest stable release (base, transcription-only)
+- `diarization` - Latest release with diarization support
+- `v0.3.0b3` - Specific version tags
+- `0.3` - Minor version tags (e.g., 0.3.x latest)
+- `0` - Major version tags
+
+For more Docker usage patterns and troubleshooting, see [Docker Registry Documentation](docs/DOCKER_REGISTRY.md).
 
 ### From Source
 
@@ -152,6 +208,36 @@ vtt path/to/audio.mp3 --diarize
 # Using uv run (if installed from source)
 uv run vtt path/to/input.mp4
 ```
+
+#### Stdin/Stdout Mode
+
+For containerized or pipeline usage, vtt supports stdin/stdout mode:
+
+```bash
+# Pipe audio directly to vtt (outputs transcript to stdout)
+cat audio.mp3 | vtt
+
+# With Docker
+cat audio.mp3 | docker run -i -e OPENAI_API_KEY="$OPENAI_API_KEY" vtt:latest
+
+# With diarization in Docker (--no-review-speakers auto-enabled)
+cat audio.mp3 | docker run -i \
+  -e OPENAI_API_KEY="$OPENAI_API_KEY" \
+  -e HF_TOKEN="$HF_TOKEN" \
+  vtt:diarization --diarize
+
+# In a pipeline
+cat audio.mp3 | vtt > transcript.txt
+
+# Process and save
+cat recording.mp3 | vtt | tee transcript.txt | grep "SPEAKER_00"
+```
+
+**Notes:**
+- Stdin mode is auto-detected when input is piped (non-TTY)
+- Output goes to stdout instead of saving to file
+- The `-s/--save-transcript` and `-o/--output-audio` flags are incompatible with stdin mode
+- **Diarization automatically enables `--no-review-speakers` in stdin mode** (interactive speaker review requires TTY)
 
 ### CLI options
 

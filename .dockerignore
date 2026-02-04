@@ -1,0 +1,91 @@
+# Docker ignore file for vtt-transcribe
+# Exclude development and build artifacts from Docker context
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+*.bats
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Test files
+tests/
+test_*.txt
+*.txt
+
+# CI/CD
+.github/
+.pre-commit-config.yaml
+
+# Beads
+.beads/
+
+# Dev container
+.devcontainer/
+
+# Docker
+Dockerfile*
+.dockerignore
+docker-compose*.yml
+
+# Makefiles
+Makefile
+
+# Config files
+ruff.toml
+mypy.ini
+.python-version
+
+# Sample files
+*.mp4
+*.mp3
+*.wav
+*.avi
+*.mov
