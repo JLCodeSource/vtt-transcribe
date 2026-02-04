@@ -218,12 +218,12 @@ For containerized or pipeline usage, vtt supports stdin/stdout mode:
 cat audio.mp3 | vtt
 
 # With Docker
-cat audio.mp3 | docker run -i -e OPENAI_API_KEY vtt:latest
+cat audio.mp3 | docker run -i -e OPENAI_API_KEY="$OPENAI_API_KEY" vtt:latest
 
 # With diarization in Docker (--no-review-speakers auto-enabled)
 cat audio.mp3 | docker run -i \
-  -e OPENAI_API_KEY \
-  -e HF_TOKEN \
+  -e OPENAI_API_KEY="$OPENAI_API_KEY" \
+  -e HF_TOKEN="$HF_TOKEN" \
   vtt:diarization --diarize
 
 # In a pipeline
