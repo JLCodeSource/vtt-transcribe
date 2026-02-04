@@ -43,9 +43,9 @@ class TestDiarizationImportHandling:
 
         assert exc_info.value.code == 1
 
-        # Capture output to check error message (errors print to stdout, not stderr)
+        # Capture output to check error message (errors print to stderr)
         captured = capsys.readouterr()
-        assert "Diarization dependencies not installed" in captured.out
+        assert "Diarization dependencies not installed" in captured.err
 
     def test_diarize_only_without_dependencies_shows_error(self, tmp_path: Path) -> None:
         """Should show error when --diarize-only is used without diarization dependencies."""

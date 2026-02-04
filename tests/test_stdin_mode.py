@@ -11,12 +11,12 @@ from vtt_transcribe.main import main
 class TestStdinDetection:
     """Tests for stdin detection logic."""
 
-    def test_stdin_mode_activated_when_stdin_is_not_tty(self) -> None:
+    def test_stdin_mode_activated_when_stdin_is_not_tty(self, mock_stdin_tty: MagicMock) -> None:
         """Test that stdin mode activates when stdin is piped (not a TTY)."""
         with (
-            patch("sys.stdin") as mock_stdin,
+            patch("vtt_transcribe.main.sys.stdin") as mock_stdin,
             patch("sys.argv", ["vtt", "-k", "test-key"]),
-            patch("vtt_transcribe.handlers.handle_standard_transcription", return_value="Test transcript"),
+            patch("vtt_transcribe.main.handle_standard_transcription", return_value="Test transcript"),
             patch("sys.stdout", new_callable=io.StringIO) as mock_stdout,
         ):
             mock_stdin.isatty.return_value = False
@@ -28,7 +28,7 @@ class TestStdinDetection:
             # Should have written to stdout
             assert "Test transcript" in mock_stdout.getvalue()
 
-    def test_stdin_mode_not_activated_when_stdin_is_tty(self) -> None:
+    def test_stdin_mode_not_activated_when_stdin_is_tty(self, mock_stdin_tty: MagicMock) -> None:
         """Test that stdin mode is NOT activated when stdin is a terminal."""
         with (
             patch("sys.stdin") as mock_stdin,
@@ -45,14 +45,14 @@ class TestStdinDetection:
 class TestStdinTempFileHandling:
     """Tests for temporary file handling in stdin mode."""
 
-    def test_stdin_data_written_to_temp_file(self) -> None:
+    def test_stdin_data_written_to_temp_file(self, mock_stdin_tty: MagicMock) -> None:
         """Test that stdin binary data is written to a temporary file."""
         fake_audio = b"FAKE_AUDIO_DATA_12345"
 
         with (
-            patch("sys.stdin") as mock_stdin,
+            patch("vtt_transcribe.main.sys.stdin") as mock_stdin,
             patch("sys.argv", ["vtt", "-k", "test-key"]),
-            patch("vtt_transcribe.handlers.handle_standard_transcription", return_value="Transcript") as mock_transcribe,
+            patch("vtt_transcribe.main.handle_standard_transcription", return_value="Transcript") as mock_transcribe,
             patch("sys.stdout", new_callable=io.StringIO),
         ):
             mock_stdin.isatty.return_value = False
@@ -64,12 +64,12 @@ class TestStdinTempFileHandling:
             # Check that transcriber was called and input_file was set
             assert mock_transcribe.called
 
-    def test_stdin_temp_file_cleaned_up_after_processing(self) -> None:
+    def test_stdin_temp_file_cleaned_up_after_processing(self, mock_stdin_tty: MagicMock) -> None:
         """Test that temporary file is removed after transcription."""
         with (
-            patch("sys.stdin") as mock_stdin,
+            patch("vtt_transcribe.main.sys.stdin") as mock_stdin,
             patch("sys.argv", ["vtt", "-k", "test-key"]),
-            patch("vtt_transcribe.handlers.handle_standard_transcription", return_value="Transcript"),
+            patch("vtt_transcribe.main.handle_standard_transcription", return_value="Transcript"),
             patch("sys.stdout", new_callable=io.StringIO),
             patch("tempfile.NamedTemporaryFile") as mock_tempfile,
             patch("pathlib.Path.unlink") as mock_unlink,
@@ -91,12 +91,12 @@ class TestStdinTempFileHandling:
             # Verify cleanup was called
             mock_unlink.assert_called_once()
 
-    def test_stdin_preserves_file_extension_from_arg(self) -> None:
+    def test_stdin_preserves_file_extension_from_arg(self, mock_stdin_tty: MagicMock) -> None:
         """Test that temp file uses extension from optional filename arg."""
         with (
-            patch("sys.stdin") as mock_stdin,
+            patch("vtt_transcribe.main.sys.stdin") as mock_stdin,
             patch("sys.argv", ["vtt", "input.m4a", "-k", "test-key"]),
-            patch("vtt_transcribe.handlers.handle_standard_transcription", return_value="Transcript"),
+            patch("vtt_transcribe.main.handle_standard_transcription", return_value="Transcript"),
             patch("sys.stdout", new_callable=io.StringIO),
             patch("tempfile.NamedTemporaryFile") as mock_tempfile,
         ):
@@ -121,13 +121,13 @@ class TestStdinTempFileHandling:
 class TestStdinStdoutRedirection:
     """Tests for stdout-only output in stdin mode."""
 
-    def test_transcript_written_to_stdout_in_stdin_mode(self) -> None:
+    def test_transcript_written_to_stdout_in_stdin_mode(self, mock_stdin_tty: MagicMock) -> None:
         """Test that transcript is written to stdout, not printed."""
         with (
-            patch("sys.stdin") as mock_stdin,
+            patch("vtt_transcribe.main.sys.stdin") as mock_stdin,
             patch("sys.stdout", new_callable=io.StringIO) as mock_stdout,
             patch("sys.argv", ["vtt", "-k", "test-key"]),
-            patch("vtt_transcribe.handlers.handle_standard_transcription", return_value="[00:00 - 00:05] Test transcript"),
+            patch("vtt_transcribe.main.handle_standard_transcription", return_value="[00:00 - 00:05] Test transcript"),
         ):
             mock_stdin.isatty.return_value = False
             mock_stdin.buffer.read.return_value = b"audio"
@@ -138,13 +138,13 @@ class TestStdinStdoutRedirection:
             output = mock_stdout.getvalue()
             assert "[00:00 - 00:05] Test transcript" in output
 
-    def test_no_display_formatting_in_stdin_mode(self) -> None:
+    def test_no_display_formatting_in_stdin_mode(self, mock_stdin_tty: MagicMock) -> None:
         """Test that display_result formatting is suppressed in stdin mode."""
         with (
-            patch("sys.stdin") as mock_stdin,
+            patch("vtt_transcribe.main.sys.stdin") as mock_stdin,
             patch("sys.stdout", new_callable=io.StringIO) as mock_stdout,
             patch("sys.argv", ["vtt", "-k", "test-key"]),
-            patch("vtt_transcribe.handlers.handle_standard_transcription", return_value="Plain transcript"),
+            patch("vtt_transcribe.main.handle_standard_transcription", return_value="Plain transcript"),
         ):
             mock_stdin.isatty.return_value = False
             mock_stdin.buffer.read.return_value = b"audio"
@@ -161,10 +161,10 @@ class TestStdinStdoutRedirection:
 class TestStdinIncompatibleFlags:
     """Tests for flag validation in stdin mode."""
 
-    def test_stdin_mode_rejects_save_transcript_flag(self) -> None:
+    def test_stdin_mode_rejects_save_transcript_flag(self, mock_stdin_tty: MagicMock) -> None:
         """Test that -s/--save-transcript is incompatible with stdin mode."""
         with (
-            patch("sys.stdin") as mock_stdin,
+            patch("vtt_transcribe.main.sys.stdin") as mock_stdin,
             patch("sys.argv", ["vtt", "-s", "output.txt", "-k", "test-key"]),
         ):
             mock_stdin.isatty.return_value = False
@@ -174,10 +174,10 @@ class TestStdinIncompatibleFlags:
                 main()
             assert exc_info.value.code == 2
 
-    def test_stdin_mode_rejects_output_audio_flag(self) -> None:
+    def test_stdin_mode_rejects_output_audio_flag(self, mock_stdin_tty: MagicMock) -> None:
         """Test that -o/--output-audio is incompatible with stdin mode."""
         with (
-            patch("sys.stdin") as mock_stdin,
+            patch("vtt_transcribe.main.sys.stdin") as mock_stdin,
             patch("sys.argv", ["vtt", "-o", "output.mp3", "-k", "test-key"]),
         ):
             mock_stdin.isatty.return_value = False
@@ -187,10 +187,10 @@ class TestStdinIncompatibleFlags:
                 main()
             assert exc_info.value.code == 2
 
-    def test_stdin_mode_rejects_apply_diarization_flag(self) -> None:
+    def test_stdin_mode_rejects_apply_diarization_flag(self, mock_stdin_tty: MagicMock) -> None:
         """Test that --apply-diarization is incompatible with stdin mode."""
         with (
-            patch("sys.stdin") as mock_stdin,
+            patch("vtt_transcribe.main.sys.stdin") as mock_stdin,
             patch("sys.argv", ["vtt", "--apply-diarization", "transcript.txt", "-k", "test-key"]),
         ):
             mock_stdin.isatty.return_value = False
@@ -200,10 +200,10 @@ class TestStdinIncompatibleFlags:
                 main()
             assert exc_info.value.code == 2
 
-    def test_stdin_mode_rejects_scan_chunks_flag(self) -> None:
+    def test_stdin_mode_rejects_scan_chunks_flag(self, mock_stdin_tty: MagicMock) -> None:
         """Test that --scan-chunks is incompatible with stdin mode."""
         with (
-            patch("sys.stdin") as mock_stdin,
+            patch("vtt_transcribe.main.sys.stdin") as mock_stdin,
             patch("sys.argv", ["vtt", "--scan-chunks", "-k", "test-key"]),
         ):
             mock_stdin.isatty.return_value = False
@@ -217,15 +217,15 @@ class TestStdinIncompatibleFlags:
 class TestStdinIntegration:
     """Integration tests for full stdin workflows."""
 
-    def test_stdin_mode_end_to_end_basic_transcription(self) -> None:
+    def test_stdin_mode_end_to_end_basic_transcription(self, mock_stdin_tty: MagicMock) -> None:
         """Test complete stdin workflow for basic transcription."""
         fake_audio = b"RIFF....WAVEfmt " + b"x" * 100
 
         with (
-            patch("sys.stdin") as mock_stdin,
+            patch("vtt_transcribe.main.sys.stdin") as mock_stdin,
             patch("sys.stdout", new_callable=io.StringIO) as mock_stdout,
             patch("sys.argv", ["vtt", "-k", "test-key"]),
-            patch("vtt_transcribe.handlers.handle_standard_transcription", return_value="[00:00 - 00:05] Hello world"),
+            patch("vtt_transcribe.main.handle_standard_transcription", return_value="[00:00 - 00:05] Hello world"),
         ):
             mock_stdin.isatty.return_value = False
             mock_stdin.buffer.read.return_value = fake_audio
@@ -236,13 +236,13 @@ class TestStdinIntegration:
             output = mock_stdout.getvalue()
             assert "[00:00 - 00:05] Hello world" in output
 
-    def test_stdin_mode_with_diarization_flag(self) -> None:
+    def test_stdin_mode_with_diarization_flag(self, mock_stdin_tty: MagicMock) -> None:
         """Test stdin mode works with --diarize flag."""
         with (
-            patch("sys.stdin") as mock_stdin,
+            patch("vtt_transcribe.main.sys.stdin") as mock_stdin,
             patch("sys.stdout", new_callable=io.StringIO) as mock_stdout,
             patch("sys.argv", ["vtt", "--diarize", "--no-review-speakers", "-k", "test-key", "--hf-token", "token"]),
-            patch("vtt_transcribe.handlers.handle_standard_transcription", return_value="[00:00 - 00:05] SPEAKER_00: Hello"),
+            patch("vtt_transcribe.main.handle_standard_transcription", return_value="[00:00 - 00:05] SPEAKER_00: Hello"),
         ):
             mock_stdin.isatty.return_value = False
             mock_stdin.buffer.read.return_value = b"audio"
