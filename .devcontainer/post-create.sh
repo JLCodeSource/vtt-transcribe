@@ -2,10 +2,13 @@
 set -euo pipefail
 
 # Use the project’s make target to install uv, create venv, and sync deps
-make install
+make install-diarization
 
 # Quick sanity output
 uv run python -V
+
+# Add Home Local to PATH
+export PATH="$PATH:$HOME/.local/bin"
 
 # Install beads CLI for issue tracking (downloads pre-built binary from GitHub releases)
 echo "Installing beads (bd)..."
