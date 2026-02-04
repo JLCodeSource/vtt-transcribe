@@ -14,14 +14,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install uv for fast dependency installation
 RUN pip install --no-cache-dir uv
 
-# Copy all files needed for installation
+# Copy only dependency files first (for better layer caching)
 COPY pyproject.toml README.md ./
-COPY vtt_transcribe ./vtt_transcribe
 
-# Create virtual environment and install package with dependencies (including diarization)
+# Create virtual environment and install dependencies
+# This layer will be cached unless pyproject.toml changes
 RUN uv venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 RUN uv pip install ".[diarization]"
+
+# Copy source code last (so code changes don't invalidate dependency cache)
+COPY vtt_transcribe ./vtt_transcribe
 
 # Runtime stage: Minimal image with only runtime dependencies
 FROM python:3.13-slim
