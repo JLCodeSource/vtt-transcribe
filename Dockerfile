@@ -17,19 +17,15 @@ RUN pip install --no-cache-dir uv
 # Copy only dependency files first (for better layer caching)
 COPY pyproject.toml README.md ./
 
-# Create virtual environment and install dependencies
-# This layer will be cached unless pyproject.toml or source changes
+# Create virtual environment
 RUN uv venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install dependencies first (cached layer unless pyproject.toml changes)
-RUN uv pip install --no-deps ".[dev]" || true && uv pip install -e "."
-
-# Copy source code AFTER installing dependencies (better caching for development)
+# Copy source code
 COPY vtt_transcribe ./vtt_transcribe
 
-# Reinstall package with source code (fast since deps are cached)
-RUN uv pip install --no-deps --force-reinstall "."
+# Install package with dependencies (cached unless pyproject.toml or source changes)
+RUN uv pip install "."
 
 # Runtime stage: Minimal image with only runtime dependencies
 FROM python:3.13-slim
