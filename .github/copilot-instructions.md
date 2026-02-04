@@ -20,7 +20,20 @@ A Python CLI tool (`vtt-transcribe`) that extracts audio from video files and tr
 
 **Never** write implementation before writing a failing test. This is non-negotiable.
 
-### 2. Task Tracking with Beads
+### 2. Never End Sessions With Failing Tests
+**CRITICAL SESSION RULE**: If your work causes tests to fail, you MUST fix them before ending the session.
+
+- **Before your changes**: Run `make test` to establish baseline (all passing)
+- **During development**: Tests may fail as you implement (expected in TDD Red phase)
+- **Before session end**: ALL tests that were passing before MUST pass again
+- **No exceptions**: Don't skip tests, work around them, or document "known failures"
+- **Fix root cause**: If your implementation breaks existing tests, fix the implementation OR fix the test isolation (add proper mocks)
+
+**If tests are still failing**: Continue cycling through fix attempts until all tests pass. Don't revert - iterate and solve the problem. The session ends when tests are green, not when you're tired.
+
+The next session should start with a green test suite. Period.
+
+### 3. Task Tracking with Beads
 **Use `.github/skills/beads/SKILL.md` for `bd` CLI reference**:
 This project uses **bd (beads)** for issue tracking.
 Run `bd prime` for workflow context, or install hooks (`bd hooks install`) for auto-injection.
@@ -33,7 +46,7 @@ Run `bd prime` for workflow context, or install hooks (`bd hooks install`) for a
 
 For full workflow details: `bd prime`
 
-### 3. GitHub Operations
+### 4. GitHub Operations
 **Use `.github/skills/gh-cli/SKILL.md` for all GitHub interactions**:
 - Pull requests: `gh pr create`, `gh pr merge --squash`
 - Workflows: `gh workflow run`, `gh run watch`
