@@ -131,7 +131,7 @@ docker run --rm --gpus all -v $(pwd):/workspace \
   /workspace/input.mp4 --diarize --device cuda
 
 # Stdin mode (pipe audio directly, --no-review-speakers auto-enabled)
-cat audio.mp3 | docker run -i -e OPENAI_API_KEY jlcodesource/vtt-transcribe:latest
+cat audio.mp3 | docker run -i -e OPENAI_API_KEY="$OPENAI_API_KEY" jlcodesource/vtt-transcribe:latest
 ```
 
 **Docker Image Tags:**
