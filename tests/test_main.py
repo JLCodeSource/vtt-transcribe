@@ -552,3 +552,82 @@ class TestApiKeyHandling:
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         with pytest.raises(ValueError, match="OpenAI API key not provided"):
             get_api_key(None)
+
+
+class TestStdinMode:
+    """Test stdin/stdout mode functionality."""
+
+    def test_stdin_mode_detection(self) -> None:
+        """Test that stdin mode is detected when input is piped."""
+        with (
+            patch("sys.stdin.isatty", return_value=False),
+            patch("sys.stdin.buffer.read", return_value=b"fake audio data"),
+            patch("vtt_transcribe.transcriber.VideoTranscriber"),
+        ):
+            sys.argv = ["vtt"]
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+        # Should exit with error because no API key
+        assert exc_info.value.code != 0
+
+    def test_stdin_rejects_save_transcript(self) -> None:
+        """Test that stdin mode rejects -s/--save-transcript flag."""
+        with patch("sys.stdin.isatty", return_value=False):
+            sys.argv = ["vtt", "-s", "output.txt"]
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+        assert exc_info.value.code == 2  # argparse error exit code
+
+    def test_stdin_rejects_output_audio(self) -> None:
+        """Test that stdin mode rejects -o/--output-audio flag."""
+        with patch("sys.stdin.isatty", return_value=False):
+            sys.argv = ["vtt", "-o", "output.mp3"]
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+        assert exc_info.value.code == 2
+
+    def test_stdin_rejects_apply_diarization(self) -> None:
+        """Test that stdin mode rejects --apply-diarization flag."""
+        with patch("sys.stdin.isatty", return_value=False):
+            sys.argv = ["vtt", "--apply-diarization", "transcript.txt"]
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+        assert exc_info.value.code == 2
+
+    def test_stdin_rejects_scan_chunks(self) -> None:
+        """Test that stdin mode rejects --scan-chunks flag."""
+        with patch("sys.stdin.isatty", return_value=False):
+            sys.argv = ["vtt", "--scan-chunks"]
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+        assert exc_info.value.code == 2
+
+    def test_stdin_auto_enables_no_review_speakers(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test that --diarize auto-enables --no-review-speakers in stdin mode."""
+        with (
+            patch("sys.stdin.isatty", return_value=False),
+            patch("sys.stdin.buffer.read", return_value=b"fake audio data"),
+            patch("vtt_transcribe.transcriber.VideoTranscriber"),
+            patch("vtt_transcribe.main.get_api_key", return_value="test-key"),
+        ):
+            sys.argv = ["vtt", "--diarize", "--hf-token", "test-token"]
+            with pytest.raises(SystemExit):
+                main()
+
+        captured = capsys.readouterr()
+        assert "Automatically enabling --no-review-speakers" in captured.err
+
+    def test_stdin_no_review_speakers_already_set(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test that explicit --no-review-speakers doesn't print auto-enable message."""
+        with (
+            patch("sys.stdin.isatty", return_value=False),
+            patch("sys.stdin.buffer.read", return_value=b"fake audio data"),
+            patch("vtt_transcribe.transcriber.VideoTranscriber"),
+            patch("vtt_transcribe.main.get_api_key", return_value="test-key"),
+        ):
+            sys.argv = ["vtt", "--diarize", "--no-review-speakers", "--hf-token", "test-token"]
+            with pytest.raises(SystemExit):
+                main()
+
+        captured = capsys.readouterr()
+        assert "Automatically enabling --no-review-speakers" not in captured.err
