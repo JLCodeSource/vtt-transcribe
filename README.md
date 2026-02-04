@@ -232,7 +232,7 @@ cat recording.mp3 | vtt | tee transcript.txt | grep "SPEAKER_00"
 - Stdin mode is auto-detected when input is piped (non-TTY)
 - Output goes to stdout instead of saving to file
 - The `-s/--save-transcript` and `-o/--output-audio` flags are incompatible with stdin mode
-- Interactive speaker review (`--diarize` without `--no-review-speakers`) is incompatible with stdin mode
+- **Diarization in stdin mode requires `--no-review-speakers`** (interactive speaker review needs TTY)
 
 ### CLI options
 
