@@ -427,7 +427,7 @@ class TestNoReviewSpeakersFlag:
 
             main()
 
-            # Verify review WAS called (default behavior)
+            # Verify review WAS called (default behavior when NOT in stdin mode)
             mock_review.assert_called_once()
 
     def test_no_review_speakers_disables_review_for_diarize_only(self, tmp_path: Any) -> None:
@@ -631,3 +631,19 @@ class TestStdinMode:
 
         captured = capsys.readouterr()
         assert "Automatically enabling --no-review-speakers" not in captured.err
+
+    def test_stdin_diarize_only_auto_enables(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Test that --diarize-only in stdin mode auto-enables --no-review-speakers."""
+        with (
+            patch("sys.stdin.isatty", return_value=False),
+            patch("sys.stdin.buffer.read", return_value=b"fake audio data"),
+            patch("vtt_transcribe.main.handle_diarize_only_mode", return_value="SPEAKER_00: test"),
+            patch("vtt_transcribe.main.check_ffmpeg_installed"),
+            patch("vtt_transcribe.main.check_diarization_dependencies"),
+        ):
+            sys.argv = ["vtt", "--diarize-only", "--hf-token", "test-token"]
+            main()
+
+        captured = capsys.readouterr()
+        # Should see the stdin mode message (not the diarize-only message since stdin runs first)
+        assert "Automatically enabling --no-review-speakers" in captured.err

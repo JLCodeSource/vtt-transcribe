@@ -89,7 +89,7 @@ def main() -> None:  # noqa: C901
             incompatible_flags.append("--scan-chunks")
 
         # Auto-enable --no-review-speakers in stdin mode (interactive review requires TTY)
-        if args.diarize and not args.no_review_speakers:
+        if (args.diarize or args.diarize_only) and not args.no_review_speakers:
             args.no_review_speakers = True
             print(
                 "Note: Automatically enabling --no-review-speakers (interactive review unavailable in stdin mode)",
