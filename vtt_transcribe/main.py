@@ -1,7 +1,7 @@
+import argparse
 import os
 import sys
 import tempfile
-from argparse import Namespace
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -30,7 +30,7 @@ def get_api_key(api_key_arg: str | None) -> str:
     return api_key
 
 
-def handle_diarization_modes(args: Namespace) -> bool:
+def handle_diarization_modes(args: argparse.Namespace) -> bool:
     """Handle diarization-only and apply-diarization modes. Returns True if handled."""
     save_path = Path(args.save_transcript) if args.save_transcript else None
 
@@ -69,7 +69,61 @@ def handle_diarization_modes(args: Namespace) -> bool:
     return False
 
 
-def main() -> None:  # noqa: C901
+def _validate_stdin_mode(args: argparse.Namespace, parser: argparse.ArgumentParser, *, stdin_mode: bool) -> None:
+    """Validate args compatibility with stdin mode and auto-enable flags."""
+    if not stdin_mode:
+        return
+
+    incompatible_flags = []
+    if args.save_transcript:
+        incompatible_flags.append("-s/--save-transcript")
+    if args.output_audio:
+        incompatible_flags.append("-o/--output-audio")
+    if args.apply_diarization:
+        incompatible_flags.append("--apply-diarization")
+    if args.scan_chunks:
+        incompatible_flags.append("--scan-chunks")
+
+    # Auto-enable --no-review-speakers in stdin mode (interactive review requires TTY)
+    if (args.diarize or args.diarize_only) and not args.no_review_speakers:
+        args.no_review_speakers = True
+        print(
+            "Note: Automatically enabling --no-review-speakers (interactive review unavailable in stdin mode)",
+            file=sys.stderr,
+        )
+
+    if incompatible_flags:
+        parser.error(f"stdin mode is incompatible with: {', '.join(incompatible_flags)}")
+
+
+def _output_result(result: str, *, stdin_mode: bool, save_path: str | None) -> None:
+    """Output transcription result to stdout or display, and optionally save."""
+    if stdin_mode:
+        sys.stdout.write(result)
+    else:
+        display_result(result)
+
+    if save_path:
+        save_transcript(Path(save_path), result)
+
+
+def _create_temp_file_from_stdin(args: argparse.Namespace) -> Path:
+    """Read audio data from stdin and create temporary file."""
+    # Determine file extension from args.input_file or default to .mp3
+    extension = ".mp3"
+    if args.input_file:
+        extension = Path(args.input_file).suffix or ".mp3"
+
+    # Read binary data from stdin
+    audio_data = sys.stdin.buffer.read()
+
+    # Create temp file with appropriate extension
+    with tempfile.NamedTemporaryFile(mode="wb", suffix=extension, delete=False) as temp_file:
+        temp_file.write(audio_data)
+        return Path(temp_file.name)
+
+
+def main() -> None:
     parser = create_parser()
     args = parser.parse_args()
 
@@ -77,27 +131,7 @@ def main() -> None:  # noqa: C901
     stdin_mode = not sys.stdin.isatty()
 
     # Validate incompatible flags with stdin mode
-    if stdin_mode:
-        incompatible_flags = []
-        if args.save_transcript:
-            incompatible_flags.append("-s/--save-transcript")
-        if args.output_audio:
-            incompatible_flags.append("-o/--output-audio")
-        if args.apply_diarization:
-            incompatible_flags.append("--apply-diarization")
-        if args.scan_chunks:
-            incompatible_flags.append("--scan-chunks")
-
-        # Auto-enable --no-review-speakers in stdin mode (interactive review requires TTY)
-        if (args.diarize or args.diarize_only) and not args.no_review_speakers:
-            args.no_review_speakers = True
-            print(
-                "Note: Automatically enabling --no-review-speakers (interactive review unavailable in stdin mode)",
-                file=sys.stderr,
-            )
-
-        if incompatible_flags:
-            parser.error(f"stdin mode is incompatible with: {', '.join(incompatible_flags)}")
+    _validate_stdin_mode(args, parser, stdin_mode=stdin_mode)
 
     # Validate that input_file is provided (unless using --version which is handled by argparse or stdin mode)
     # Note: input_file uses nargs="?" to support --version without requiring input_file.
@@ -117,19 +151,7 @@ def main() -> None:  # noqa: C901
         # Handle stdin mode: read binary data from stdin and create temp file
         temp_file_path = None
         if stdin_mode:
-            # Determine file extension from args.input_file or default to .mp3
-            extension = ".mp3"
-            if args.input_file:
-                extension = Path(args.input_file).suffix or ".mp3"
-
-            # Read binary data from stdin
-            audio_data = sys.stdin.buffer.read()
-
-            # Create temp file with appropriate extension
-            with tempfile.NamedTemporaryFile(mode="wb", suffix=extension, delete=False) as temp_file:
-                temp_file.write(audio_data)
-                temp_file_path = Path(temp_file.name)
-
+            temp_file_path = _create_temp_file_from_stdin(args)
             # Override args.input_file to use the temp file
             args.input_file = str(temp_file_path)
 
@@ -140,15 +162,7 @@ def main() -> None:  # noqa: C901
         # Standard transcription flow
         api_key = get_api_key(args.api_key)
         result = handle_standard_transcription(args, api_key)
-
-        # In stdin mode, write transcript to stdout without formatting
-        if stdin_mode:
-            sys.stdout.write(result)
-        else:
-            display_result(result)
-
-        if args.save_transcript:
-            save_transcript(Path(args.save_transcript), result)
+        _output_result(result, stdin_mode=stdin_mode, save_path=args.save_transcript)
 
     except FileNotFoundError as e:
         print(f"Error: {e}", file=sys.stderr, flush=True)
