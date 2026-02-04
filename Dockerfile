@@ -44,6 +44,9 @@ WORKDIR /workspace
 # Switch to non-root user
 USER vttuser
 
+# Ensure Python output is unbuffered
+ENV PYTHONUNBUFFERED=1
+
 # Set entrypoint
 ENTRYPOINT ["vtt"]
 CMD ["--help"]
