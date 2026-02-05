@@ -84,6 +84,7 @@ jobs:
       
       - name: Update Docker Hub description
         if: ${{ github.event_name == 'release' }}
+        continue-on-error: true  # Don't fail release if description update fails
         uses: peter-evans/dockerhub-description@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
