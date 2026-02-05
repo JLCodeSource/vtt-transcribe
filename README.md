@@ -42,11 +42,13 @@ formatting verbose JSON transcripts into readable timestamped output.
  - The speaker diarization feature (`--diarize`) identifies and labels different speakers in audio
  - **Requirements:**
    - Hugging Face token (set `HF_TOKEN` environment variable or use `--hf-token` flag)
-   - **Accept pyannote model terms**: Before using diarization, you must accept the terms for the following models on Hugging Face:
-     - [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) (main model)
-     - [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0) (dependency)
-     - Visit each model page while logged into Hugging Face and accept the terms
-     - Without accepting terms, you'll get authentication errors when attempting diarization
+    - **Accept pyannote model terms**: Before using diarization, you must accept the terms for the following models on Hugging Face:
+      - [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) ⭐ **Required** - main diarization model
+      - [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0) ⭐ **Required** - speaker segmentation
+      - [pyannote/speaker-diarization-community-1](https://huggingface.co/pyannote/speaker-diarization-community-1) ⭐ **Required** - community model
+      - [pyannote/wespeaker-voxceleb-resnet34-LM](https://huggingface.co/pyannote/wespeaker-voxceleb-resnet34-LM) - speaker embedding (auto-downloaded)
+      - **How to accept terms**: Visit each ⭐ marked model page while logged into Hugging Face and click "Accept" on the terms
+      - Without accepting terms, you'll get authentication errors when attempting diarization
    - Minimum audio duration: ~10 seconds (shorter files may fail)
  - **GPU Support (Optional):**
    - Can leverage CUDA GPUs for faster processing (10-100x speedup)
