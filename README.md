@@ -117,30 +117,25 @@ docker pull jlcodesource/vtt-transcribe:diarization
 docker pull ghcr.io/jlcodesource/vtt-transcribe:latest
 docker pull ghcr.io/jlcodesource/vtt-transcribe:diarization
 
-# Run with volume mount for input/output files
-docker run --rm -v $(pwd):/workspace \
-  -e OPENAI_API_KEY="your-key" \
-  jlcodesource/vtt-transcribe:latest \
-  /workspace/input.mp4
+# Use stdin mode to pipe audio/video data (recommended for Docker)
+cat input.mp4 | docker run -i -e OPENAI_API_KEY="your-key" jlcodesource/vtt-transcribe:latest
+
+# Or redirect to save transcript to file
+cat input.mp4 | docker run -i -e OPENAI_API_KEY="your-key" jlcodesource/vtt-transcribe:latest > transcript.txt
 
 # With diarization (use diarization image, requires HF_TOKEN)
-# Note: Interactive review disabled in file mode, use --diarize flag only
-docker run --rm -v $(pwd):/workspace \
-  -e OPENAI_API_KEY="your-key" \
-  -e HF_TOKEN="your-hf-token" \
-  jlcodesource/vtt-transcribe:diarization \
-  /workspace/input.mp4 --diarize
+# Note: Interactive review (--no-review-speakers) automatically disabled in stdin mode
+cat input.mp4 | docker run -i -e OPENAI_API_KEY="your-key" -e HF_TOKEN="your-hf-token" jlcodesource/vtt-transcribe:diarization --diarize
 
 # GPU support for diarization (requires nvidia-docker)
-docker run --rm --gpus all -v $(pwd):/workspace \
-  -e OPENAI_API_KEY="your-key" \
-  -e HF_TOKEN="your-hf-token" \
-  jlcodesource/vtt-transcribe:diarization \
-  /workspace/input.mp4 --diarize --device cuda
-
-# Stdin mode (pipe audio directly, --no-review-speakers auto-enabled)
-cat audio.mp3 | docker run -i -e OPENAI_API_KEY="$OPENAI_API_KEY" jlcodesource/vtt-transcribe:latest
+cat input.mp4 | docker run -i --gpus all -e OPENAI_API_KEY="your-key" -e HF_TOKEN="your-hf-token" jlcodesource/vtt-transcribe:diarization --diarize --device cuda
 ```
+
+**Docker Stdin Mode Limitations:**
+- Volume mounting (`-v`) is not supported - use stdin/stdout instead
+- Interactive speaker review (`--review-speakers`) is unavailable in stdin mode (auto-disabled)
+- For diarization workflows, speaker labels will be generic (SPEAKER_00, SPEAKER_01, etc.)
+- Cannot use `-s/--save-transcript`, `-o/--output-audio`, `--apply-diarization`, or `--scan-chunks` flags
 
 **Docker Image Tags:**
 - `latest` - Latest stable release (base, transcription-only)
