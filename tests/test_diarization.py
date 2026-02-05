@@ -449,7 +449,7 @@ def test_get_speaker_context_lines() -> None:
 
 
 def test_diarize_audio_sample_mismatch_error() -> None:
-    """Test that sample mismatch errors show helpful encoding message."""
+    """Test that sample mismatch errors trigger WAV conversion fallback."""
     from vtt_transcribe.diarization import SpeakerDiarizer
 
     diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
@@ -464,9 +464,11 @@ def test_diarize_audio_sample_mismatch_error() -> None:
         "requested chunk [ 00:00:00.000 -->  00:00:15.000] resulted in 500000 samples instead of the expected 992250 samples"
     )
 
+    # The code will try to convert to WAV when it sees MP3 encoding issues
+    # Mock the conversion to fail (since /fake/audio.mp3 doesn't exist)
     with (
         patch("vtt_transcribe.diarization.Pipeline.from_pretrained", return_value=mock_pipeline),
-        pytest.raises(ValueError, match="Audio file sample mismatch error"),
+        pytest.raises(RuntimeError, match="Failed to convert to WAV"),
     ):
         diarizer.diarize_audio(Path("/fake/audio.mp3"))
 

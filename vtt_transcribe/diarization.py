@@ -9,6 +9,7 @@ Timestamp Format:
 import logging
 import os
 import re
+import sys
 import warnings
 from pathlib import Path
 
@@ -127,7 +128,64 @@ class SpeakerDiarizer:
         Note:
             The pyannote.audio model requires audio files to be at least 10 seconds long.
             For shorter audio files, consider padding with silence or using a different model.
+
+            If MP3 encoding causes sample mismatch errors, the audio will be automatically
+            converted to WAV format for more reliable processing.
         """
+        return self._diarize_with_fallback(audio_path)
+
+    def _diarize_with_fallback(self, audio_path: Path) -> list[tuple[float, float, str]]:
+        """Try diarization, falling back to WAV conversion if MP3 has sample mismatch."""
+        try:
+            return self._diarize_audio_internal(audio_path)
+        except ValueError as e:
+            error_str = str(e)
+            # Check if it's an MP3 sample mismatch that we can fix
+            if "MP3 encoding imprecision" in error_str:
+                print(
+                    "\nMP3 encoding issue detected. Converting to WAV for more reliable processing...",
+                    file=sys.stderr,
+                )
+                # Convert to WAV and retry
+                wav_path = audio_path.with_suffix(".wav")
+                try:
+                    self._convert_to_wav(audio_path, wav_path)
+                    result = self._diarize_audio_internal(wav_path)
+                    # Clean up WAV file
+                    wav_path.unlink()
+                    return result
+                except Exception as wav_error:
+                    # Clean up WAV file if it exists
+                    if wav_path.exists():
+                        wav_path.unlink()
+                    raise wav_error from e
+            # Not a fixable MP3 issue, re-raise
+            raise
+
+    def _convert_to_wav(self, input_path: Path, output_path: Path) -> None:
+        """Convert audio file to WAV format using ffmpeg."""
+        import subprocess
+
+        cmd = [
+            "ffmpeg",
+            "-i",
+            str(input_path),
+            "-acodec",
+            "pcm_s16le",
+            "-ar",
+            "16000",
+            "-ac",
+            "1",
+            "-y",  # Overwrite output file
+            str(output_path),
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)  # noqa: S603
+        if result.returncode != 0:
+            msg = f"Failed to convert to WAV: {result.stderr}"
+            raise RuntimeError(msg)
+
+    def _diarize_audio_internal(self, audio_path: Path) -> list[tuple[float, float, str]]:
+        """Internal diarization implementation."""
         pipeline = self._load_pipeline()
 
         # Suppress the torch pooling warning about degrees of freedom
@@ -148,8 +206,9 @@ class SpeakerDiarizer:
                         actual_duration = actual_samples / PYANNOTE_DEFAULT_SAMPLE_RATE
                         expected_duration = expected_samples / PYANNOTE_DEFAULT_SAMPLE_RATE
 
-                        # If actual duration < 10 seconds, it's genuinely too short
-                        if actual_duration < 10.0:
+                        # If actual duration < 9.5 seconds, it's genuinely too short
+                        # We allow some tolerance (0.5s) for MP3 encoding imprecision
+                        if actual_duration < 9.5:
                             msg = (
                                 f"Audio file is too short for diarization ({actual_duration:.2f}s). "
                                 f"The pyannote.audio model requires at least 10 seconds of audio."
@@ -158,8 +217,8 @@ class SpeakerDiarizer:
                         # File is long enough but has sample mismatch - likely metadata/encoding issue
                         msg = (
                             f"Audio file sample mismatch error. This usually indicates:\n"
+                            f"  - MP3 encoding imprecision (metadata doesn't match exact sample count)\n"
                             f"  - File corruption or incomplete download\n"
-                            f"  - Metadata mismatch (reported duration doesn't match actual audio)\n"
                             f"  - Unusual encoding that pyannote can't handle properly\n"
                             f"Expected {expected_duration:.2f}s ({expected_samples} samples), "
                             f"but got {actual_duration:.2f}s ({actual_samples} samples).\n\n"

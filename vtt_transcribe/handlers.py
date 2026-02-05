@@ -298,9 +298,16 @@ def handle_standard_transcription(args: Any, api_key: str) -> str:
         SpeakerDiarizer, _, _, _ = _lazy_import_diarization()  # noqa: N806
         diarizer = SpeakerDiarizer(hf_token=args.hf_token, device=args.device)
         # Determine the audio path used for transcription
-        actual_audio_path = audio_path if audio_path else input_path.with_suffix(AUDIO_EXTENSION)
+        # After transcribe() has run, the audio file should exist at the expected location
         if input_path.suffix.lower() in VideoTranscriber.SUPPORTED_AUDIO_FORMATS:
+            # Input was audio, it was used directly
             actual_audio_path = input_path
+        elif audio_path:
+            # Custom audio output path was specified
+            actual_audio_path = audio_path
+        else:
+            # Default audio path (video name with .mp3 extension)
+            actual_audio_path = input_path.with_suffix(AUDIO_EXTENSION)
 
         print("\nRunning speaker diarization...")
         segments = diarizer.diarize_audio(actual_audio_path)
