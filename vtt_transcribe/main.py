@@ -110,18 +110,57 @@ def _output_result(result: str, *, stdin_mode: bool, save_path: str | None) -> N
         save_transcript(Path(save_path), result)
 
 
+def _detect_format_from_data(data: bytes) -> str:
+    """Detect file format from binary data magic bytes.
+
+    Returns appropriate file extension (.mp4, .avi, .mov, .mp3, etc.)
+    Falls back to .mp3 if format cannot be determined.
+    """
+    if len(data) < 12:
+        return ".mp3"
+
+    # MP4/M4A/MOV - ftyp box at bytes 4-8
+    if data[4:8] == b"ftyp":
+        # Check specific ftyp brand
+        brand = data[8:12]
+        if brand.startswith((b"isom", b"iso2", b"mp41", b"mp42", b"M4A ", b"M4V ", b"qt  ")):
+            # Could be mp4, m4a, or mov - default to mp4 for video
+            return ".mp4"
+
+    # AVI - RIFF header with AVI signature
+    if data[0:4] == b"RIFF" and data[8:12] == b"AVI ":
+        return ".avi"
+
+    # WebM/MKV - EBML header
+    if data[0:4] == b"\x1a\x45\xdf\xa3":
+        return ".webm"
+
+    # MP3 - ID3 tag or MPEG sync
+    if data[0:3] == b"ID3" or (data[0:2] == b"\xff\xfb") or (data[0:2] == b"\xff\xf3"):
+        return ".mp3"
+
+    # WAV - RIFF header with WAVE signature
+    if data[0:4] == b"RIFF" and data[8:12] == b"WAVE":
+        return ".wav"
+
+    # OGG - OggS signature
+    if data[0:4] == b"OggS":
+        return ".ogg"
+
+    # Default to mp3 for unknown formats
+    return ".mp3"
+
+
 def _create_temp_file_from_stdin(args: Namespace) -> Path:
     """Read audio data from stdin and create temporary file.
 
     Returns Path to temporary file that MUST be cleaned up by the caller.
     """
-    # Determine file extension from args.input_file or default to .mp3
-    extension = ".mp3"
-    if args.input_file:
-        extension = Path(args.input_file).suffix or ".mp3"
-
     # Read binary data from stdin
     audio_data = sys.stdin.buffer.read()
+
+    # Determine file extension from args.input_file or detect from data
+    extension = Path(args.input_file).suffix or ".mp3" if args.input_file else _detect_format_from_data(audio_data)
 
     # Create temp file with appropriate extension
     with tempfile.NamedTemporaryFile(mode="wb", suffix=extension, delete=False) as temp_file:
