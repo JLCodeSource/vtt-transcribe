@@ -17,36 +17,111 @@ permissions:
   contents: read
 
 jobs:
-  publish:
-    runs-on: ubuntu-latest
-    environment: testpypi
+  # Build sdist and core wheels for all platforms/Python versions
+  build-core-wheels:
+    name: Build core wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-13, macos-14]
+
     steps:
       - uses: actions/checkout@v4
-      
+
+      - name: Build wheels (core)
+        uses: pypa/cibuildwheel@v2.21
+        env:
+          CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-* cp314-*"
+          CIBW_ARCHS_LINUX: "x86_64 aarch64"
+          CIBW_ARCHS_MACOS: "x86_64 arm64"
+          CIBW_ARCHS_WINDOWS: "AMD64"
+          CIBW_TEST_COMMAND: "nox -s tests_core"
+          CIBW_TEST_REQUIRES: "nox"
+          CIBW_SKIP: ""  # include musllinux
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-core-${{ matrix.os }}
+          path: ./wheelhouse/*.whl
+
+  # Build source distribution
+  build-sdist:
+    name: Build source distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
+
+      - name: Build sdist
+        run: |
+          uv build --sdist
+
+      - uses: actions/upload-artifact@v4
         with:
-          python-version: '3.13'
-      
+          name: sdist
+          path: dist/*.tar.gz
+
+  # Build diarization wheels (Linux only, Python 3.10-3.13)
+  build-diarization-wheels:
+    name: Build diarization wheels (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.10', '3.11', '3.12', '3.13']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
       - name: Install ffmpeg
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
-      
-      - name: Install build environment
-        run: make build
-      
-      - name: Lint
-        run: make lint
-      
-      - name: Test
-        run: make test
-      
+
+      - name: Build wheels (diarization)
+        uses: pypa/cibuildwheel@v2.21
+        env:
+          CIBW_BUILD: "cp${{ matrix.python }}-*"
+          CIBW_ARCHS_LINUX: "x86_64"
+          CIBW_TEST_EXTRAS: "diarization,dev"
+          CIBW_TEST_COMMAND: "nox -s tests"
+          CIBW_BEFORE_TEST: "pip install torch==2.8.0 pyannote.audio>=3.1.0"
+          CIBW_TEST_REQUIRES: "nox"
+          CIBW_ENVIRONMENT: "PIP_CACHE_DIR=/tmp/pip-cache"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-diarization-py${{ matrix.python }}
+          path: ./wheelhouse/*.whl
+
+  # Publish all artifacts to TestPyPI
+  publish:
+    name: Publish to TestPyPI
+    needs: [build-core-wheels, build-sdist, build-diarization-wheels]
+    runs-on: ubuntu-latest
+    environment: testpypi
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          path: dist
+          merge-multiple: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: dist
+
+      - name: List artifacts
+        run: ls -lh dist/
+
       - name: Publish to TestPyPI via OIDC
         if: ${{ !inputs.dry_run }}
         uses: pypa/gh-action-pypi-publish@release/v1
