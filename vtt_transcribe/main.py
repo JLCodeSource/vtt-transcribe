@@ -116,6 +116,8 @@ def _detect_format_from_data(data: bytes) -> str:
     Returns appropriate file extension (.mp4, .avi, .mov, .mp3, etc.)
     Falls back to .mp3 if format cannot be determined.
     """
+    if not data:
+        raise ValueError("Cannot detect format from empty data stream.")
     if len(data) < 12:
         return ".mp3"
 
