@@ -80,6 +80,7 @@ filterwarnings = [
 ]
 markers = [
     "integration: marks tests as integration tests (require external services/models)",
+    "diarization: marks tests that require diarization dependencies (torch, pyannote)",
 ]
 
 [build-system]
