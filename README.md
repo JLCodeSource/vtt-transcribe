@@ -117,30 +117,26 @@ docker pull jlcodesource/vtt-transcribe:diarization
 docker pull ghcr.io/jlcodesource/vtt-transcribe:latest
 docker pull ghcr.io/jlcodesource/vtt-transcribe:diarization
 
-# Run with volume mount for input/output files
-docker run --rm -v $(pwd):/workspace \
-  -e OPENAI_API_KEY="your-key" \
-  jlcodesource/vtt-transcribe:latest \
-  /workspace/input.mp4
+# Use stdin mode to pipe audio/video data (recommended for Docker)
+# Supports video formats (MP4, AVI, WebM) and audio formats (MP3, WAV, OGG)
+cat input.mp4 | docker run -i -e OPENAI_API_KEY="your-key" jlcodesource/vtt-transcribe:latest
+
+# Or redirect to save transcript to file
+cat input.mp4 | docker run -i -e OPENAI_API_KEY="your-key" jlcodesource/vtt-transcribe:latest > transcript.txt
 
 # With diarization (use diarization image, requires HF_TOKEN)
-# Note: Interactive review disabled in file mode, use --diarize flag only
-docker run --rm -v $(pwd):/workspace \
-  -e OPENAI_API_KEY="your-key" \
-  -e HF_TOKEN="your-hf-token" \
-  jlcodesource/vtt-transcribe:diarization \
-  /workspace/input.mp4 --diarize
+# Note: Interactive review (--no-review-speakers) automatically disabled in stdin mode
+cat input.mp4 | docker run -i -e OPENAI_API_KEY="your-key" -e HF_TOKEN="your-hf-token" jlcodesource/vtt-transcribe:diarization --diarize
 
 # GPU support for diarization (requires nvidia-docker)
-docker run --rm --gpus all -v $(pwd):/workspace \
-  -e OPENAI_API_KEY="your-key" \
-  -e HF_TOKEN="your-hf-token" \
-  jlcodesource/vtt-transcribe:diarization \
-  /workspace/input.mp4 --diarize --device cuda
-
-# Stdin mode (pipe audio directly, --no-review-speakers auto-enabled)
-cat audio.mp3 | docker run -i -e OPENAI_API_KEY="$OPENAI_API_KEY" jlcodesource/vtt-transcribe:latest
+cat input.mp4 | docker run -i --gpus all -e OPENAI_API_KEY="your-key" -e HF_TOKEN="your-hf-token" jlcodesource/vtt-transcribe:diarization --diarize --device cuda
 ```
+
+**Docker Stdin Mode Limitations:**
+- Volume mounting (`-v`) is not supported - use stdin/stdout instead
+- Interactive speaker review (`--review-speakers`) is unavailable in stdin mode (auto-disabled)
+- For diarization workflows, speaker labels will be generic (SPEAKER_00, SPEAKER_01, etc.)
+- Cannot use `-s/--save-transcript`, `-o/--output-audio`, `--apply-diarization`, or `--scan-chunks` flags
 
 **Docker Image Tags:**
 - `latest` - Latest stable release (base, transcription-only)
@@ -217,20 +213,23 @@ uv run vtt path/to/input.mp4
 
 #### Stdin/Stdout Mode
 
-For containerized or pipeline usage, vtt supports stdin/stdout mode:
+For containerized or pipeline usage, vtt supports stdin/stdout mode with both audio and video files:
 
 ```bash
 # Pipe audio directly to vtt (outputs transcript to stdout)
 cat audio.mp3 | vtt
 
-# With Docker
-cat audio.mp3 | docker run -i -e OPENAI_API_KEY="$OPENAI_API_KEY" vtt:latest
+# Pipe video directly to vtt (supports MP4, AVI, WebM, etc.)
+cat video.mp4 | vtt
+
+# With Docker (video support)
+cat video.mp4 | docker run -i -e OPENAI_API_KEY="$OPENAI_API_KEY" jlcodesource/vtt-transcribe:latest
 
 # With diarization in Docker (--no-review-speakers auto-enabled)
-cat audio.mp3 | docker run -i \
+cat video.mp4 | docker run -i \
   -e OPENAI_API_KEY="$OPENAI_API_KEY" \
   -e HF_TOKEN="$HF_TOKEN" \
-  vtt:diarization --diarize
+  jlcodesource/vtt-transcribe:diarization --diarize
 
 # In a pipeline
 cat audio.mp3 | vtt > transcript.txt
@@ -295,9 +294,12 @@ cat recording.mp3 | vtt | tee transcript.txt | grep "SPEAKER_00"
  - Note: The project has only been tested on Linux (and WSL2)
 
 ### Continuous Integration
- - The repository includes a GitHub Actions workflow (`.github/workflows/ci.yml`) that
-   runs `make install` followed by `make lint` and `make test` on pushes and pull
-   requests to `main`. This mirrors the recommended local `make install` setup.
+ - The repository includes multiple GitHub Actions workflows:
+   - `.github/workflows/test.yml` — Runs tests on multiple Python versions (3.10-3.14)
+   - `.github/workflows/lint.yml` — Runs linting checks (ruff + mypy)
+   - `.github/workflows/publish.yml` — Publishes to PyPI on releases
+   - `.github/workflows/docker-publish.yml` — Builds and publishes Docker images
+ - All workflows run on pushes and pull requests to `main`
 
 ### Acknowledgements
  - This project was developed with test-driven iterations and linting guidance.
@@ -306,9 +308,19 @@ cat recording.mp3 | vtt | tee transcript.txt | grep "SPEAKER_00"
 
 ### Files of interest
  - [CHANGELOG.md](docs/CHANGELOG.md) — version history and upgrade instructions
- - [vtt_transcribe/main.py](vtt_transcribe/main.py) — CLI entrypoint and `VideoTranscriber` implementation
- - [tests/test_main.py](tests/test_main.py) — main test suite (integration + unit tests)
- - [tests/test_audio_management.py](tests/test_audio_management.py) — audio/chunk management tests
+ - [vtt_transcribe/cli.py](vtt_transcribe/cli.py) — CLI argument parsing and entrypoint
+ - [vtt_transcribe/main.py](vtt_transcribe/main.py) — Core transcription logic
+ - [vtt_transcribe/handlers.py](vtt_transcribe/handlers.py) — Command handlers for transcription workflows
+ - [vtt_transcribe/audio_manager.py](vtt_transcribe/audio_manager.py) — Audio extraction and management
+ - [vtt_transcribe/audio_chunker.py](vtt_transcribe/audio_chunker.py) — Audio chunking for large files
+ - [vtt_transcribe/transcriber.py](vtt_transcribe/transcriber.py) — Whisper API interaction
+ - [vtt_transcribe/diarization.py](vtt_transcribe/diarization.py) — Speaker diarization using pyannote
+ - [vtt_transcribe/transcript_formatter.py](vtt_transcribe/transcript_formatter.py) — Transcript formatting and speaker labeling
+ - [tests/test_main.py](tests/test_main.py) — Main module tests
+ - [tests/test_handlers.py](tests/test_handlers.py) — Handler tests
+ - [tests/test_audio_manager.py](tests/test_audio_manager.py) — Audio management tests
+ - [tests/test_audio_chunker.py](tests/test_audio_chunker.py) — Audio chunking tests
+ - [tests/test_stdin_mode.py](tests/test_stdin_mode.py) — Stdin/stdout mode tests
  - [Makefile](Makefile) — convenience commands for dev tooling
  - [ruff.toml](ruff.toml) — ruff configuration
  - [.pre-commit-config.yaml](.pre-commit-config.yaml) — pre-commit hooks for formatting/linting
@@ -316,6 +328,7 @@ cat recording.mp3 | vtt | tee transcript.txt | grep "SPEAKER_00"
 ### Contributing
  - Please run `make format` and `make lint` before submitting a PR.
  - Run `make test` to ensure all tests pass locally.
+ - This project uses **bd (beads)** for issue tracking. Run `bd prime` for workflow context.
  - See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for detailed development setup and workflow.
 
 ## Building and Publishing (For Maintainers)

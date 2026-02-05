@@ -118,6 +118,67 @@ class TestStdinTempFileHandling:
             assert call_kwargs["suffix"] == ".m4a"
 
 
+class TestStdinVideoFormatDetection:
+    """Tests for detecting video formats from stdin binary data."""
+
+    def test_detect_mp4_format_from_magic_bytes(self, mock_stdin_tty: MagicMock) -> None:
+        """Test that MP4 format is detected from ftyp magic bytes."""
+        # MP4 files have ftyp box signature at bytes 4-8
+        mp4_data = b"\x00\x00\x00\x20\x66\x74\x79\x70" + b"isom" + b"\x00" * 100
+
+        with (
+            patch("vtt_transcribe.main.sys.stdin") as mock_stdin,
+            patch("sys.argv", ["vtt", "-k", "test-key"]),
+            patch("vtt_transcribe.main.handle_standard_transcription", return_value="Transcript"),
+            patch("sys.stdout", new_callable=io.StringIO),
+            patch("tempfile.NamedTemporaryFile") as mock_tempfile,
+        ):
+            mock_temp_instance = MagicMock()
+            mock_temp_instance.name = "/tmp/test.mp4"  # noqa: S108
+            mock_temp_instance.__enter__.return_value = mock_temp_instance
+            mock_temp_instance.__exit__.return_value = False
+            mock_tempfile.return_value = mock_temp_instance
+
+            mock_stdin.isatty.return_value = False
+            mock_stdin.buffer.read.return_value = mp4_data
+
+            # Should detect MP4 and use .mp4 extension
+            main()
+
+            # Verify temp file was created with .mp4 extension
+            mock_tempfile.assert_called_once()
+            call_kwargs = mock_tempfile.call_args[1]
+            assert call_kwargs["suffix"] == ".mp4", "Should detect MP4 format from magic bytes"
+
+    def test_falls_back_to_mp3_for_unknown_format(self, mock_stdin_tty: MagicMock) -> None:
+        """Test that unknown formats fall back to .mp3 extension."""
+        unknown_data = b"unknown format data" + b"\x00" * 100
+
+        with (
+            patch("vtt_transcribe.main.sys.stdin") as mock_stdin,
+            patch("sys.argv", ["vtt", "-k", "test-key"]),
+            patch("vtt_transcribe.main.handle_standard_transcription", return_value="Transcript"),
+            patch("sys.stdout", new_callable=io.StringIO),
+            patch("tempfile.NamedTemporaryFile") as mock_tempfile,
+        ):
+            mock_temp_instance = MagicMock()
+            mock_temp_instance.name = "/tmp/test.mp3"  # noqa: S108
+            mock_temp_instance.__enter__.return_value = mock_temp_instance
+            mock_temp_instance.__exit__.return_value = False
+            mock_tempfile.return_value = mock_temp_instance
+
+            mock_stdin.isatty.return_value = False
+            mock_stdin.buffer.read.return_value = unknown_data
+
+            # Should fall back to .mp3 for unknown formats
+            main()
+
+            # Verify temp file was created with .mp3 extension
+            mock_tempfile.assert_called_once()
+            call_kwargs = mock_tempfile.call_args[1]
+            assert call_kwargs["suffix"] == ".mp3", "Should default to .mp3 for unknown formats"
+
+
 class TestStdinStdoutRedirection:
     """Tests for stdout-only output in stdin mode."""
 
@@ -252,3 +313,52 @@ class TestStdinIntegration:
 
             output = mock_stdout.getvalue()
             assert "SPEAKER_00: Hello" in output
+
+    def test_stdin_mode_output_ends_with_newline(self, mock_stdin_tty: MagicMock) -> None:
+        """Test that stdin mode output always ends with a newline."""
+        fake_audio = b"RIFF....WAVEfmt " + b"x" * 100
+
+        with (
+            patch("vtt_transcribe.main.sys.stdin") as mock_stdin,
+            patch("sys.stdout", new_callable=io.StringIO) as mock_stdout,
+            patch("sys.argv", ["vtt", "-k", "test-key"]),
+            patch("vtt_transcribe.main.handle_standard_transcription", return_value="[00:00 - 00:05] Hello world"),
+        ):
+            mock_stdin.isatty.return_value = False
+            mock_stdin.buffer.read.return_value = fake_audio
+
+            # Should process and output to stdout
+            main()
+
+            output = mock_stdout.getvalue()
+            # Output should end with a newline to prevent prompt on same line
+            assert output.endswith("\n"), "stdout output should end with a newline"
+
+    def test_stdin_mode_without_filename_defaults_to_mp3(self, mock_stdin_tty: MagicMock) -> None:
+        """Test that stdin without filename argument creates temp file with .mp3 extension."""
+        fake_video_data = b"video data"
+
+        with (
+            patch("vtt_transcribe.main.sys.stdin") as mock_stdin,
+            patch("sys.stdout", new_callable=io.StringIO),
+            patch("sys.argv", ["vtt", "-k", "test-key"]),  # No filename arg
+            patch("vtt_transcribe.main.handle_standard_transcription", return_value="transcript"),
+            patch("tempfile.NamedTemporaryFile") as mock_tempfile,
+        ):
+            # Setup temp file mock
+            mock_temp_instance = MagicMock()
+            mock_temp_instance.name = "/tmp/tempXYZ.mp3"  # noqa: S108
+            mock_temp_instance.__enter__.return_value = mock_temp_instance
+            mock_temp_instance.__exit__.return_value = False
+            mock_tempfile.return_value = mock_temp_instance
+
+            mock_stdin.isatty.return_value = False
+            mock_stdin.buffer.read.return_value = fake_video_data
+
+            # Should create temp file with .mp3 extension by default
+            main()
+
+            # Verify temp file was created with .mp3 suffix
+            mock_tempfile.assert_called_once()
+            call_kwargs = mock_tempfile.call_args[1]
+            assert call_kwargs["suffix"] == ".mp3", "Default suffix should be .mp3 when no filename provided"
