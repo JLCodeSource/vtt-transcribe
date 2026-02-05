@@ -48,7 +48,7 @@ formatting verbose JSON transcripts into readable timestamped output.
  - The speaker diarization feature (`--diarize`) identifies and labels different speakers in audio
  - **Requirements:**
    - Hugging Face token (set `HF_TOKEN` environment variable or use `--hf-token` flag)
-    - **Accept pyannote model terms**: Before using diarization, you must accept the terms for the following models on Hugging Face:
+   - **Accept pyannote model terms**: Before using diarization, you must accept the terms for the following models on Hugging Face:
       - [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) ⭐ **Required** - main diarization model
       - [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0) ⭐ **Required** - speaker segmentation
       - [pyannote/speaker-diarization-community-1](https://huggingface.co/pyannote/speaker-diarization-community-1) ⭐ **Required** - community model
