@@ -67,9 +67,7 @@ jobs:
             ${{ env.REGISTRY_IMAGE }}
             ghcr.io/${{ github.repository }}
           tags: |
-            type=semver,pattern={{version}},value=${{ steps.version.outputs.version }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ steps.version.outputs.version }}
-            type=semver,pattern={{major}},value=${{ steps.version.outputs.version }}
+            type=raw,value=${{ steps.version.outputs.version }}
             type=raw,value=latest
       
       - name: Build and push base Docker image
@@ -85,6 +83,8 @@ jobs:
           cache-to: type=gha,mode=max,scope=base
       
       - name: Update Docker Hub description
+        if: ${{ github.event_name == 'release' }}
+        continue-on-error: true  # Don't fail release if description update fails
         uses: peter-evans/dockerhub-description@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -141,9 +141,7 @@ jobs:
             ${{ env.REGISTRY_IMAGE }}
             ghcr.io/${{ github.repository }}
           tags: |
-            type=semver,pattern={{version}}-diarization,value=${{ steps.version.outputs.version }}
-            type=semver,pattern={{major}}.{{minor}}-diarization,value=${{ steps.version.outputs.version }}
-            type=semver,pattern={{major}}-diarization,value=${{ steps.version.outputs.version }}
+            type=raw,value=${{ steps.version.outputs.version }}-diarization
             type=raw,value=diarization
       
       - name: Build and push diarization Docker image
