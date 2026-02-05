@@ -3,7 +3,7 @@ name = "vtt-transcribe"
 version = "0.3.0b3"
 description = "Transcribe video and audio files to text using OpenAI Whisper with optional speaker diarization"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.10"
 license = {text = "BSD-3-Clause"}
 authors = [
     {name = "JLCodeSource", email = "JLCodeSource@gmail.com"}
@@ -16,7 +16,11 @@ classifiers = [
     "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Multimedia :: Sound/Audio :: Speech",
     "Topic :: Multimedia :: Video",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
@@ -62,6 +66,7 @@ dev = [
     "coverage>=7.13.2",
     "hatch>=1.9.0",
     "mypy>=1.19.1",
+    "nox>=2024.4.15",
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
     "ruff>=0.14.14",
@@ -75,6 +80,7 @@ filterwarnings = [
 ]
 markers = [
     "integration: marks tests as integration tests (require external services/models)",
+    "diarization: marks tests that require diarization dependencies (torch, pyannote)",
 ]
 
 [build-system]

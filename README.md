@@ -18,7 +18,13 @@ formatting verbose JSON transcripts into readable timestamped output.
  - Interactive speaker review to rename/merge speakers after diarization
 
 ## Dependencies
- - Python 3.13+
+ - Python 3.10+
+
+ Compatibility:
+ - Core package supports Python 3.10 through 3.14 (tests run on 3.10–3.14).
+ - Speaker diarization extras require specific native wheels (torch==2.8.0) and pyannote packages that currently provide prebuilt wheels up to Python 3.13. Therefore, diarization is officially supported up to Python 3.13.
+ - If you run on Python 3.14 and need diarization, you may need to build torch from source or use a compatible wheel; this is not recommended for general users.
+
  - **ffmpeg** (required for video/audio processing via moviepy)
  - moviepy (audio/video helpers)
  - openai (Whisper API client)
@@ -43,10 +49,12 @@ formatting verbose JSON transcripts into readable timestamped output.
  - **Requirements:**
    - Hugging Face token (set `HF_TOKEN` environment variable or use `--hf-token` flag)
    - **Accept pyannote model terms**: Before using diarization, you must accept the terms for the following models on Hugging Face:
-     - [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) (main model)
-     - [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0) (dependency)
-     - Visit each model page while logged into Hugging Face and accept the terms
-     - Without accepting terms, you'll get authentication errors when attempting diarization
+      - [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) ⭐ **Required** - main diarization model
+      - [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0) ⭐ **Required** - speaker segmentation
+      - [pyannote/speaker-diarization-community-1](https://huggingface.co/pyannote/speaker-diarization-community-1) ⭐ **Required** - community model
+      - [pyannote/wespeaker-voxceleb-resnet34-LM](https://huggingface.co/pyannote/wespeaker-voxceleb-resnet34-LM) - speaker embedding (auto-downloaded)
+      - **How to accept terms**: Visit each ⭐ marked model page while logged into Hugging Face and click "Accept" on the terms
+      - Without accepting terms, you'll get authentication errors when attempting diarization
    - Minimum audio duration: ~10 seconds (shorter files may fail)
  - **GPU Support (Optional):**
    - Can leverage CUDA GPUs for faster processing (10-100x speedup)
@@ -137,7 +145,7 @@ cat audio.mp3 | docker run -i -e OPENAI_API_KEY="$OPENAI_API_KEY" jlcodesource/v
 **Docker Image Tags:**
 - `latest` - Latest stable release (base, transcription-only)
 - `diarization` - Latest release with diarization support
-- `v0.3.0b3` - Specific version tags
+- `0.3.0b3` - Specific version tags
 - `0.3` - Minor version tags (e.g., 0.3.x latest)
 - `0` - Major version tags
 

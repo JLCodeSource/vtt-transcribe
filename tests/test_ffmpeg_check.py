@@ -26,6 +26,7 @@ def test_check_ffmpeg_installed_when_missing() -> None:
         assert exc_info.value.code == 1
 
 
+@pytest.mark.diarization
 def test_speaker_diarizer_checks_ffmpeg() -> None:
     """Test that ffmpeg check is done at CLI startup, not in SpeakerDiarizer."""
     # Mock torch and pyannote imports to avoid dependency
