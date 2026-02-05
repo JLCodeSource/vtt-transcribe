@@ -8,8 +8,11 @@ import pytest
 
 from vtt_transcribe.handlers import DIARIZATION_DEPS_ERROR_MSG
 
-# Suppress torchcodec warning
-pytestmark = pytest.mark.filterwarnings("ignore::UserWarning:pyannote.audio.core.io")
+# Suppress torchcodec warning and mark all tests as requiring diarization dependencies
+pytestmark = [
+    pytest.mark.filterwarnings("ignore::UserWarning:pyannote.audio.core.io"),
+    pytest.mark.diarization,
+]
 
 
 class TestDiarizationImportHandling:

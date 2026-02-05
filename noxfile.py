@@ -23,13 +23,14 @@ def tests_core(session: nox.Session) -> None:
     """Run core tests only for Python 3.14 (without diarization).
 
     Python 3.14 does not have prebuilt torch wheels yet, so we test only
-    the core functionality without diarization extras.
+    the core functionality without diarization extras. Tests marked with
+    @pytest.mark.diarization are skipped.
     """
     session.install("pip>=23.0")
     # Install package with development extras only (no diarization)
     session.install(".[dev]")
-    # Run tests
-    session.run("pytest", "-q")
+    # Run tests, skipping those that require diarization dependencies
+    session.run("pytest", "-q", "-m", "not diarization")
 
 
 @nox.session(python=["3.10"])
