@@ -110,12 +110,16 @@ Docker images are available on Docker Hub and GitHub Container Registry in two v
 # Pull from Docker Hub (base image)
 docker pull jlcodesource/vtt-transcribe:latest
 
-# Pull diarization image
+# Pull diarization image (CPU-only, ~2.5 GB)
 docker pull jlcodesource/vtt-transcribe:diarization
+
+# Pull diarization GPU image (CUDA 12.8, ~8 GB, amd64 only)
+docker pull jlcodesource/vtt-transcribe:diarization-gpu
 
 # OR: Pull from GitHub Container Registry
 docker pull ghcr.io/jlcodesource/vtt-transcribe:latest
 docker pull ghcr.io/jlcodesource/vtt-transcribe:diarization
+docker pull ghcr.io/jlcodesource/vtt-transcribe:diarization-gpu
 
 # Use stdin mode to pipe audio/video data (recommended for Docker)
 # Supports video formats (MP4, AVI, WebM) and audio formats (MP3, WAV, OGG)
@@ -128,8 +132,8 @@ cat input.mp4 | docker run -i -e OPENAI_API_KEY="your-key" jlcodesource/vtt-tran
 # Note: Interactive review (--no-review-speakers) automatically disabled in stdin mode
 cat input.mp4 | docker run -i -e OPENAI_API_KEY="your-key" -e HF_TOKEN="your-hf-token" jlcodesource/vtt-transcribe:diarization --diarize
 
-# GPU support for diarization (requires nvidia-docker)
-cat input.mp4 | docker run -i --gpus all -e OPENAI_API_KEY="your-key" -e HF_TOKEN="your-hf-token" jlcodesource/vtt-transcribe:diarization --diarize --device cuda
+# GPU support for diarization (requires nvidia-docker + :diarization-gpu image)
+cat input.mp4 | docker run -i --gpus all -e OPENAI_API_KEY="your-key" -e HF_TOKEN="your-hf-token" jlcodesource/vtt-transcribe:diarization-gpu --diarize --device cuda
 ```
 
 **Docker Stdin Mode Limitations:**
@@ -140,8 +144,9 @@ cat input.mp4 | docker run -i --gpus all -e OPENAI_API_KEY="your-key" -e HF_TOKE
 
 **Docker Image Tags:**
 - `latest` - Latest stable release (base, transcription-only)
-- `diarization` - Latest release with diarization support
-- `0.3.0b3` - Specific version tags (PEP 440 format)
+- `diarization` - Latest release with diarization support (CPU-only, multi-arch)
+- `diarization-gpu` - Latest release with diarization + CUDA GPU support (amd64 only)
+- `0.3.0b4` - Specific version tags (PEP 440 format)
 
 For more Docker usage patterns and troubleshooting, see [Docker Registry Documentation](docs/DOCKER_REGISTRY.md).
 

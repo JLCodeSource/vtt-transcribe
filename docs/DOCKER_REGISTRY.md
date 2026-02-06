@@ -4,19 +4,26 @@ This document describes the GitHub secrets required for publishing Docker images
 
 ## Image Strategy
 
-This project publishes two Docker images:
+This project publishes three Docker images:
 
 1. **Base Image** (`latest`) - Lightweight, transcription-only
    - Fast build (~27s)
    - Small size (~500MB)
    - Suitable for basic transcription workflows
-   - Built on every release
+   - Multi-arch: amd64, arm64
 
-2. **Diarization Image** (`diarization`) - Full feature set
-   - Includes PyTorch and pyannote.audio
-   - Larger size (~3-5GB)
-   - Supports speaker identification
-   - Built only on releases (not on PRs, to save build time)
+2. **Diarization Image** (`diarization`) - Speaker diarization (CPU)
+   - Includes PyTorch (CPU-only) and pyannote.audio
+   - Larger size (~2.5GB)
+   - Supports speaker identification on CPU
+   - Multi-arch: amd64, arm64
+
+3. **Diarization GPU Image** (`diarization-gpu`) - Speaker diarization (CUDA)
+   - Includes PyTorch with CUDA 12.8 and pyannote.audio
+   - Large size (~8GB)
+   - 10-100x faster diarization with NVIDIA GPU
+   - amd64 only (CUDA runtime requirement)
+   - Requires `--gpus all` at runtime
 
 ## Required Secrets
 
@@ -94,21 +101,29 @@ Once configured, images will be available at:
 - Docker Hub: `docker pull jlcodesource/vtt-transcribe:latest`
 - GHCR: `docker pull ghcr.io/jlcodesource/vtt-transcribe:latest`
 
-**Diarization Image (full feature set):**
+**Diarization Image (CPU, multi-arch):**
 - Docker Hub: `docker pull jlcodesource/vtt-transcribe:diarization`
 - GHCR: `docker pull ghcr.io/jlcodesource/vtt-transcribe:diarization`
 
+**Diarization GPU Image (CUDA, amd64 only):**
+- Docker Hub: `docker pull jlcodesource/vtt-transcribe:diarization-gpu`
+- GHCR: `docker pull ghcr.io/jlcodesource/vtt-transcribe:diarization-gpu`
+
 ### Image Tags
 
-Both registries publish the following tags:
+All registries publish the following tags:
 
 **Base Image:**
 - `latest` - Latest stable release
-- `0.3.0b3` - Specific version (PEP 440 format)
+- `0.3.0b4` - Specific version (PEP 440 format)
 
-**Diarization Image:**
+**Diarization Image (CPU):**
 - `diarization` - Latest stable release
-- `0.3.0b3-diarization` - Specific version (PEP 440 format)
+- `0.3.0b4-diarization` - Specific version (PEP 440 format)
+
+**Diarization GPU Image (CUDA):**
+- `diarization-gpu` - Latest stable release
+- `0.3.0b4-diarization-gpu` - Specific version (PEP 440 format)
 
 > **Note:** This project uses [PEP 440](https://peps.python.org/pep-0440/) versioning (e.g., `0.3.0b3` for beta releases). Major and minor version tags (e.g., `0.3`, `0`) are not provided to maintain compatibility with Python packaging standards.
 
