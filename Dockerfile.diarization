@@ -24,10 +24,17 @@ COPY pyproject.toml README.md ./
 RUN uv venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
+# Install PyTorch first in its own layer (~2.5GB)
+# This keeps individual layers under Docker Hub's per-blob size limit
+RUN uv pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+
+# Install remaining diarization dependencies in a separate layer
+RUN uv pip install pyannote.audio
+
 # Copy source code
 COPY vtt_transcribe ./vtt_transcribe
 
-# Install package with diarization dependencies (cached unless pyproject.toml or source changes)
+# Install the package itself (uses already-installed torch + pyannote)
 RUN uv pip install ".[diarization]"
 
 # Runtime stage: Minimal image with only runtime dependencies
@@ -44,8 +51,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Create non-root user
 RUN useradd -m -u "$USER_UID" vttuser
 
-# Copy virtual environment from builder (includes installed package)
-COPY --from=builder /opt/venv /opt/venv
+# Copy virtual environment from builder in separate layers to keep each
+# layer under Docker Hub's per-blob size limit (~4GB total split across layers)
+COPY --from=builder /opt/venv/lib /opt/venv/lib
+COPY --from=builder /opt/venv/bin /opt/venv/bin
+COPY --from=builder /opt/venv/include /opt/venv/include
+COPY --from=builder /opt/venv/pyvenv.cfg /opt/venv/pyvenv.cfg
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Set working directory for user files
