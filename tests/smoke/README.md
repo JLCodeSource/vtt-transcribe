@@ -100,5 +100,14 @@ Tests require:
 **For stdin.bats Docker tests only:**
 - Docker image `vtt:latest` - build with `docker build -t vtt:latest .`
 - Docker image `vtt:diarization` - build with `docker build -f Dockerfile.diarization -t vtt:diarization .`
+- Docker image `vtt:diarization-gpu` (GPU tests, requires NVIDIA GPU + nvidia-docker) - build with `docker build -f Dockerfile.diarization-gpu -t vtt:diarization-gpu .`
 
 Tests will skip gracefully if requirements are not met.
+
+## Docker Image Variants
+
+| Tag | Dockerfile | Arch | Size | Use Case |
+|-----|-----------|------|------|----------|
+| `latest` | `Dockerfile` | amd64, arm64 | ~500 MB | Transcription only |
+| `diarization` | `Dockerfile.diarization` | amd64, arm64 | ~2.5 GB | Speaker diarization (CPU) |
+| `diarization-gpu` | `Dockerfile.diarization-gpu` | amd64 | ~8 GB | Speaker diarization (CUDA GPU, 10-100x faster) |

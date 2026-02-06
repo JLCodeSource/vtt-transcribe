@@ -1,0 +1,82 @@
+# Multi-stage Dockerfile for vtt-transcribe WITH DIARIZATION + GPU (CUDA)
+# Uses NVIDIA CUDA base image for GPU-accelerated speaker diarization
+# Requires: nvidia-docker runtime and --gpus flag at run time
+
+# Build stage: Install dependencies and build
+FROM nvidia/cuda:12.8.1-runtime-ubuntu24.04 AS builder
+
+WORKDIR /app
+
+# Install Python 3.12 (default for Ubuntu 24.04) and system dependencies required for building
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-venv \
+    python3-dev \
+    python3-pip \
+    ffmpeg \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv for fast dependency installation
+RUN pip install --no-cache-dir --break-system-packages uv
+
+# Copy only dependency files first (for better layer caching)
+COPY pyproject.toml README.md ./
+
+# Create virtual environment with Python 3.12
+RUN uv venv --python python3 /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install PyTorch + torchaudio with CUDA support in their own layer
+# Uses the CUDA 12.8 index for GPU-enabled builds
+RUN uv pip install torch==2.8.0 torchaudio --index-url https://download.pytorch.org/whl/cu128
+
+# Install remaining diarization dependencies in a separate layer
+RUN uv pip install pyannote.audio
+
+# Copy source code
+COPY vtt_transcribe ./vtt_transcribe
+
+# Install the package itself (uses already-installed torch + pyannote)
+RUN uv pip install ".[diarization]"
+
+# Runtime stage: CUDA runtime image with only runtime dependencies
+FROM nvidia/cuda:12.8.1-runtime-ubuntu24.04
+
+# Configurable UID for non-root user (default 1000 for typical Linux desktops)
+ARG USER_UID=1000
+
+# Install Python runtime and system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-venv \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN useradd -m -u "$USER_UID" vttuser
+
+# Copy virtual environment from builder in separate layers to keep each
+# layer under Docker Hub's per-blob size limit
+COPY --from=builder /opt/venv/lib /opt/venv/lib
+COPY --from=builder /opt/venv/bin /opt/venv/bin
+COPY --from=builder /opt/venv/include /opt/venv/include
+COPY --from=builder /opt/venv/pyvenv.cfg /opt/venv/pyvenv.cfg
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Set working directory for user files
+WORKDIR /workspace
+
+# Switch to non-root user
+USER vttuser
+
+# Ensure Python output is unbuffered
+ENV PYTHONUNBUFFERED=1
+
+# Default to auto device detection (will use CUDA when --gpus is passed)
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# Set entrypoint (no CMD - let stdin detection or user args determine behavior)
+ENTRYPOINT ["vtt"]
