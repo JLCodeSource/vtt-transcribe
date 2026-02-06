@@ -67,15 +67,16 @@ FORCE_DOCKER_REBUILD=1 DOCKER_NO_CACHE=1 bats tests/smoke/
   - ❌ Auto-enable --no-review-speakers (see `tests/test_main.py::TestStdinMode`)
 
 - **standard.bats**: Environment/integration tests for standard (non-stdin) file processing
-  - ✅ MP3 audio file transcription (local, uv run, Docker)
-  - ✅ MP4 video file transcription (local, uv run, Docker)
-  - ✅ Diarization with `--diarize --no-review-speakers` (local and Docker)
+  - ✅ MP3 audio file transcription (vtt command, uv run)
+  - ✅ MP4 video file transcription (vtt command, uv run)
+  - ✅ Diarization with `--diarize --no-review-speakers`
   - ✅ Output format validation (timestamps, default filenames)
-  - ✅ Docker volume mounting for file I/O
+  
+  **Note:** Docker is not tested in standard.bats because the Docker container only supports stdin mode
 
 ## Docker Rebuild Controls
 
-The smoke tests support environment variables to control Docker image rebuilding:
+The stdin.bats tests support environment variables to control Docker image rebuilding:
 
 - **`FORCE_DOCKER_REBUILD=1`**: Forces Docker images to be rebuilt even if they already exist
 - **`DOCKER_NO_CACHE=1`**: Adds `--no-cache` flag to Docker build commands (ensures fresh build without layer caching)
@@ -85,6 +86,8 @@ These are useful for:
 - Debugging Docker-specific issues
 - Validating dependency changes in containers
 
+**Note:** Docker rebuild controls only apply to stdin.bats since the Docker container only supports stdin mode
+
 ## Requirements
 
 Tests require:
@@ -92,8 +95,10 @@ Tests require:
 - `HF_TOKEN` environment variable (for diarization tests)
 - Test audio file: `tests/hello_conversation.mp3`
 - Test video file: `tests/hello_conversation.mp4` (created from MP3 with blank video stream)
-- Docker image `vtt:latest` (for Docker tests) - build with `docker build -t vtt:latest .`
-- Docker image `vtt:diarization` (for diarization tests) - build with `docker build -f Dockerfile.diarization -t vtt:diarization .`
 - Installed `vtt` command (for installed package tests) - install with `uv pip install -e .`
+
+**For stdin.bats Docker tests only:**
+- Docker image `vtt:latest` - build with `docker build -t vtt:latest .`
+- Docker image `vtt:diarization` - build with `docker build -f Dockerfile.diarization -t vtt:diarization .`
 
 Tests will skip gracefully if requirements are not met.

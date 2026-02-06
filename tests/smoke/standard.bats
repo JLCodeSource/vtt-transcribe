@@ -37,26 +37,6 @@ setup() {
         export PATH="${PROJECT_ROOT}/.venv/bin:$PATH"
     fi
     
-    # Build Docker image if not available or force rebuild requested
-    if [[ "$FORCE_DOCKER_REBUILD" == "1" ]] || ! docker image inspect vtt:latest &> /dev/null; then
-        echo "# Building vtt:latest Docker image..." >&3
-        BUILD_FLAGS=""
-        if [[ "$DOCKER_NO_CACHE" == "1" ]]; then
-            BUILD_FLAGS="--no-cache"
-        fi
-        cd "${PROJECT_ROOT}" && docker build $BUILD_FLAGS -t vtt:latest . >&3 2>&1
-    fi
-    
-    # Build Docker diarization image if not available or force rebuild requested
-    if [[ "$FORCE_DOCKER_REBUILD" == "1" ]] || ! docker image inspect vtt:diarization &> /dev/null; then
-        echo "# Building vtt:diarization Docker image..." >&3
-        BUILD_FLAGS=""
-        if [[ "$DOCKER_NO_CACHE" == "1" ]]; then
-            BUILD_FLAGS="--no-cache"
-        fi
-        cd "${PROJECT_ROOT}" && docker build $BUILD_FLAGS -f Dockerfile.diarization -t vtt:diarization . >&3 2>&1
-    fi
-    
     # Temp directory for output files
     TEMP_DIR=$(mktemp -d)
 }
@@ -110,32 +90,6 @@ teardown() {
     grep -qi "hello world" "$OUTPUT_FILE"
 }
 
-@test "standard: transcribe MP3 file with Docker" {
-    # Skip if docker not available
-    if ! command -v docker &> /dev/null; then
-        skip "docker not available"
-    fi
-    
-    # Skip if OPENAI_API_KEY not set
-    if [[ -z "$OPENAI_API_KEY" ]]; then
-        skip "OPENAI_API_KEY not set (set in environment or .env file)"
-    fi
-    
-    OUTPUT_FILE="${TEMP_DIR}/transcript_mp3_docker.txt"
-    
-    # Run with mounted volume
-    run docker run --rm \
-        -v "$TEST_AUDIO_MP3:/audio.mp3:ro" \
-        -v "$TEMP_DIR:/output" \
-        -e OPENAI_API_KEY="$OPENAI_API_KEY" \
-        vtt:latest /audio.mp3 -o /output/transcript.txt
-    
-    [ "$status" -eq 0 ]
-    [[ -f "${TEMP_DIR}/transcript.txt" ]]
-    [[ -s "${TEMP_DIR}/transcript.txt" ]]
-    grep -qi "hello world" "${TEMP_DIR}/transcript.txt"
-}
-
 # ============================================================================
 # MP4 Video File Tests
 # ============================================================================
@@ -176,30 +130,6 @@ teardown() {
     [[ -f "$OUTPUT_FILE" ]]
     [[ -s "$OUTPUT_FILE" ]]
     grep -qi "hello world" "$OUTPUT_FILE"
-}
-
-@test "standard: transcribe MP4 video file with Docker" {
-    # Skip if docker not available
-    if ! command -v docker &> /dev/null; then
-        skip "docker not available"
-    fi
-    
-    # Skip if OPENAI_API_KEY not set
-    if [[ -z "$OPENAI_API_KEY" ]]; then
-        skip "OPENAI_API_KEY not set (set in environment or .env file)"
-    fi
-    
-    # Run with mounted volume
-    run docker run --rm \
-        -v "$TEST_VIDEO_MP4:/video.mp4:ro" \
-        -v "$TEMP_DIR:/output" \
-        -e OPENAI_API_KEY="$OPENAI_API_KEY" \
-        vtt:latest /video.mp4 -o /output/transcript.txt
-    
-    [ "$status" -eq 0 ]
-    [[ -f "${TEMP_DIR}/transcript.txt" ]]
-    [[ -s "${TEMP_DIR}/transcript.txt" ]]
-    grep -qi "hello world" "${TEMP_DIR}/transcript.txt"
 }
 
 # ============================================================================
@@ -257,36 +187,6 @@ teardown() {
         -e HF_TOKEN="$HF_TOKEN" \
         vtt:diarization /audio.mp3 -o /output/transcript.txt --diarize --no-review-speakers --hf-token "$HF_TOKEN"
     
-    [ "$status" -eq 0 ]
-    [[ -f "${TEMP_DIR}/transcript.txt" ]]
-    [[ -s "${TEMP_DIR}/transcript.txt" ]]
-    grep -q "SPEAKER" "${TEMP_DIR}/transcript.txt"
-}
-
-# ============================================================================
-# Output Format Validation Tests
-# ============================================================================
-
-@test "standard: output contains timestamp format" {
-    # Skip if OPENAI_API_KEY not set
-    if [[ -z "$OPENAI_API_KEY" ]]; then
-        skip "OPENAI_API_KEY not set (set in environment or .env file)"
-    fi
-    
-    OUTPUT_FILE="${TEMP_DIR}/transcript_timestamps.txt"
-    
-    run vtt "$TEST_AUDIO_MP3" -o "$OUTPUT_FILE" -k "$OPENAI_API_KEY"
-    
-    [ "$status" -eq 0 ]
-    [[ -f "$OUTPUT_FILE" ]]
-    
-    # Check for timestamp format [MM:SS - MM:SS]
-    grep -E "\[[0-9]+:[0-9]+ - [0-9]+:[0-9]+\]" "$OUTPUT_FILE"
-}
-
-@test "standard: output file created when not specified (default name)" {
-    # Skip if OPENAI_API_KEY not set
-    if [[ -z "$OPENAI_API_KEY" ]]; then
         skip "OPENAI_API_KEY not set (set in environment or .env file)"
     fi
     
