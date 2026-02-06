@@ -1,0 +1,302 @@
+#!/usr/bin/env bats
+# Smoke tests for standard (non-stdin) functionality
+
+setup() {
+    # Determine project root relative to test directory
+    PROJECT_ROOT="${BATS_TEST_DIRNAME}/../.."
+    
+    # Load environment variables from .env if it exists and variables aren't already set
+    if [[ -f "${PROJECT_ROOT}/.env" ]]; then
+        set -a  # automatically export all variables
+        source "${PROJECT_ROOT}/.env"
+        set +a
+    fi
+    
+    # Test file paths
+    TEST_AUDIO_MP3="${BATS_TEST_DIRNAME}/../hello_conversation.mp3"
+    TEST_VIDEO_MP4="${BATS_TEST_DIRNAME}/../hello_conversation.mp4"
+    
+    # Skip if test files don't exist
+    if [[ ! -f "$TEST_AUDIO_MP3" ]]; then
+        skip "Test audio file not found: $TEST_AUDIO_MP3"
+    fi
+    
+    if [[ ! -f "$TEST_VIDEO_MP4" ]]; then
+        skip "Test video file not found: $TEST_VIDEO_MP4"
+    fi
+    
+    # Ensure venv is activated or vtt is available
+    if [[ -f "${PROJECT_ROOT}/.venv/bin/vtt" ]]; then
+        export PATH="${PROJECT_ROOT}/.venv/bin:$PATH"
+    fi
+    
+    # Install vtt if not available (for package tests)
+    if ! command -v vtt &> /dev/null; then
+        echo "# Installing vtt package..." >&3
+        cd "${PROJECT_ROOT}" && uv pip install -e . >&3 2>&1
+        export PATH="${PROJECT_ROOT}/.venv/bin:$PATH"
+    fi
+    
+    # Build Docker image if not available or force rebuild requested
+    if [[ "$FORCE_DOCKER_REBUILD" == "1" ]] || ! docker image inspect vtt:latest &> /dev/null; then
+        echo "# Building vtt:latest Docker image..." >&3
+        BUILD_FLAGS=""
+        if [[ "$DOCKER_NO_CACHE" == "1" ]]; then
+            BUILD_FLAGS="--no-cache"
+        fi
+        cd "${PROJECT_ROOT}" && docker build $BUILD_FLAGS -t vtt:latest . >&3 2>&1
+    fi
+    
+    # Build Docker diarization image if not available or force rebuild requested
+    if [[ "$FORCE_DOCKER_REBUILD" == "1" ]] || ! docker image inspect vtt:diarization &> /dev/null; then
+        echo "# Building vtt:diarization Docker image..." >&3
+        BUILD_FLAGS=""
+        if [[ "$DOCKER_NO_CACHE" == "1" ]]; then
+            BUILD_FLAGS="--no-cache"
+        fi
+        cd "${PROJECT_ROOT}" && docker build $BUILD_FLAGS -f Dockerfile.diarization -t vtt:diarization . >&3 2>&1
+    fi
+    
+    # Temp directory for output files
+    TEMP_DIR=$(mktemp -d)
+}
+
+teardown() {
+    # Cleanup temp directory if it exists
+    if [[ -n "$TEMP_DIR" ]] && [[ -d "$TEMP_DIR" ]]; then
+        rm -rf "$TEMP_DIR"
+    fi
+}
+
+# ============================================================================
+# MP3 Audio File Tests
+# ============================================================================
+
+@test "standard: transcribe MP3 file with vtt command" {
+    # Skip if OPENAI_API_KEY not set
+    if [[ -z "$OPENAI_API_KEY" ]]; then
+        skip "OPENAI_API_KEY not set (set in environment or .env file)"
+    fi
+    
+    OUTPUT_FILE="${TEMP_DIR}/transcript_mp3.txt"
+    
+    run vtt "$TEST_AUDIO_MP3" -o "$OUTPUT_FILE" -k "$OPENAI_API_KEY"
+    
+    # Debug output on failure
+    if [ "$status" -ne 0 ]; then
+        echo "Exit status: $status"
+        echo "Output: $output"
+    fi
+    
+    [ "$status" -eq 0 ]
+    [[ -f "$OUTPUT_FILE" ]]
+    [[ -s "$OUTPUT_FILE" ]]  # File is not empty
+    grep -qi "hello world" "$OUTPUT_FILE"
+}
+
+@test "standard: transcribe MP3 file with uv run" {
+    # Skip if OPENAI_API_KEY not set
+    if [[ -z "$OPENAI_API_KEY" ]]; then
+        skip "OPENAI_API_KEY not set (set in environment or .env file)"
+    fi
+    
+    OUTPUT_FILE="${TEMP_DIR}/transcript_mp3_uv.txt"
+    
+    run bash -c "cd '$PROJECT_ROOT' && uv run vtt_transcribe/main.py '$TEST_AUDIO_MP3' -o '$OUTPUT_FILE' -k '$OPENAI_API_KEY'"
+    
+    [ "$status" -eq 0 ]
+    [[ -f "$OUTPUT_FILE" ]]
+    [[ -s "$OUTPUT_FILE" ]]
+    grep -qi "hello world" "$OUTPUT_FILE"
+}
+
+@test "standard: transcribe MP3 file with Docker" {
+    # Skip if docker not available
+    if ! command -v docker &> /dev/null; then
+        skip "docker not available"
+    fi
+    
+    # Skip if OPENAI_API_KEY not set
+    if [[ -z "$OPENAI_API_KEY" ]]; then
+        skip "OPENAI_API_KEY not set (set in environment or .env file)"
+    fi
+    
+    OUTPUT_FILE="${TEMP_DIR}/transcript_mp3_docker.txt"
+    
+    # Run with mounted volume
+    run docker run --rm \
+        -v "$TEST_AUDIO_MP3:/audio.mp3:ro" \
+        -v "$TEMP_DIR:/output" \
+        -e OPENAI_API_KEY="$OPENAI_API_KEY" \
+        vtt:latest /audio.mp3 -o /output/transcript.txt
+    
+    [ "$status" -eq 0 ]
+    [[ -f "${TEMP_DIR}/transcript.txt" ]]
+    [[ -s "${TEMP_DIR}/transcript.txt" ]]
+    grep -qi "hello world" "${TEMP_DIR}/transcript.txt"
+}
+
+# ============================================================================
+# MP4 Video File Tests
+# ============================================================================
+
+@test "standard: transcribe MP4 video file with vtt command" {
+    # Skip if OPENAI_API_KEY not set
+    if [[ -z "$OPENAI_API_KEY" ]]; then
+        skip "OPENAI_API_KEY not set (set in environment or .env file)"
+    fi
+    
+    OUTPUT_FILE="${TEMP_DIR}/transcript_mp4.txt"
+    
+    run vtt "$TEST_VIDEO_MP4" -o "$OUTPUT_FILE" -k "$OPENAI_API_KEY"
+    
+    # Debug output on failure
+    if [ "$status" -ne 0 ]; then
+        echo "Exit status: $status"
+        echo "Output: $output"
+    fi
+    
+    [ "$status" -eq 0 ]
+    [[ -f "$OUTPUT_FILE" ]]
+    [[ -s "$OUTPUT_FILE" ]]
+    grep -qi "hello world" "$OUTPUT_FILE"
+}
+
+@test "standard: transcribe MP4 video file with uv run" {
+    # Skip if OPENAI_API_KEY not set
+    if [[ -z "$OPENAI_API_KEY" ]]; then
+        skip "OPENAI_API_KEY not set (set in environment or .env file)"
+    fi
+    
+    OUTPUT_FILE="${TEMP_DIR}/transcript_mp4_uv.txt"
+    
+    run bash -c "cd '$PROJECT_ROOT' && uv run vtt_transcribe/main.py '$TEST_VIDEO_MP4' -o '$OUTPUT_FILE' -k '$OPENAI_API_KEY'"
+    
+    [ "$status" -eq 0 ]
+    [[ -f "$OUTPUT_FILE" ]]
+    [[ -s "$OUTPUT_FILE" ]]
+    grep -qi "hello world" "$OUTPUT_FILE"
+}
+
+@test "standard: transcribe MP4 video file with Docker" {
+    # Skip if docker not available
+    if ! command -v docker &> /dev/null; then
+        skip "docker not available"
+    fi
+    
+    # Skip if OPENAI_API_KEY not set
+    if [[ -z "$OPENAI_API_KEY" ]]; then
+        skip "OPENAI_API_KEY not set (set in environment or .env file)"
+    fi
+    
+    # Run with mounted volume
+    run docker run --rm \
+        -v "$TEST_VIDEO_MP4:/video.mp4:ro" \
+        -v "$TEMP_DIR:/output" \
+        -e OPENAI_API_KEY="$OPENAI_API_KEY" \
+        vtt:latest /video.mp4 -o /output/transcript.txt
+    
+    [ "$status" -eq 0 ]
+    [[ -f "${TEMP_DIR}/transcript.txt" ]]
+    [[ -s "${TEMP_DIR}/transcript.txt" ]]
+    grep -qi "hello world" "${TEMP_DIR}/transcript.txt"
+}
+
+# ============================================================================
+# Diarization Tests
+# ============================================================================
+
+@test "standard: transcribe MP4 with diarization (no review)" {
+    # Skip if OPENAI_API_KEY not set
+    if [[ -z "$OPENAI_API_KEY" ]]; then
+        skip "OPENAI_API_KEY not set (set in environment or .env file)"
+    fi
+    
+    # Skip if HF_TOKEN not set (needed for diarization)
+    if [[ -z "$HF_TOKEN" ]]; then
+        skip "HF_TOKEN not set (set in environment or .env file)"
+    fi
+    
+    OUTPUT_FILE="${TEMP_DIR}/transcript_diarized.txt"
+    
+    run vtt "$TEST_VIDEO_MP4" -o "$OUTPUT_FILE" -k "$OPENAI_API_KEY" --diarize --no-review-speakers --hf-token "$HF_TOKEN"
+    
+    # Debug output on failure
+    if [ "$status" -ne 0 ]; then
+        echo "Exit status: $status"
+        echo "Output: $output"
+    fi
+    
+    [ "$status" -eq 0 ]
+    [[ -f "$OUTPUT_FILE" ]]
+    [[ -s "$OUTPUT_FILE" ]]
+    grep -q "SPEAKER" "$OUTPUT_FILE"  # Should contain speaker labels
+}
+
+@test "standard: transcribe MP3 with diarization using Docker" {
+    # Skip if docker not available
+    if ! command -v docker &> /dev/null; then
+        skip "docker not available"
+    fi
+    
+    # Skip if OPENAI_API_KEY not set
+    if [[ -z "$OPENAI_API_KEY" ]]; then
+        skip "OPENAI_API_KEY not set (set in environment or .env file)"
+    fi
+    
+    # Skip if HF_TOKEN not set
+    if [[ -z "$HF_TOKEN" ]]; then
+        skip "HF_TOKEN not set (set in environment or .env file)"
+    fi
+    
+    # Run with mounted volume
+    run docker run --rm \
+        -v "$TEST_AUDIO_MP3:/audio.mp3:ro" \
+        -v "$TEMP_DIR:/output" \
+        -e OPENAI_API_KEY="$OPENAI_API_KEY" \
+        -e HF_TOKEN="$HF_TOKEN" \
+        vtt:diarization /audio.mp3 -o /output/transcript.txt --diarize --no-review-speakers --hf-token "$HF_TOKEN"
+    
+    [ "$status" -eq 0 ]
+    [[ -f "${TEMP_DIR}/transcript.txt" ]]
+    [[ -s "${TEMP_DIR}/transcript.txt" ]]
+    grep -q "SPEAKER" "${TEMP_DIR}/transcript.txt"
+}
+
+# ============================================================================
+# Output Format Validation Tests
+# ============================================================================
+
+@test "standard: output contains timestamp format" {
+    # Skip if OPENAI_API_KEY not set
+    if [[ -z "$OPENAI_API_KEY" ]]; then
+        skip "OPENAI_API_KEY not set (set in environment or .env file)"
+    fi
+    
+    OUTPUT_FILE="${TEMP_DIR}/transcript_timestamps.txt"
+    
+    run vtt "$TEST_AUDIO_MP3" -o "$OUTPUT_FILE" -k "$OPENAI_API_KEY"
+    
+    [ "$status" -eq 0 ]
+    [[ -f "$OUTPUT_FILE" ]]
+    
+    # Check for timestamp format [MM:SS - MM:SS]
+    grep -E "\[[0-9]+:[0-9]+ - [0-9]+:[0-9]+\]" "$OUTPUT_FILE"
+}
+
+@test "standard: output file created when not specified (default name)" {
+    # Skip if OPENAI_API_KEY not set
+    if [[ -z "$OPENAI_API_KEY" ]]; then
+        skip "OPENAI_API_KEY not set (set in environment or .env file)"
+    fi
+    
+    # Copy test file to temp directory to avoid polluting repo
+    cp "$TEST_AUDIO_MP3" "$TEMP_DIR/test.mp3"
+    
+    # Run without -o flag (should create test_transcript.txt)
+    run bash -c "cd '$TEMP_DIR' && vtt test.mp3 -k '$OPENAI_API_KEY'"
+    
+    [ "$status" -eq 0 ]
+    [[ -f "${TEMP_DIR}/test_transcript.txt" ]]
+    [[ -s "${TEMP_DIR}/test_transcript.txt" ]]
+}

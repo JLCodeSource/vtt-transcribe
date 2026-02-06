@@ -9,6 +9,7 @@
 - [ ] Pre-commit hooks passing
 - [ ] Code coverage ≥ 95%
 - [ ] Test coverage 100% on all vtt_transcribe files (99% is acceptable if only `if __name__ == "__main__"` guard is uncovered)
+- [ ] Smoke tests passing: `bats tests/smoke/*.bats`
 
 ### Documentation
 - [ ] README.md updated with correct version
