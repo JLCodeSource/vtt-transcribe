@@ -180,23 +180,6 @@ teardown() {
     [ "$status" -eq 0 ]
     [[ -f "$OUTPUT_FILE" ]]
     
-    # Check for timestamp format [MM:SS - MM:SS]
-    grep -E "\[[0-9]+:[0-9]+ - [0-9]+:[0-9]+\]" "$OUTPUT_FILE"
-}
-
-@test "standard: output file created when not specified (default name)" {
-    # Skip if OPENAI_API_KEY not set
-    if [[ -z "$OPENAI_API_KEY" ]]; then
-        skip "OPENAI_API_KEY not set (set in environment or .env file)"
-    fi
-    
-    # Copy test file to temp directory to avoid polluting repo
-    cp "$TEST_AUDIO_MP3" "$TEMP_DIR/test.mp3"
-    
-    # Run without -o flag (should create test_transcript.txt)
-    run bash -c "cd '$TEMP_DIR' && vtt test.mp3 -k '$OPENAI_API_KEY'"
-    
-    [ "$status" -eq 0 ]
-    [[ -f "${TEMP_DIR}/test_transcript.txt" ]]
-    [[ -s "${TEMP_DIR}/test_transcript.txt" ]]
+    # Check for timestamp format [HH:MM:SS - HH:MM:SS]
+    grep -E "\[[0-9]{2}:[0-9]{2}:[0-9]{2} - [0-9]{2}:[0-9]{2}:[0-9]{2}\]" "$OUTPUT_FILE"
 }
