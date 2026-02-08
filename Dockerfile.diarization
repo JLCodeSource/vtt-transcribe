@@ -24,13 +24,8 @@ COPY pyproject.toml README.md ./
 RUN uv venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install PyTorch CPU stack from the CPU index so all .so files share the same ABI
-# torchcodec MUST come from this same index — PyPI torchcodec is built against
-# CUDA torch and will crash with "undefined symbol" against CPU-only libtorch
-RUN uv pip install torch==2.8.0 torchaudio torchcodec --index-url https://download.pytorch.org/whl/cpu
-
-# Install remaining diarization dependencies in a separate layer
-# (pyannote.audio will see torchcodec already installed and skip pulling it from PyPI)
+# Install PyTorch stack and diarization dependencies from standard PyPI
+RUN uv pip install torch==2.8.0 torchaudio
 RUN uv pip install pyannote.audio
 
 # Copy source code

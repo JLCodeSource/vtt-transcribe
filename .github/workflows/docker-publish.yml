@@ -144,12 +144,19 @@ jobs:
             type=raw,value=${{ steps.version.outputs.version }}-diarization
             type=raw,value=diarization
       
+      - name: Free disk space for diarization build
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
+          sudo docker image prune -af || true
+          df -h /
+
       - name: Build and push diarization Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile.diarization
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: ${{ !inputs.dry_run || github.event_name == 'release' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
