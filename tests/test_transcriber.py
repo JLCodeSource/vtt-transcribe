@@ -177,7 +177,7 @@ class TestTranscriptFileExtensionHandling:
 
         # Then file is saved with .txt extension automatically added
         assert Path(tmp_path, "mytranscript.txt").exists()
-        assert Path(tmp_path, "mytranscript.txt").read_text() == transcript
+        assert Path(tmp_path, "mytranscript.txt").read_text() == transcript + "\n"
 
     def test_save_transcript_with_different_extension(self, tmp_path: Path) -> None:
         """Should replace custom extension with .txt."""
@@ -191,7 +191,7 @@ class TestTranscriptFileExtensionHandling:
 
         # Then extension is replaced with .txt
         assert Path(tmp_path, "mytranscript.txt").exists()
-        assert Path(tmp_path, "mytranscript.txt").read_text() == transcript
+        assert Path(tmp_path, "mytranscript.txt").read_text() == transcript + "\n"
         # Original .text file should not exist
         assert not output_path.exists()
 
@@ -207,7 +207,7 @@ class TestTranscriptFileExtensionHandling:
 
         # Then file is saved with .txt extension added
         assert Path(tmp_path, "output_file.txt").exists()
-        assert Path(tmp_path, "output_file.txt").read_text() == transcript
+        assert Path(tmp_path, "output_file.txt").read_text() == transcript + "\n"
 
 
 class TestExtractAudio:
@@ -817,7 +817,7 @@ class TestSaveTranscript:
 
         # Then file is created with correct content
         assert output_path.exists()
-        assert output_path.read_text() == transcript
+        assert output_path.read_text() == transcript + "\n"
 
     def test_save_transcript_creates_directory(self, tmp_path: Path) -> None:
         """Should work with nested paths."""
@@ -831,7 +831,7 @@ class TestSaveTranscript:
             save_transcript(output_path, transcript)
 
         # Then file is created in nested directory with correct content
-        assert output_path.read_text() == transcript
+        assert output_path.read_text() == transcript + "\n"
 
 
 class TestDisplayResult:
@@ -1197,4 +1197,4 @@ class TestEdgeCases:
             save_transcript(output_path, transcript)
 
         # Then verify expected behavior
-        assert output_path.read_text() == transcript
+        assert output_path.read_text() == transcript + "\n"
