@@ -28,7 +28,7 @@ class TestSaveTranscript:
 
         expected_path = tmp_path / "transcript.txt"
         assert expected_path.exists()
-        assert expected_path.read_text() == transcript
+        assert expected_path.read_text() == transcript + "\n"
 
     def test_save_transcript_preserves_txt_extension(self, tmp_path: Path) -> None:
         """Test that save_transcript preserves .txt extension."""
@@ -38,7 +38,28 @@ class TestSaveTranscript:
         save_transcript(output_path, transcript)
 
         assert output_path.exists()
-        assert output_path.read_text() == transcript
+        assert output_path.read_text() == transcript + "\n"
+
+    def test_save_transcript_ensures_trailing_newline(self, tmp_path: Path) -> None:
+        """Test that save_transcript ensures file ends with a newline."""
+        output_path = tmp_path / "transcript.txt"
+        transcript = "[00:00 - 00:05] Hello world\n[00:05 - 00:10] Goodbye"
+
+        save_transcript(output_path, transcript)
+
+        content = output_path.read_text()
+        assert content.endswith("\n"), "Saved transcript must end with a newline"
+
+    def test_save_transcript_no_double_newline(self, tmp_path: Path) -> None:
+        """Test that save_transcript doesn't double a trailing newline."""
+        output_path = tmp_path / "transcript.txt"
+        transcript = "Already has newline\n"
+
+        save_transcript(output_path, transcript)
+
+        content = output_path.read_text()
+        assert content == "Already has newline\n"
+        assert not content.endswith("\n\n")
 
 
 class TestDisplayResult:

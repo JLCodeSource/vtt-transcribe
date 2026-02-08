@@ -20,10 +20,12 @@ DIARIZATION_DEPS_ERROR_MSG = (
 
 
 def save_transcript(output_path: Path, transcript: str) -> None:
-    """Save transcript to a file, ensuring .txt extension."""
+    """Save transcript to a file, ensuring .txt extension and trailing newline."""
     # Ensure output path has .txt extension
     if output_path.suffix.lower() != ".txt":
         output_path = output_path.with_suffix(TRANSCRIPT_EXTENSION)
+    if not transcript.endswith("\n"):
+        transcript += "\n"
     output_path.write_text(transcript)
     print(f"\nTranscript saved to: {output_path}")
 
