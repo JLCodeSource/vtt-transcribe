@@ -1,80 +1,43 @@
-# Multi-stage Dockerfile for vtt-transcribe WITH DIARIZATION
-# Optimized for size and security with non-root user
-# This build includes torch, pyannote.audio, and diarization capabilities
+# Dockerfile for vtt-transcribe WITH DIARIZATION
+# Each RUN pip install is its own Docker layer — no multi-stage needed
 
-# Build stage: Install dependencies and build
-FROM python:3.13-slim AS builder
+FROM python:3.13-slim
 
 WORKDIR /app
+ARG USER_UID=1000
 
-# Install system dependencies required for building and PyTorch
+# System dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     gcc \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv for fast dependency installation
+# Install uv
 RUN pip install --no-cache-dir uv
 
-# Copy only dependency files first (for better layer caching)
-COPY pyproject.toml README.md ./
-
-# Create virtual environment
+# Create venv
 RUN uv venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install PyTorch stack and diarization dependencies from standard PyPI
+# Layer 1: PyTorch (~2GB)
 RUN uv pip install torch==2.8.0 torchaudio
+
+# Layer 2: pyannote + deps (~1.5GB)
 RUN uv pip install pyannote.audio
 
-# Copy source code
+# Layer 3: vtt-transcribe
+COPY pyproject.toml README.md ./
 COPY vtt_transcribe ./vtt_transcribe
-
-# Install the package itself (uses already-installed torch + pyannote)
 RUN uv pip install ".[diarization]"
 
-# Prepare split site-packages for layer-splitting in runtime stage
-# Move torch into its own directory so it becomes a separate Docker layer
-RUN mkdir -p /opt/site-packages-torch /opt/site-packages-rest \
-    && mv /opt/venv/lib/python3.13/site-packages/torch \
-       /opt/venv/lib/python3.13/site-packages/torch-*.dist-info \
-       /opt/site-packages-torch/ \
-    && cp -a /opt/venv/lib/python3.13/site-packages/* /opt/site-packages-rest/ 2>/dev/null || true
+# Clean up build deps
+RUN apt-get purge -y gcc g++ && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
-# Runtime stage: Minimal image with only runtime dependencies
-FROM python:3.13-slim
-
-# Configurable UID for non-root user (default 1000 for typical Linux desktops)
-ARG USER_UID=1000
-
-# Install only runtime system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create non-root user
+# Non-root user
 RUN useradd -m -u "$USER_UID" vttuser
-
-# Copy virtual environment split across layers to keep each under ~2GB
-# Layer 1: PyTorch (~2GB)
-COPY --from=builder /opt/site-packages-torch/ /opt/venv/lib/python3.13/site-packages/
-# Layer 2: Everything else (pyannote, torchaudio, torchcodec, etc.)
-COPY --from=builder /opt/site-packages-rest/ /opt/venv/lib/python3.13/site-packages/
-# Layer 3: venv bin, include, config
-COPY --from=builder /opt/venv/bin /opt/venv/bin
-COPY --from=builder /opt/venv/include /opt/venv/include
-COPY --from=builder /opt/venv/pyvenv.cfg /opt/venv/pyvenv.cfg
-ENV PATH="/opt/venv/bin:$PATH"
-
-# Set working directory for user files
 WORKDIR /workspace
-
-# Switch to non-root user
 USER vttuser
 
-# Ensure Python output is unbuffered
 ENV PYTHONUNBUFFERED=1
-
-# Set entrypoint (no CMD - let stdin detection or user args determine behavior)
 ENTRYPOINT ["vtt"]
