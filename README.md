@@ -69,18 +69,6 @@ formatting verbose JSON transcripts into readable timestamped output.
 
 
 
-## Quick Start
-
-### Option 1: Using devcontainer (Recommended)
-1. Open project in VS Code
-2. Install "Dev Containers" extension
-3. Click "Reopen in Container" when prompted (or use Command Palette: "Dev Containers: Reopen in Container")
-4. The devcontainer includes ffmpeg, GPU support, and all dependencies pre-configured
-
-### Option 2: Manual setup
-
-1. Ensure ffmpeg is installed on your system (see Prerequisites above)
-
 ## Installation
 
 ### From PyPI (Recommended)
@@ -103,18 +91,22 @@ uv pip install vtt-transcribe[diarization]
 
 Docker images are available on Docker Hub and GitHub Container Registry in three variants:
 
-- **Base image** (`latest`): Fast, lightweight, transcription-only (~27s build)
-- **Diarization image** (`diarization`): Speaker diarization with PyTorch (CPU-only)
-- **Diarization GPU image** (`diarization-gpu`): GPU-accelerated speaker diarization with CUDA 12.8
+| Image | Tag | Size | Arch | Description |
+|-------|-----|------|------|-------------|
+| **Base** | `latest` | ~150 MB | amd64, arm64 | Transcription only, lightweight |
+| **Diarization** | `diarization` | ~700 MB | amd64 only | Speaker diarization, PyTorch CPU, torchcodec 0.7 |
+| **Diarization GPU** | `diarization-gpu` | ~6.5 GB | amd64 only | GPU-accelerated diarization, CUDA 12.8 |
+
+> **Compatibility note:** Diarization images pin `torch==2.8.0` with `torchcodec==0.7.0` per the [torchcodec compatibility table](https://github.com/pytorch/torchcodec#installing-torchcodec). The CPU image uses the PyTorch CPU index to keep the image small (~700 MB vs ~4 GB with bundled CUDA).
 
 ```bash
 # Pull from Docker Hub (base image)
 docker pull jlcodesource/vtt-transcribe:latest
 
-# Pull diarization image (CPU-only, ~2.5 GB)
+# Pull diarization image (CPU-only, amd64 only, ~700 MB)
 docker pull jlcodesource/vtt-transcribe:diarization
 
-# Pull diarization GPU image (CUDA 12.8, ~8 GB, amd64 only)
+# Pull diarization GPU image (CUDA 12.8, amd64 only, ~6.5 GB)
 docker pull jlcodesource/vtt-transcribe:diarization-gpu
 
 # OR: Pull from GitHub Container Registry
@@ -138,20 +130,34 @@ cat input.mp4 | docker run -i --gpus all -e OPENAI_API_KEY="your-key" -e HF_TOKE
 ```
 
 **Docker Stdin Mode Limitations:**
-- Volume mounting (`-v`) is not supported - use stdin/stdout instead
+- Volume mounting (`-v`) is not supported — use stdin/stdout instead
 - Interactive speaker review (`--review-speakers`) is unavailable in stdin mode (auto-disabled)
 - For diarization workflows, speaker labels will be generic (SPEAKER_00, SPEAKER_01, etc.)
 - Cannot use `-s/--save-transcript`, `-o/--output-audio`, `--apply-diarization`, or `--scan-chunks` flags
 
 **Docker Image Tags:**
-- `latest` - Latest stable release (base, transcription-only)
-- `diarization` - Latest release with diarization support (CPU-only, multi-arch)
-- `diarization-gpu` - Latest release with diarization + CUDA GPU support (amd64 only)
-- `0.3.0b4` - Specific version tags (PEP 440 format)
+- `latest` — Latest stable release (base, transcription-only)
+- `diarization` — Latest release with diarization support (CPU-only, amd64 only)
+- `diarization-gpu` — Latest release with diarization + CUDA GPU support (amd64 only)
+- `0.3.0b4` — Specific version tags (PEP 440 format)
 
 For more Docker usage patterns and troubleshooting, see [Docker Registry Documentation](docs/DOCKER_REGISTRY.md).
 
-### From Source
+## Upgrading from 0.2.0
+
+**Important:** Version 0.3.0 introduces optional dependencies for speaker diarization. If you are upgrading from 0.2.0 and want to use diarization features, you need to explicitly install the `[diarization]` extra. See the [CHANGELOG](docs/CHANGELOG.md) for detailed upgrade instructions.
+
+## Development Quick Start
+
+This section is for contributors and developers who want to build and run the project from source.
+
+### Option 1: Using devcontainer (Recommended)
+1. Open project in VS Code
+2. Install "Dev Containers" extension
+3. Click "Reopen in Container" when prompted (or use Command Palette: "Dev Containers: Reopen in Container")
+4. The devcontainer includes ffmpeg, GPU support, and all dependencies pre-configured
+
+### Option 2: Manual setup
 
 1. Ensure ffmpeg is installed on your system (see Prerequisites above)
 
@@ -165,9 +171,13 @@ make install
 make install-diarization
 ```
 
-## Upgrading from 0.2.0
+3. Set up environment variables (see [Setup Environment Variables](#setup-environment-variables) below)
 
-**Important:** Version 0.3.0 introduces optional dependencies for speaker diarization. If you are upgrading from 0.2.0 and want to use diarization features, you need to explicitly install the `[diarization]` extra. See the [CHANGELOG](docs/CHANGELOG.md) for detailed upgrade instructions.
+4. Run tests to verify your setup:
+
+```bash
+make test
+```
 
 ## Setup Environment Variables
 

@@ -3,6 +3,10 @@ name: Docker CD - Publish Images
 on:
   release:
     types: [published]
+  push:
+    branches: [main]
+    paths:
+      - 'docs/DOCKER_HUB.md'
   workflow_dispatch:
     inputs:
       version:
@@ -19,8 +23,27 @@ env:
   REGISTRY_IMAGE: jlcodesource/vtt-transcribe
 
 jobs:
+  update-dockerhub-description:
+    name: Update Docker Hub Description
+    runs-on: ubuntu-latest
+    # Run on release, push to main (docs/DOCKER_HUB.md changes), or manual dispatch
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Update Docker Hub description
+        continue-on-error: true
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ env.REGISTRY_IMAGE }}
+          short-description: ${{ github.event.repository.description }}
+          readme-filepath: ./docs/DOCKER_HUB.md
+
   publish-base:
     name: Publish Base Image
+    if: ${{ github.event_name != 'push' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -82,19 +105,9 @@ jobs:
           cache-from: type=gha,scope=base
           cache-to: type=gha,mode=max,scope=base
       
-      - name: Update Docker Hub description
-        if: ${{ github.event_name == 'release' }}
-        continue-on-error: true  # Don't fail release if description update fails
-        uses: peter-evans/dockerhub-description@v4
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: ${{ env.REGISTRY_IMAGE }}
-          short-description: ${{ github.event.repository.description }}
-          readme-filepath: ./README.md
-
   publish-diarization:
     name: Publish Diarization Image
+    if: ${{ github.event_name != 'push' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -165,6 +178,7 @@ jobs:
 
   publish-diarization-gpu:
     name: Publish Diarization GPU Image
+    if: ${{ github.event_name != 'push' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
