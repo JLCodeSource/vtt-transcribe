@@ -8,22 +8,25 @@ This project publishes three Docker images:
 
 1. **Base Image** (`latest`) - Lightweight, transcription-only
    - Fast build (~27s)
-   - Small size (~500MB)
+   - Small size (~150 MB)
    - Suitable for basic transcription workflows
    - Multi-arch: amd64, arm64
 
 2. **Diarization Image** (`diarization`) - Speaker diarization (CPU)
-   - Includes PyTorch (CPU-only) and pyannote.audio
-   - Larger size (~2.5GB)
+   - Includes PyTorch CPU (`torch==2.8.0` from CPU index) and pyannote.audio
+   - `torchcodec==0.7.0` pinned for torch 2.8 compatibility
+   - Image size: ~700 MB (uses CPU-only PyTorch index to avoid 4 GB CUDA bundle)
    - Supports speaker identification on CPU
-   - Multi-arch: amd64, arm64
+   - **amd64 only** (no arm64 torchcodec CPU wheel available)
 
 3. **Diarization GPU Image** (`diarization-gpu`) - Speaker diarization (CUDA)
-   - Includes PyTorch with CUDA 12.8 and pyannote.audio
-   - Large size (~8GB)
+   - Includes PyTorch with CUDA 12.8 (`torch==2.8.0+cu128`) and pyannote.audio
+   - `torchcodec==0.7.0` pinned for torch 2.8 compatibility
+   - Image size: ~6.5 GB (multi-stage build with split layers)
    - 10-100x faster diarization with NVIDIA GPU
-   - amd64 only (CUDA runtime requirement)
+   - **amd64 only** (CUDA runtime requirement)
    - Requires `--gpus all` at runtime
+   - Base: `nvidia/cuda:12.8.1-runtime-ubuntu24.04` (Python 3.12)
 
 ## Required Secrets
 
@@ -101,7 +104,7 @@ Once configured, images will be available at:
 - Docker Hub: `docker pull jlcodesource/vtt-transcribe:latest`
 - GHCR: `docker pull ghcr.io/jlcodesource/vtt-transcribe:latest`
 
-**Diarization Image (CPU, multi-arch):**
+**Diarization Image (CPU, amd64 only):**
 - Docker Hub: `docker pull jlcodesource/vtt-transcribe:diarization`
 - GHCR: `docker pull ghcr.io/jlcodesource/vtt-transcribe:diarization`
 
