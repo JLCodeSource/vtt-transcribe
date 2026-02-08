@@ -34,6 +34,14 @@ COPY vtt_transcribe ./vtt_transcribe
 # Install the package itself (uses already-installed torch + pyannote)
 RUN uv pip install ".[diarization]"
 
+# Prepare split site-packages for layer-splitting in runtime stage
+# Move torch into its own directory so it becomes a separate Docker layer
+RUN mkdir -p /opt/site-packages-torch /opt/site-packages-rest \
+    && mv /opt/venv/lib/python3.13/site-packages/torch \
+       /opt/venv/lib/python3.13/site-packages/torch-*.dist-info \
+       /opt/site-packages-torch/ \
+    && cp -a /opt/venv/lib/python3.13/site-packages/* /opt/site-packages-rest/ 2>/dev/null || true
+
 # Runtime stage: Minimal image with only runtime dependencies
 FROM python:3.13-slim
 
@@ -48,9 +56,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Create non-root user
 RUN useradd -m -u "$USER_UID" vttuser
 
-# Copy virtual environment from builder in separate layers to keep each
-# layer under Docker Hub's per-blob size limit (~4GB total split across layers)
-COPY --from=builder /opt/venv/lib /opt/venv/lib
+# Copy virtual environment split across layers to keep each under ~2GB
+# Layer 1: PyTorch (~2GB)
+COPY --from=builder /opt/site-packages-torch/ /opt/venv/lib/python3.13/site-packages/
+# Layer 2: Everything else (pyannote, torchaudio, torchcodec, etc.)
+COPY --from=builder /opt/site-packages-rest/ /opt/venv/lib/python3.13/site-packages/
+# Layer 3: venv bin, include, config
 COPY --from=builder /opt/venv/bin /opt/venv/bin
 COPY --from=builder /opt/venv/include /opt/venv/include
 COPY --from=builder /opt/venv/pyvenv.cfg /opt/venv/pyvenv.cfg
