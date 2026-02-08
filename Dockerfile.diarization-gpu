@@ -30,8 +30,8 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # Install PyTorch + torchaudio + torchcodec with CUDA support in their own layer
 # ALL THREE must come from the same CUDA index to ensure matching C++ ABI.
-# torchcodec is required by pyannote.audio for AudioDecoder
-RUN uv pip install torch==2.8.0 torchaudio torchcodec --index-url https://download.pytorch.org/whl/cu128
+# torchcodec 0.7 matches torch 2.8 per compatibility table
+RUN uv pip install torch==2.8.0 torchaudio torchcodec==0.7.0 --index-url https://download.pytorch.org/whl/cu128
 
 # Install remaining diarization dependencies in a separate layer
 RUN uv pip install pyannote.audio

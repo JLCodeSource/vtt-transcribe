@@ -1,29 +1,26 @@
-# Dockerfile for vtt-transcribe WITH DIARIZATION
-# Each RUN pip install is its own Docker layer — no multi-stage needed
+# Dockerfile for vtt-transcribe WITH DIARIZATION (CPU)
+# Single stage — each pip install is its own layer
 
 FROM python:3.13-slim
 
 WORKDIR /app
 ARG USER_UID=1000
 
-# System dependencies
+# System deps (ffmpeg for audio, gcc/g++ for building native extensions)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg \
-    gcc \
-    g++ \
+    ffmpeg gcc g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv
 RUN pip install --no-cache-dir uv
-
-# Create venv
 RUN uv venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Layer 1: PyTorch (~2GB)
-RUN uv pip install torch==2.8.0 torchaudio
+# Layer 1: PyTorch CPU (~800MB) — must use CPU index to avoid 4GB CUDA bundle
+# torchcodec 0.7 matches torch 2.8 per compatibility table
+RUN uv pip install torch==2.8.0 torchaudio torchcodec==0.7.0 \
+    --index-url https://download.pytorch.org/whl/cpu
 
-# Layer 2: pyannote + deps (~1.5GB)
+# Layer 2: pyannote.audio (~1GB)
 RUN uv pip install pyannote.audio
 
 # Layer 3: vtt-transcribe
@@ -31,7 +28,7 @@ COPY pyproject.toml README.md ./
 COPY vtt_transcribe ./vtt_transcribe
 RUN uv pip install ".[diarization]"
 
-# Clean up build deps
+# Remove build tools
 RUN apt-get purge -y gcc g++ && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
 # Non-root user
