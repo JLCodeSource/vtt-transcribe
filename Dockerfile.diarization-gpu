@@ -28,9 +28,10 @@ COPY pyproject.toml README.md ./
 RUN uv venv --python python3 /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install PyTorch + torchaudio with CUDA support in their own layer
-# Uses the CUDA 12.8 index for GPU-enabled builds
-RUN uv pip install torch==2.8.0 torchaudio --index-url https://download.pytorch.org/whl/cu128
+# Install PyTorch + torchaudio + torchcodec with CUDA support in their own layer
+# ALL THREE must come from the same CUDA index to ensure matching C++ ABI.
+# torchcodec is required by pyannote.audio for AudioDecoder
+RUN uv pip install torch==2.8.0 torchaudio torchcodec --index-url https://download.pytorch.org/whl/cu128
 
 # Install remaining diarization dependencies in a separate layer
 RUN uv pip install pyannote.audio
@@ -40,6 +41,12 @@ COPY vtt_transcribe ./vtt_transcribe
 
 # Install the package itself (uses already-installed torch + pyannote)
 RUN uv pip install ".[diarization]"
+
+# Prepare a copy of site-packages without the large dirs (for split COPY layers)
+RUN cp -a /opt/venv/lib/python3.12/site-packages /opt/venv/site-packages-rest \
+    && rm -rf /opt/venv/site-packages-rest/nvidia \
+              /opt/venv/site-packages-rest/torch \
+              /opt/venv/site-packages-rest/torchaudio
 
 # Runtime stage: CUDA runtime image with only runtime dependencies
 FROM nvidia/cuda:12.8.1-runtime-ubuntu24.04
@@ -54,12 +61,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
-RUN useradd -m -u "$USER_UID" vttuser
+# Create non-root user (NVIDIA base image may already have UID 1000)
+RUN useradd -m -u "$USER_UID" vttuser 2>/dev/null \
+    || useradd -m vttuser
 
 # Copy virtual environment from builder in separate layers to keep each
-# layer under Docker Hub's per-blob size limit
-COPY --from=builder /opt/venv/lib /opt/venv/lib
+# layer under Docker Hub's per-blob size limit (~4GB compressed limit)
+# CUDA torch + NVIDIA libs total ~8GB; split into targeted subdirectories
+#
+# Layer 1: NVIDIA CUDA libraries (cuDNN, cuFFT, cuBLAS, etc.) ~2.5GB
+COPY --from=builder /opt/venv/lib/python3.12/site-packages/nvidia /opt/venv/lib/python3.12/site-packages/nvidia
+# Layer 2: PyTorch core ~1.5GB
+COPY --from=builder /opt/venv/lib/python3.12/site-packages/torch /opt/venv/lib/python3.12/site-packages/torch
+# Layer 3: torchaudio
+COPY --from=builder /opt/venv/lib/python3.12/site-packages/torchaudio /opt/venv/lib/python3.12/site-packages/torchaudio
+# Layer 4: All remaining packages (pyannote, speechbrain, vtt-transcribe, etc.)
+# Uses the pre-stripped site-packages-rest from the builder stage
+COPY --from=builder /opt/venv/site-packages-rest /opt/venv/lib/python3.12/site-packages
+# Layer 5: bin, include, config
 COPY --from=builder /opt/venv/bin /opt/venv/bin
 COPY --from=builder /opt/venv/include /opt/venv/include
 COPY --from=builder /opt/venv/pyvenv.cfg /opt/venv/pyvenv.cfg
