@@ -104,12 +104,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Free disk space for large PyTorch build
-        run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
-            /usr/local/share/boost /usr/local/.ghcup /opt/hostedtoolcache
-          sudo apt-get clean
-      
       - name: Set version from input or tag
         id: version
         run: |
@@ -155,7 +149,7 @@ jobs:
         with:
           context: .
           file: ./Dockerfile.diarization
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: ${{ !inputs.dry_run || github.event_name == 'release' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
