@@ -33,10 +33,10 @@ jobs:
 
       - name: Update Docker Hub description
         continue-on-error: true
-        uses: peter-evans/dockerhub-description@v4
+        uses: peter-evans/dockerhub-description@v5
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}  # PAT needs read/write/delete scope
           repository: ${{ env.REGISTRY_IMAGE }}
           short-description: ${{ github.event.repository.description }}
           readme-filepath: ./docs/DOCKER_HUB.md
