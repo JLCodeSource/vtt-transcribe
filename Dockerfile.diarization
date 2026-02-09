@@ -21,7 +21,8 @@ RUN uv pip install torch==2.8.0 torchaudio torchcodec==0.7.0 \
     --index-url https://download.pytorch.org/whl/cpu
 
 # Layer 2: pyannote.audio (~1GB)
-RUN uv pip install pyannote.audio
+# Pin to 3.x — 4.x switches to torchcodec-based IO incompatible with torch 2.8
+RUN uv pip install "pyannote.audio>=3.1.0,<4.0.0"
 
 # Layer 3: vtt-transcribe
 COPY pyproject.toml README.md ./

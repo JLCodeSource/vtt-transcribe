@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-02-09
+
+### Fixed
+- **Critical: pyannote.audio 4.x compatibility** — Pin `pyannote.audio>=3.1.0,<4.0.0` to prevent
+  installation of pyannote.audio 4.x which switched from torchaudio to torchcodec for audio I/O.
+  pyannote 4.x pulls in `torchcodec>=0.10` which requires `torch>=2.10`, causing ABI mismatch with
+  our pinned `torch==2.8.0` and runtime `NameError: name 'AudioDecoder' is not defined`
+- **Explicit torchcodec pin** — Add `torchcodec==0.7.0` to `[diarization]` extra to prevent pip
+  from resolving incompatible torchcodec versions via transitive dependencies
+- **Dockerfile pins** — Pin `pyannote.audio<4.0.0` in both `Dockerfile.diarization` and
+  `Dockerfile.diarization-gpu` to match pyproject.toml constraints
+
+### Added
+- Dependency constraint tests validating pyannote.audio and torchcodec version pins
+
 ## [0.3.0] - 2026-02-09
 
 ### Added

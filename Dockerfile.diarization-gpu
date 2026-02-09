@@ -34,7 +34,8 @@ ENV PATH="/opt/venv/bin:$PATH"
 RUN uv pip install torch==2.8.0 torchaudio torchcodec==0.7.0 --index-url https://download.pytorch.org/whl/cu128
 
 # Install remaining diarization dependencies in a separate layer
-RUN uv pip install pyannote.audio
+# Pin to 3.x — 4.x switches to torchcodec-based IO incompatible with torch 2.8
+RUN uv pip install "pyannote.audio>=3.1.0,<4.0.0"
 
 # Copy source code
 COPY vtt_transcribe ./vtt_transcribe

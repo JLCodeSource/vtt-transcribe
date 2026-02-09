@@ -1,6 +1,6 @@
 [project]
 name = "vtt-transcribe"
-version = "0.3.0"
+version = "0.3.1"
 description = "Transcribe video and audio files to text using OpenAI Whisper with optional speaker diarization"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -41,8 +41,9 @@ Changelog = "https://github.com/JLCodeSource/vtt-transcribe/blob/main/docs/CHANG
 
 [project.optional-dependencies]
 diarization = [
-    "pyannote.audio>=3.1.0",
+    "pyannote.audio>=3.1.0,<4.0.0",  # 4.x requires torchcodec 0.10+/torch 2.10+ (ABI incompatible)
     "torch==2.8.0",  # Pinned due to torch 2.10+ breaking change in weights_only
+    "torchcodec==0.7.0",  # Must match torch 2.8 per torchcodec compatibility table
 ]
 dev = [
     "pytest>=7.4.0",
