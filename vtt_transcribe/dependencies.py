@@ -6,6 +6,7 @@ are installed before executing transcription workflows.
 
 import shutil
 import sys
+from importlib.util import find_spec
 
 
 def check_ffmpeg_installed() -> None:
@@ -31,13 +32,23 @@ def check_ffmpeg_installed() -> None:
 def check_diarization_dependencies() -> None:
     """Check if diarization dependencies (torch, pyannote) are installed.
 
+    Uses importlib to check package availability without triggering heavy
+    native library loading (torchcodec C++ extensions can crash on systems
+    without proper FFmpeg/codec libraries).
+
     Exits with installation instructions if dependencies are not found.
     """
-    try:
-        import pyannote.audio  # noqa: F401
-        import torch  # noqa: F401
-    except ImportError:
+    missing = []
+    for pkg in ("pyannote.audio", "torch", "torchaudio"):
+        try:
+            if find_spec(pkg) is None:
+                missing.append(pkg)
+        except (ModuleNotFoundError, ValueError):
+            missing.append(pkg)
+
+    if missing:
         print("\nError: Diarization dependencies not installed.", file=sys.stderr)
+        print(f"  Missing: {', '.join(missing)}", file=sys.stderr)
         print(
             "Install with: pip install vtt-transcribe[diarization] or: uv pip install vtt-transcribe[diarization]\n",
             file=sys.stderr,

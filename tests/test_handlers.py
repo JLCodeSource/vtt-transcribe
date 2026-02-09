@@ -86,6 +86,7 @@ class TestHandleDiarizeOnlyMode:
         with pytest.raises(FileNotFoundError, match="Audio file not found"):
             handle_diarize_only_mode(Path("/nonexistent/file.mp3"), "hf_token", None)
 
+    @pytest.mark.diarization
     def test_handle_diarize_only_mode_with_save(self, tmp_path: Path) -> None:
         """Test handle_diarize_only_mode with save_path."""
         audio_file = tmp_path / "test.mp3"
@@ -335,6 +336,7 @@ class TestHandleStandardTranscription:
             mock_diarizer.apply_speakers_to_transcript.assert_called_once()
 
 
+@pytest.mark.diarization
 class TestNoReviewSpeakersFlag:
     """Test --no-review-speakers flag behavior in main()."""
 

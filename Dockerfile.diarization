@@ -16,14 +16,18 @@ RUN uv venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Layer 1: PyTorch CPU (~800MB) — must use CPU index to avoid 4GB CUDA bundle
-# torchcodec 0.7 matches torch 2.8 per compatibility table
-RUN uv pip install torch==2.8.0 torchaudio torchcodec==0.7.0 \
+# torchaudio required by pyannote.audio 4.x for resampling
+RUN uv pip install torch==2.8.0 torchaudio \
     --index-url https://download.pytorch.org/whl/cpu
 
-# Layer 2: pyannote.audio (~1GB)
-RUN uv pip install pyannote.audio
+# Layer 2: torchcodec (audio decoding for pyannote.audio 4.x)
+# Pin <0.10 for torch 2.8.0 ABI compatibility
+RUN uv pip install "torchcodec>=0.6.0,<0.8"
 
-# Layer 3: vtt-transcribe
+# Layer 3: pyannote.audio (~1GB)
+RUN uv pip install "pyannote.audio>=4.0.0"
+
+# Layer 4: vtt-transcribe
 COPY pyproject.toml README.md ./
 COPY vtt_transcribe ./vtt_transcribe
 RUN uv pip install ".[diarization]"

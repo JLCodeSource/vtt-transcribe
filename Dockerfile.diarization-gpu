@@ -28,13 +28,17 @@ COPY pyproject.toml README.md ./
 RUN uv venv --python python3 /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install PyTorch + torchaudio + torchcodec with CUDA support in their own layer
-# ALL THREE must come from the same CUDA index to ensure matching C++ ABI.
-# torchcodec 0.7 matches torch 2.8 per compatibility table
-RUN uv pip install torch==2.8.0 torchaudio torchcodec==0.7.0 --index-url https://download.pytorch.org/whl/cu128
+# Install PyTorch + torchaudio with CUDA support in their own layer
+# BOTH must come from the same CUDA index to ensure matching C++ ABI.
+# torchaudio required by pyannote.audio 4.x for resampling
+RUN uv pip install torch==2.8.0 torchaudio --index-url https://download.pytorch.org/whl/cu128
+
+# Install torchcodec (audio decoding for pyannote.audio 4.x)
+# Pin <0.10 for torch 2.8.0 ABI compatibility
+RUN uv pip install "torchcodec>=0.6.0,<0.8"
 
 # Install remaining diarization dependencies in a separate layer
-RUN uv pip install pyannote.audio
+RUN uv pip install "pyannote.audio>=4.0.0"
 
 # Copy source code
 COPY vtt_transcribe ./vtt_transcribe
@@ -46,7 +50,8 @@ RUN uv pip install ".[diarization]"
 RUN cp -a /opt/venv/lib/python3.12/site-packages /opt/venv/site-packages-rest \
     && rm -rf /opt/venv/site-packages-rest/nvidia \
               /opt/venv/site-packages-rest/torch \
-              /opt/venv/site-packages-rest/torchaudio
+              /opt/venv/site-packages-rest/torchaudio \
+              /opt/venv/site-packages-rest/torchcodec
 
 # Runtime stage: CUDA runtime image with only runtime dependencies
 FROM nvidia/cuda:12.8.1-runtime-ubuntu24.04
@@ -62,9 +67,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user (NVIDIA base image may already have UID 1000)
-RUN useradd -m -u "$USER_UID" vttuser 2>/dev/null \
-    || useradd -m vttuser
+# Create non-root user — NVIDIA base images ship 'ubuntu' at UID 1000,
+# so remove it first to guarantee our user gets the target UID.
+RUN existing_user=$(getent passwd "$USER_UID" | cut -d: -f1) \
+    && if [ -n "$existing_user" ]; then userdel -r "$existing_user"; fi \
+    ; useradd -m -u "$USER_UID" vttuser
 
 # Copy virtual environment from builder in separate layers to keep each
 # layer under Docker Hub's per-blob size limit (~4GB compressed limit)
@@ -74,8 +81,9 @@ RUN useradd -m -u "$USER_UID" vttuser 2>/dev/null \
 COPY --from=builder /opt/venv/lib/python3.12/site-packages/nvidia /opt/venv/lib/python3.12/site-packages/nvidia
 # Layer 2: PyTorch core ~1.5GB
 COPY --from=builder /opt/venv/lib/python3.12/site-packages/torch /opt/venv/lib/python3.12/site-packages/torch
-# Layer 3: torchaudio
+# Layer 3: torchaudio + torchcodec
 COPY --from=builder /opt/venv/lib/python3.12/site-packages/torchaudio /opt/venv/lib/python3.12/site-packages/torchaudio
+COPY --from=builder /opt/venv/lib/python3.12/site-packages/torchcodec /opt/venv/lib/python3.12/site-packages/torchcodec
 # Layer 4: All remaining packages (pyannote, speechbrain, vtt-transcribe, etc.)
 # Uses the pre-stripped site-packages-rest from the builder stage
 COPY --from=builder /opt/venv/site-packages-rest /opt/venv/lib/python3.12/site-packages

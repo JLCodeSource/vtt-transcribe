@@ -33,6 +33,7 @@ class TestDiarizationImportHandling:
 
         with (
             patch("vtt_transcribe.transcriber.VideoTranscriber") as mock_transcriber,
+            patch("vtt_transcribe.main.check_diarization_dependencies"),
             patch("vtt_transcribe.handlers._lazy_import_diarization", side_effect=mock_lazy_import),
             patch("sys.argv", ["vtt", str(audio_file), "--diarize"]),
             patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"}),
@@ -62,6 +63,7 @@ class TestDiarizationImportHandling:
             raise ImportError(DIARIZATION_DEPS_ERROR_MSG)
 
         with (
+            patch("vtt_transcribe.main.check_diarization_dependencies"),
             patch("vtt_transcribe.handlers._lazy_import_diarization", side_effect=mock_lazy_import),
             patch("sys.argv", ["vtt", str(audio_file), "--diarize-only"]),
             pytest.raises(SystemExit) as exc_info,
@@ -84,6 +86,7 @@ class TestDiarizationImportHandling:
             raise ImportError(DIARIZATION_DEPS_ERROR_MSG)
 
         with (
+            patch("vtt_transcribe.main.check_diarization_dependencies"),
             patch("vtt_transcribe.handlers._lazy_import_diarization", side_effect=mock_lazy_import),
             patch("sys.argv", ["vtt", str(audio_file), "--apply-diarization", str(transcript_file)]),
             pytest.raises(SystemExit) as exc_info,

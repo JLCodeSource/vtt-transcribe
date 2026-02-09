@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-02-09
+
+### Fixed
+- **Critical: pyannote.audio + torchcodec compatibility** — Upgrade to `pyannote.audio>=4.0.0`
+  with `torchcodec>=0.6.0,<0.8` pinned for `torch==2.8.0` ABI compatibility. pyannote 4.x
+  uses torchcodec for audio decoding and torchaudio for resampling. The `<0.8` cap on
+  torchcodec prevents pulling versions built for torch 2.9+ (0.8 requires torch 2.9, 0.9 requires torch nightly)
+- **Add torchaudio dependency** — Add `torchaudio>=2.2.0` to `[diarization]` extra; pyannote.audio
+  4.x requires torchaudio for audio resampling
+- **Dockerfile updates** — Add `torchcodec>=0.6.0,<0.8` to both diarization Dockerfiles;
+  update pyannote.audio constraint to `>=4.0.0`
+- **GPU Dockerfile UID conflict** — NVIDIA CUDA base images ship with `ubuntu` user at UID 1000;
+  now explicitly evicts conflicting user before creating `vttuser`
+- **GPU Docker build disk space** — Added disk cleanup step to free ~20GB of pre-installed
+  software (.NET, Android SDK, GHC, JVM) before building the GPU image in CI
+- **Improved error reporting** — `check_diarization_dependencies()` now uses `importlib.util.find_spec()`
+  instead of bare imports to avoid triggering heavy native library loading (torchcodec C++ extensions)
+- **Python 3.14 test isolation** — Added `@pytest.mark.diarization` to 12 tests that exercise
+  diarization code paths, so `tests_core` session correctly excludes them on Python 3.14
+
+### Added
+- Dependency constraint tests validating pyannote.audio, torchaudio, and torchcodec version requirements
+- `nox[pbs]` extra for automatic Python interpreter download in multi-version testing
+- `tests_core` added to default nox sessions for Python 3.14 testing
+- **First PyPI publication** — `pip install vtt-transcribe` now works
+
 ## [0.3.0] - 2026-02-09
 
 ### Added
