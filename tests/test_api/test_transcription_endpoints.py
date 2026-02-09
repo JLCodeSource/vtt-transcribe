@@ -326,28 +326,27 @@ class TestTranscriptionAsyncPaths:
             assert "error" in jobs[job_id]
             assert "Transcription failed" in jobs[job_id]["error"]
 
+    def test_transcription_complete_success_path(self) -> None:
+        """Test successful transcription completion (lines 168-169)."""
+        from vtt_transcribe.api.routes.transcription import _process_transcription, jobs
 
-def test_transcription_complete_success_path() -> None:
-    """Test successful transcription completion (lines 168-169)."""
-    from vtt_transcribe.api.routes.transcription import _process_transcription, jobs
+        # Create async mock UploadFile
+        mock_file = AsyncMock(spec=UploadFile)
+        mock_file.filename = "success.mp3"
+        mock_file.read = AsyncMock(return_value=b"test audio content")
 
-    # Create async mock UploadFile
-    mock_file = AsyncMock(spec=UploadFile)
-    mock_file.filename = "success.mp3"
-    mock_file.read = AsyncMock(return_value=b"test audio content")
+        job_id = "success-job"
+        jobs[job_id] = {"status": "pending", "job_id": job_id}
 
-    job_id = "success-job"
-    jobs[job_id] = {"status": "pending", "job_id": job_id}
+        # Mock VideoTranscriber to succeed
+        with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber") as mock_vt:
+            mock_instance = MagicMock()
+            mock_instance.transcribe.return_value = "[00:00 - 00:05] Test transcript"
+            mock_vt.return_value = mock_instance
 
-    # Mock VideoTranscriber to succeed
-    with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber") as mock_vt:
-        mock_instance = MagicMock()
-        mock_instance.transcribe.return_value = "[00:00 - 00:05] Test transcript"
-        mock_vt.return_value = mock_instance
+            # Run async function
+            asyncio.run(_process_transcription(job_id, mock_file, "test-api-key"))
 
-        # Run async function
-        asyncio.run(_process_transcription(job_id, mock_file, "test-api-key"))
-
-        # Verify lines 168-169 executed (status completed, result set)
-        assert jobs[job_id]["status"] == "completed"
-        assert jobs[job_id]["result"] == "[00:00 - 00:05] Test transcript"
+            # Verify lines 168-169 executed (status completed, result set)
+            assert jobs[job_id]["status"] == "completed"
+            assert jobs[job_id]["result"] == "[00:00 - 00:05] Test transcript"
