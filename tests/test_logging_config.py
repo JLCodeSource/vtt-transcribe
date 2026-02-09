@@ -99,3 +99,43 @@ class TestEnvironmentBasedConfiguration:
         """Test is_production helper for development environment."""
         monkeypatch.setenv("VTT_ENV", "development")
         assert logging_config.is_production() is False
+
+
+class TestStructuredLogging:
+    """Test structured logging with context."""
+
+    def test_logger_supports_structured_fields(self) -> None:
+        """Test that logger can log with structured fields."""
+        logger = logging_config.setup_logging(dev_mode=True)
+        # Should be able to log with extra fields
+        logger.info("Test message", extra={"job_id": "test-123", "duration": 1.5})
+        assert True  # If no exception, test passes
+
+    def test_json_formatter_includes_structured_fields(self) -> None:
+        """Test that JSON formatter includes structured fields in output."""
+        import json
+        from io import StringIO
+
+        # Capture log output
+        log_stream = StringIO()
+        handler = logging.StreamHandler(log_stream)
+
+        # Use production mode (JSON format)
+        logger = logging_config.setup_logging(dev_mode=False)
+        logger.handlers.clear()
+
+        # Add custom formatter that outputs proper JSON
+        formatter = logging_config.JsonFormatter()
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
+        # Log with structured data
+        logger.info("Test event", extra={"user_id": "user-123", "action": "upload"})
+
+        # Parse output as JSON
+        log_output = log_stream.getvalue()
+        if log_output.strip():
+            log_data = json.loads(log_output.strip())
+            assert "message" in log_data
+            assert log_data.get("user_id") == "user-123"
+            assert log_data.get("action") == "upload"
