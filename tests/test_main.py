@@ -814,3 +814,50 @@ class TestStdinTempFileCreation:
             finally:
                 if temp_path.exists():
                     temp_path.unlink()
+
+
+class TestTranslationWorkflow:
+    """Test translation integration with main workflow."""
+
+    def test_translate_flag_uses_translation_api(self, tmp_path: Path) -> None:
+        """Test that --translate flag triggers audio translation."""
+        audio_file = tmp_path / "test.mp3"
+        audio_file.write_bytes(b"fake audio content")
+
+        with (
+            patch("sys.argv", ["vtt", str(audio_file), "--translate", "-k", "test-key"]),
+            patch("vtt_transcribe.handlers.AudioTranslator") as mock_translator_class,
+            patch("builtins.print"),
+        ):
+            mock_translator = MagicMock()
+            mock_translator.translate_audio_file.return_value = "Translated text"
+            mock_translator_class.return_value = mock_translator
+
+            main()
+
+            mock_translator_class.assert_called_once_with("test-key")
+            mock_translator.translate_audio_file.assert_called_once()
+
+    def test_translate_to_flag_translates_transcript(self, tmp_path: Path) -> None:
+        """Test that --translate-to flag translates transcription result."""
+        audio_file = tmp_path / "test.mp3"
+        audio_file.write_bytes(b"fake audio content")
+
+        with (
+            patch("sys.argv", ["vtt", str(audio_file), "--translate-to", "Spanish", "-k", "test-key"]),
+            patch("vtt_transcribe.transcriber.VideoTranscriber") as mock_transcriber_class,
+            patch("vtt_transcribe.handlers.AudioTranslator") as mock_translator_class,
+            patch("builtins.print"),
+        ):
+            mock_transcriber = MagicMock()
+            mock_transcriber.transcribe.return_value = "English transcript"
+            mock_transcriber_class.return_value = mock_transcriber
+
+            mock_translator = MagicMock()
+            mock_translator.translate_text.return_value = "Spanish transcript"
+            mock_translator_class.return_value = mock_translator
+
+            main()
+
+            mock_translator_class.assert_called_once_with("test-key")
+            mock_translator.translate_text.assert_called_once_with("English transcript", target_language="Spanish")

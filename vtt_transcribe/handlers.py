@@ -4,6 +4,8 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from vtt_transcribe.translator import AudioTranslator
+
 if TYPE_CHECKING:
     from vtt_transcribe.diarization import SpeakerDiarizer, format_diarization_output  # noqa: F401
 
@@ -279,12 +281,40 @@ def _lazy_import_diarization() -> tuple:
 
 
 def handle_standard_transcription(args: Any, api_key: str) -> str:
-    """Handle standard transcription workflow with optional diarization.
+    """Handle standard transcription workflow with optional diarization and translation.
 
     Returns:
-        The final transcript (with or without speaker labels).
+        The final transcript (with or without speaker labels and/or translation).
     """
     from vtt_transcribe.transcriber import VideoTranscriber
+
+    # Handle --translate flag (audio translation)
+    if args.translate:
+        translator = AudioTranslator(api_key)
+        input_path = Path(args.input_file)
+
+        # For audio translation, we need the audio file
+        if input_path.suffix.lower() not in VideoTranscriber.SUPPORTED_AUDIO_FORMATS:
+            # Extract audio first
+            transcriber = VideoTranscriber(api_key)
+            audio_path = Path(args.output_audio) if args.output_audio else None
+            audio_path = transcriber.resolve_audio_path(input_path, audio_path)
+            keep_audio = not args.delete_audio
+            transcriber.extract_audio(input_path, audio_path, force=args.force)
+            actual_audio_path = audio_path
+        else:
+            actual_audio_path = input_path
+            keep_audio = True
+
+        print("Translating audio to English...")
+        result = translator.translate_audio_file(actual_audio_path)
+
+        # Cleanup audio if requested
+        if not keep_audio and actual_audio_path != input_path:
+            actual_audio_path.unlink()
+            print(f"Deleted audio file: {actual_audio_path}")
+
+        return result
 
     transcriber = VideoTranscriber(api_key)
 
@@ -324,5 +354,11 @@ def handle_standard_transcription(args: Any, api_key: str) -> str:
                 device=args.device,
                 transcript=result,
             )
+
+    # Apply text translation if requested
+    if args.translate_to:
+        translator = AudioTranslator(api_key)
+        print(f"\nTranslating transcript to {args.translate_to}...")
+        result = translator.translate_text(result, target_language=args.translate_to)
 
     return result
