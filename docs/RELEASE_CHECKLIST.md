@@ -57,12 +57,21 @@ git tag -n  # Verify tag
 git push origin v0.3.0
 ```
 
-### 3. Create GitHub Release
-1. Go to https://github.com/JLCodeSource/vtt-transcribe/releases/new
-2. Select tag: v0.3.0
-3. Release title: "v0.3.0 - Stable Release"
-4. Description: Copy from CHANGELOG.md
-5. Publish release (triggers workflow)
+### 3. Wait for Automated GitHub Release
+Pushing the tag triggers `.github/workflows/release.yml` which automatically:
+1. Creates a GitHub release with the tag message as the body
+2. Adds Docker image information to the release notes
+3. Generates release notes from commits
+
+Monitor the release workflow:
+```bash
+gh run watch
+```
+
+View the created release:
+```bash
+gh release view v0.3.0
+```
 
 ### 4. Monitor GitHub Actions
 1. Go to https://github.com/JLCodeSource/vtt-transcribe/actions

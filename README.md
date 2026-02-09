@@ -311,7 +311,7 @@ cat recording.mp3 | vtt | tee transcript.txt | grep "SPEAKER_00"
 
 ### Continuous Integration
  - The repository includes multiple GitHub Actions workflows:
-   - `.github/workflows/ci.yml` — Runs linting and tests on Python 3.10-3.14 (push/PR to `main`)
+   - `.github/workflows/ci.yml` — Runs linting and tests on Python 3.10 (push/PR to `main`)
    - `.github/workflows/publish.yml` — Publishes to PyPI via OIDC on GitHub releases
    - `.github/workflows/publish-testpypi.yml` — Publishes to TestPyPI on version tags
    - `.github/workflows/release.yml` — Creates GitHub releases from version tags
@@ -383,7 +383,7 @@ make publish-test
 
 # Production publish to PyPI (via GitHub Actions on release)
 # Tag a release: git tag v0.3.0 && git push origin v0.3.0
-# Create GitHub release (triggers automated publish workflow)
+# GitHub release is created automatically by .github/workflows/release.yml
 ```
 
 For complete build and publish workflow documentation, see [CONTRIBUTING.md](docs/CONTRIBUTING.md).
