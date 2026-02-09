@@ -16,8 +16,8 @@ RUN uv venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Layer 1: PyTorch CPU (~800MB) — must use CPU index to avoid 4GB CUDA bundle
-# torchcodec 0.7 matches torch 2.8 per compatibility table
-RUN uv pip install torch==2.8.0 torchaudio torchcodec==0.7.0 \
+# torchaudio required by pyannote.audio 3.x for audio I/O
+RUN uv pip install torch==2.8.0 torchaudio \
     --index-url https://download.pytorch.org/whl/cpu
 
 # Layer 2: pyannote.audio (~1GB)

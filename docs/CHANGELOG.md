@@ -12,13 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   installation of pyannote.audio 4.x which switched from torchaudio to torchcodec for audio I/O.
   pyannote 4.x pulls in `torchcodec>=0.10` which requires `torch>=2.10`, causing ABI mismatch with
   our pinned `torch==2.8.0` and runtime `NameError: name 'AudioDecoder' is not defined`
-- **Explicit torchcodec pin** — Add `torchcodec==0.7.0` to `[diarization]` extra to prevent pip
-  from resolving incompatible torchcodec versions via transitive dependencies
+- **Add torchaudio dependency** — Add `torchaudio>=2.2.0` to `[diarization]` extra; pyannote.audio
+  3.x requires torchaudio for audio I/O and without it `import pyannote.audio` fails
+- **Remove unnecessary torchcodec pin** — Removed `torchcodec==0.7.0` from `[diarization]` extra;
+  torchcodec is only used by pyannote.audio 4.x (which we exclude with `<4.0.0`)
 - **Dockerfile pins** — Pin `pyannote.audio<4.0.0` in both `Dockerfile.diarization` and
-  `Dockerfile.diarization-gpu` to match pyproject.toml constraints
+  `Dockerfile.diarization-gpu` to match pyproject.toml constraints; remove unnecessary torchcodec pins
 
 ### Added
-- Dependency constraint tests validating pyannote.audio and torchcodec version pins
+- Dependency constraint tests validating pyannote.audio and torchaudio version requirements
 
 ## [0.3.0] - 2026-02-09
 

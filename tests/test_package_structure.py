@@ -33,26 +33,23 @@ def test_diarization_extra_pins_pyannote_below_4() -> None:
     assert req.specifier.contains("3.3.2"), f"pyannote.audio specifier {req.specifier} should allow 3.x versions"
 
 
-def test_diarization_extra_pins_torchcodec() -> None:
-    """Test that torchcodec is pinned to 0.7.0 in diarization extra.
+def test_diarization_extra_requires_torchaudio() -> None:
+    """Test that torchaudio is required in diarization extra.
 
-    torchcodec versions must match torch versions per the compatibility table:
-    torchcodec 0.7 <-> torch 2.8, torchcodec 0.10 <-> torch 2.10.
-    Without an explicit pin, pip may resolve torchcodec 0.10+ which has
-    ABI incompatibility with torch 2.8.0.
+    pyannote.audio 3.x uses torchaudio for audio I/O. Without torchaudio,
+    'import pyannote.audio' fails with ImportError, causing the
+    'Diarization dependencies not installed' error message.
     """
     meta = metadata("vtt-transcribe")
     requires = meta.get_all("Requires-Dist") or []
 
-    torchcodec_reqs = [Requirement(r) for r in requires if "torchcodec" in r and "diarization" in r]
-    assert len(torchcodec_reqs) == 1, f"Expected torchcodec in diarization extra, got: {torchcodec_reqs}"
+    torchaudio_reqs = [Requirement(r) for r in requires if "torchaudio" in r and "diarization" in r]
+    assert len(torchaudio_reqs) == 1, f"Expected torchaudio in diarization extra, got: {torchaudio_reqs}"
 
-    req = torchcodec_reqs[0]
-    # Verify that only 0.7.0 is allowed (exact pin)
-    assert req.specifier.contains("0.7.0"), f"torchcodec specifier {req.specifier} should allow 0.7.0"
-    assert not req.specifier.contains("0.10.0"), (
-        f"torchcodec specifier {req.specifier} allows 0.10.0 which is incompatible with torch 2.8"
-    )
+    req = torchaudio_reqs[0]
+    # Verify that torchaudio 2.2.0+ is allowed (matching pyannote.audio 3.x requirement)
+    assert req.specifier.contains("2.2.0"), f"torchaudio specifier {req.specifier} should allow 2.2.0"
+    assert req.specifier.contains("2.8.0"), f"torchaudio specifier {req.specifier} should allow 2.8.0"
 
 
 def test_vtt_transcribe_package_import() -> None:

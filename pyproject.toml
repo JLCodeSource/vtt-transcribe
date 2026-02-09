@@ -43,7 +43,7 @@ Changelog = "https://github.com/JLCodeSource/vtt-transcribe/blob/main/docs/CHANG
 diarization = [
     "pyannote.audio>=3.1.0,<4.0.0",  # 4.x requires torchcodec 0.10+/torch 2.10+ (ABI incompatible)
     "torch==2.8.0",  # Pinned due to torch 2.10+ breaking change in weights_only
-    "torchcodec==0.7.0",  # Must match torch 2.8 per torchcodec compatibility table
+    "torchaudio>=2.2.0",  # Required by pyannote.audio 3.x for audio I/O
 ]
 dev = [
     "pytest>=7.4.0",

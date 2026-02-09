@@ -28,10 +28,10 @@ COPY pyproject.toml README.md ./
 RUN uv venv --python python3 /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install PyTorch + torchaudio + torchcodec with CUDA support in their own layer
-# ALL THREE must come from the same CUDA index to ensure matching C++ ABI.
-# torchcodec 0.7 matches torch 2.8 per compatibility table
-RUN uv pip install torch==2.8.0 torchaudio torchcodec==0.7.0 --index-url https://download.pytorch.org/whl/cu128
+# Install PyTorch + torchaudio with CUDA support in their own layer
+# BOTH must come from the same CUDA index to ensure matching C++ ABI.
+# torchaudio required by pyannote.audio 3.x for audio I/O
+RUN uv pip install torch==2.8.0 torchaudio --index-url https://download.pytorch.org/whl/cu128
 
 # Install remaining diarization dependencies in a separate layer
 # Pin to 3.x — 4.x switches to torchcodec-based IO incompatible with torch 2.8
