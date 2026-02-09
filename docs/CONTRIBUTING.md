@@ -233,31 +233,68 @@ Production releases are automated via GitHub Actions:
 - **CI (`ci.yml`):** Runs on every push/PR to main
   - Installs dependencies
   - Runs linting (`make lint`)
-  - Runs tests (`make test`)
+  - Runs tests (`make test`) on Python 3.10–3.14
 
 - **Publish (`publish.yml`):** Runs on GitHub release creation
   - Builds package with Hatch
   - Publishes to PyPI using trusted publishing (OIDC)
 
+- **Publish TestPyPI (`publish-testpypi.yml`):** Runs on version tags
+  - Publishes to TestPyPI for pre-release validation
+
+- **Release (`release.yml`):** Runs on version tags
+  - Creates GitHub releases from tags
+
+- **Docker Publish (`docker-publish.yml`):** Runs on releases
+  - Builds and publishes base, diarization, and GPU images
+  - Updates Docker Hub description from `docs/DOCKER_HUB.md`
+
+- **Docker Build Tests:** Validates Dockerfiles
+  - `docker-build-test.yml` — Base image (on push/PR to main)
+  - `docker-build-test-diarization.yml` — Diarization image (manual trigger)
+  - `docker-build-test-diarization-gpu.yml` — GPU image (manual trigger)
+
 ## Project Structure
 
 ```
 vtt-transcribe/
-├── vtt_transcribe/          # Main package
+├── vtt_transcribe/              # Main package
 │   ├── __init__.py
-│   ├── main.py              # CLI entry point
-│   ├── diarization.py       # Speaker diarization
-│   ├── audio_management.py  # Audio extraction/chunking
-│   └── formatter.py         # Transcript formatting
-├── tests/                   # Test suite
+│   ├── __main__.py              # python -m vtt_transcribe support
+│   ├── main.py                  # CLI entry point and stdin handling
+│   ├── cli.py                   # CLI argument parsing
+│   ├── handlers.py              # Command handlers for transcription workflows
+│   ├── transcriber.py           # Whisper API interaction
+│   ├── audio_manager.py         # Audio extraction and management
+│   ├── audio_chunker.py         # Audio chunking for large files
+│   ├── diarization.py           # Speaker diarization using pyannote
+│   ├── transcript_formatter.py  # Transcript formatting and speaker labeling
+│   └── dependencies.py          # Runtime dependency checks (ffmpeg)
+├── tests/                       # Test suite (291 tests)
 │   ├── test_main.py
+│   ├── test_cli.py
+│   ├── test_handlers.py
+│   ├── test_transcriber.py
+│   ├── test_audio_manager.py
+│   ├── test_audio_chunker.py
 │   ├── test_diarization.py
-│   └── ...
-├── .github/workflows/       # GitHub Actions
-├── .devcontainer/           # Dev container configuration
-├── pyproject.toml           # Package metadata and dependencies
-├── Makefile                 # Development commands
-└── CONTRIBUTING.md          # This file
+│   ├── test_transcript_formatter.py
+│   ├── test_stdin_mode.py
+│   └── smoke/                   # BATS smoke tests for Docker
+├── .github/workflows/           # GitHub Actions (CI, publish, Docker)
+├── .devcontainer/               # Dev container configuration
+├── docs/                        # Documentation
+│   ├── CHANGELOG.md
+│   ├── CONTRIBUTING.md          # This file
+│   ├── ROADMAP.md
+│   ├── RELEASE_CHECKLIST.md
+│   └── DOCKER_HUB.md           # Docker Hub description (auto-synced)
+├── pyproject.toml               # Package metadata and dependencies
+├── Dockerfile                   # Base + diarization CPU image
+├── Dockerfile.diarization       # Diarization GPU image (CUDA)
+├── Makefile                     # Development commands
+├── noxfile.py                   # Nox multi-version testing
+└── ruff.toml                   # Ruff linter configuration
 ```
 
 ## Making Changes
@@ -267,7 +304,7 @@ vtt-transcribe/
 - Feature branches: `feature/description`
 - Bug fixes: `fix/description`
 - Documentation: `docs/description`
-- Releases: `packaging/v0.3.0b3`
+- Releases: `release/0.3.0`
 
 ### Commit Message Format
 

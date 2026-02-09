@@ -139,7 +139,7 @@ cat input.mp4 | docker run -i --gpus all -e OPENAI_API_KEY="your-key" -e HF_TOKE
 - `latest` — Latest stable release (base, transcription-only)
 - `diarization` — Latest release with diarization support (CPU-only, amd64 only)
 - `diarization-gpu` — Latest release with diarization + CUDA GPU support (amd64 only)
-- `0.3.0b4` — Specific version tags (PEP 440 format)
+- `0.3.0` — Specific version tags (PEP 440 format)
 
 For more Docker usage patterns and troubleshooting, see [Docker Registry Documentation](docs/DOCKER_REGISTRY.md).
 
@@ -311,11 +311,14 @@ cat recording.mp3 | vtt | tee transcript.txt | grep "SPEAKER_00"
 
 ### Continuous Integration
  - The repository includes multiple GitHub Actions workflows:
-   - `.github/workflows/test.yml` — Runs tests on multiple Python versions (3.10-3.14)
-   - `.github/workflows/lint.yml` — Runs linting checks (ruff + mypy)
-   - `.github/workflows/publish.yml` — Publishes to PyPI on releases
-   - `.github/workflows/docker-publish.yml` — Builds and publishes Docker images
- - All workflows run on pushes and pull requests to `main`
+   - `.github/workflows/ci.yml` — Runs linting and tests on Python 3.10-3.14 (push/PR to `main`)
+   - `.github/workflows/publish.yml` — Publishes to PyPI via OIDC on GitHub releases
+   - `.github/workflows/publish-testpypi.yml` — Publishes to TestPyPI on version tags
+   - `.github/workflows/release.yml` — Creates GitHub releases from version tags
+   - `.github/workflows/docker-publish.yml` — Builds and publishes Docker images on releases; updates Docker Hub description
+   - `.github/workflows/docker-build-test.yml` — Validates base Dockerfile on push/PR to `main`
+   - `.github/workflows/docker-build-test-diarization.yml` — Validates diarization Dockerfile (manual trigger)
+   - `.github/workflows/docker-build-test-diarization-gpu.yml` — Validates GPU diarization Dockerfile (manual trigger)
 
 ### Acknowledgements
  - This project was developed with test-driven iterations and linting guidance.
@@ -323,23 +326,39 @@ cat recording.mp3 | vtt | tee transcript.txt | grep "SPEAKER_00"
 	 with help from GitHub Copilot.
 
 ### Files of interest
- - [CHANGELOG.md](docs/CHANGELOG.md) — version history and upgrade instructions
- - [vtt_transcribe/cli.py](vtt_transcribe/cli.py) — CLI argument parsing and entrypoint
- - [vtt_transcribe/main.py](vtt_transcribe/main.py) — Core transcription logic
+
+ **Source:**
+ - [vtt_transcribe/main.py](vtt_transcribe/main.py) — CLI entry point and stdin handling
+ - [vtt_transcribe/cli.py](vtt_transcribe/cli.py) — CLI argument parsing
  - [vtt_transcribe/handlers.py](vtt_transcribe/handlers.py) — Command handlers for transcription workflows
+ - [vtt_transcribe/transcriber.py](vtt_transcribe/transcriber.py) — Whisper API interaction
  - [vtt_transcribe/audio_manager.py](vtt_transcribe/audio_manager.py) — Audio extraction and management
  - [vtt_transcribe/audio_chunker.py](vtt_transcribe/audio_chunker.py) — Audio chunking for large files
- - [vtt_transcribe/transcriber.py](vtt_transcribe/transcriber.py) — Whisper API interaction
  - [vtt_transcribe/diarization.py](vtt_transcribe/diarization.py) — Speaker diarization using pyannote
  - [vtt_transcribe/transcript_formatter.py](vtt_transcribe/transcript_formatter.py) — Transcript formatting and speaker labeling
- - [tests/test_main.py](tests/test_main.py) — Main module tests
+ - [vtt_transcribe/dependencies.py](vtt_transcribe/dependencies.py) — Runtime dependency checks (ffmpeg)
+
+ **Tests:**
+ - [tests/test_main.py](tests/test_main.py) — Main module and stdin mode tests
  - [tests/test_handlers.py](tests/test_handlers.py) — Handler tests
+ - [tests/test_cli.py](tests/test_cli.py) — CLI argument parsing tests
+ - [tests/test_transcriber.py](tests/test_transcriber.py) — Transcriber tests
  - [tests/test_audio_manager.py](tests/test_audio_manager.py) — Audio management tests
  - [tests/test_audio_chunker.py](tests/test_audio_chunker.py) — Audio chunking tests
+ - [tests/test_diarization.py](tests/test_diarization.py) — Diarization tests
+ - [tests/test_transcript_formatter.py](tests/test_transcript_formatter.py) — Transcript formatter tests
  - [tests/test_stdin_mode.py](tests/test_stdin_mode.py) — Stdin/stdout mode tests
- - [Makefile](Makefile) — convenience commands for dev tooling
- - [ruff.toml](ruff.toml) — ruff configuration
- - [.pre-commit-config.yaml](.pre-commit-config.yaml) — pre-commit hooks for formatting/linting
+ - [tests/smoke/](tests/smoke/) — BATS smoke tests for Docker integration
+
+ **Config & Docs:**
+ - [CHANGELOG.md](docs/CHANGELOG.md) — Version history and upgrade instructions
+ - [pyproject.toml](pyproject.toml) — Package metadata and dependencies
+ - [Makefile](Makefile) — Convenience commands for dev tooling
+ - [ruff.toml](ruff.toml) — Ruff linter configuration
+ - [noxfile.py](noxfile.py) — Nox multi-version test configuration
+ - [Dockerfile](Dockerfile) — Base and diarization Docker image
+ - [Dockerfile.diarization](Dockerfile.diarization) — GPU diarization Docker image
+ - [.pre-commit-config.yaml](.pre-commit-config.yaml) — Pre-commit hooks for formatting/linting
 
 ### Contributing
  - Please run `make format` and `make lint` before submitting a PR.
@@ -362,7 +381,7 @@ make build
 make publish-test
 
 # Production publish to PyPI (via GitHub Actions on release)
-# Tag a release: git tag v0.3.0b3 && git push origin v0.3.0b3
+# Tag a release: git tag v0.3.0 && git push origin v0.3.0
 # Create GitHub release (triggers automated publish workflow)
 ```
 

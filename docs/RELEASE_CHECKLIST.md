@@ -19,7 +19,7 @@
 - [ ] API documentation current
 
 ### Package Configuration
-- [ ] pyproject.toml version bumped (update `version` field to new release version, e.g., `0.3.0b4`)
+- [ ] pyproject.toml version bumped (update `version` field to new release version, e.g., `0.3.0`)
 - [ ] Package name correct: `vtt-transcribe`
 - [ ] Entry points configured: `vtt`
 - [ ] Dependencies up to date
@@ -37,7 +37,7 @@
 ### Environments
 - [ ] GitHub environment "pypi" configured with protection rules
 - [ ] OIDC Trusted Publisher configured for PyPI
-- [ ] TestPyPI environment for testing (mandatory for beta releases, runs in dry-run workflow after merge to main)
+- [ ] TestPyPI environment for testing (used for dry-run validation after merge to main)
 
 ### Workflow
 - [ ] `.github/workflows/publish.yml` configured
@@ -48,22 +48,21 @@
 
 ### 1. Create Tag
 ```bash
-git tag v0.3.0b3
+git tag v0.3.0
 git tag -n  # Verify tag
 ```
 
 ### 2. Push Tag
 ```bash
-git push origin v0.3.0b3
+git push origin v0.3.0
 ```
 
 ### 3. Create GitHub Release
 1. Go to https://github.com/JLCodeSource/vtt-transcribe/releases/new
-2. Select tag: v0.3.0b3
-3. Release title: "v0.3.0b3 - PyPI Package Release"
+2. Select tag: v0.3.0
+3. Release title: "v0.3.0 - Stable Release"
 4. Description: Copy from CHANGELOG.md
-5. Mark as pre-release (beta)
-6. Publish release (triggers workflow)
+5. Publish release (triggers workflow)
 
 ### 4. Monitor GitHub Actions
 1. Go to https://github.com/JLCodeSource/vtt-transcribe/actions
@@ -73,7 +72,7 @@ git push origin v0.3.0b3
 
 ### 5. Verify PyPI Publication
 - [ ] Package visible at: https://pypi.org/project/vtt-transcribe/
-- [ ] Version 0.3.0b3 listed
+- [ ] Version 0.3.0 listed
 - [ ] Metadata correct (description, classifiers, URLs)
 - [ ] README rendering properly
 
@@ -108,12 +107,11 @@ git push origin v0.3.0b3
 
 ### Branch Management
 - [ ] Commit all changes
-- [ ] Push worktree branch
-- [ ] Merge to packaging/v0.3.0b3
+- [ ] Push release branch
 - [ ] Create PR to main
 - [ ] Review and merge PR
-- [ ] Delete worktree branch
-- [ ] Prune old worktrees
+- [ ] Tag release from main
+- [ ] Delete release branch
 
 ### Issue Management
 - [ ] Close completed beads issues: `bd close <id>`
@@ -137,7 +135,7 @@ If something goes wrong:
 
 ## Notes
 
-- First PyPI release: v0.3.0b3 (beta)
+- Current PyPI release: v0.3.0
 - Package name: `vtt-transcribe`
 - Import name: `vtt_transcribe`
 - CLI command: `vtt`
