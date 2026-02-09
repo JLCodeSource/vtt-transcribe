@@ -1,15 +1,14 @@
 """Tests for dependency checks in vtt_transcribe.dependencies module."""
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
 
-def _make_import_error(name: str, *_args, **_kwargs):  # type: ignore[no-untyped-def]
-    """Helper to simulate ImportError for specific modules."""
-    if name in ("torch", "pyannote.audio"):
-        msg = f"No module named '{name}'"
-        raise ImportError(msg)
+def _mock_find_spec_missing_all(name: str):  # type: ignore[no-untyped-def]
+    """Mock find_spec that reports all diarization packages as missing."""
+    if name in ("pyannote.audio", "torch", "torchaudio"):
+        return None
     return Mock()
 
 
@@ -55,15 +54,10 @@ def test_check_ffmpeg_prints_error_message() -> None:
 
 def test_check_diarization_dependencies_when_available() -> None:
     """Test check_diarization_dependencies() passes when dependencies are available."""
-    from unittest.mock import MagicMock
-
     from vtt_transcribe.dependencies import check_diarization_dependencies
 
-    # Mock torch and pyannote as installed with MagicMock objects
-    mock_torch = MagicMock()
-    mock_pyannote_audio = MagicMock()
-
-    with patch.dict("sys.modules", {"torch": mock_torch, "pyannote.audio": mock_pyannote_audio, "pyannote": MagicMock()}):
+    # Mock find_spec to report all packages as found
+    with patch("vtt_transcribe.dependencies.find_spec", return_value=Mock()):
         # Should not raise or exit
         check_diarization_dependencies()
 
@@ -73,7 +67,7 @@ def test_check_diarization_dependencies_when_missing() -> None:
     from vtt_transcribe.dependencies import check_diarization_dependencies
 
     with (
-        patch("builtins.__import__", side_effect=_make_import_error),
+        patch("vtt_transcribe.dependencies.find_spec", side_effect=_mock_find_spec_missing_all),
         pytest.raises(SystemExit) as exc_info,
     ):
         check_diarization_dependencies()
@@ -86,7 +80,7 @@ def test_check_diarization_dependencies_prints_error_message() -> None:
     from vtt_transcribe.dependencies import check_diarization_dependencies
 
     with (
-        patch("builtins.__import__", side_effect=_make_import_error),
+        patch("vtt_transcribe.dependencies.find_spec", side_effect=_mock_find_spec_missing_all),
         patch("builtins.print") as mock_print,
         pytest.raises(SystemExit),
     ):
@@ -97,21 +91,20 @@ def test_check_diarization_dependencies_prints_error_message() -> None:
     error_output = " ".join(print_calls)
     assert "Diarization dependencies not installed" in error_output
     assert "pip install vtt-transcribe[diarization]" in error_output
-    assert "Cause:" in error_output
+    assert "Missing:" in error_output
 
 
 def test_check_diarization_dependencies_handles_torch_missing() -> None:
     """Test that missing torch is caught."""
     from vtt_transcribe.dependencies import check_diarization_dependencies
 
-    def import_error_torch(name: str, *_args, **_kwargs):  # type: ignore[no-untyped-def]
+    def find_spec_no_torch(name: str):  # type: ignore[no-untyped-def]
         if name == "torch":
-            msg = "No module named 'torch'"
-            raise ImportError(msg)
+            return None
         return Mock()
 
     with (
-        patch("builtins.__import__", side_effect=import_error_torch),
+        patch("vtt_transcribe.dependencies.find_spec", side_effect=find_spec_no_torch),
         pytest.raises(SystemExit) as exc_info,
     ):
         check_diarization_dependencies()
@@ -122,17 +115,30 @@ def test_check_diarization_dependencies_handles_pyannote_missing() -> None:
     """Test that missing pyannote.audio is caught."""
     from vtt_transcribe.dependencies import check_diarization_dependencies
 
-    def import_error_pyannote(name: str, *_args, **_kwargs):  # type: ignore[no-untyped-def]
+    def find_spec_no_pyannote(name: str):  # type: ignore[no-untyped-def]
         if name == "pyannote.audio":
-            msg = "No module named 'pyannote.audio'"
-            raise ImportError(msg)
-        # Return mock torch to pass first import
-        if name == "torch":
-            return MagicMock()
+            return None
         return Mock()
 
     with (
-        patch("builtins.__import__", side_effect=import_error_pyannote),
+        patch("vtt_transcribe.dependencies.find_spec", side_effect=find_spec_no_pyannote),
+        pytest.raises(SystemExit) as exc_info,
+    ):
+        check_diarization_dependencies()
+    assert exc_info.value.code == 1
+
+
+def test_check_diarization_dependencies_handles_torchaudio_missing() -> None:
+    """Test that missing torchaudio is caught."""
+    from vtt_transcribe.dependencies import check_diarization_dependencies
+
+    def find_spec_no_torchaudio(name: str):  # type: ignore[no-untyped-def]
+        if name == "torchaudio":
+            return None
+        return Mock()
+
+    with (
+        patch("vtt_transcribe.dependencies.find_spec", side_effect=find_spec_no_torchaudio),
         pytest.raises(SystemExit) as exc_info,
     ):
         check_diarization_dependencies()
