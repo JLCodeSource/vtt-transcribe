@@ -96,6 +96,18 @@ Environment Variables:
         help="When input is a chunk file, detect and process all sibling chunks in order",
     )
 
+    # Translation options
+    translate_group = parser.add_argument_group("Translation Options")
+    translate_group.add_argument(
+        "--translate",
+        action="store_true",
+        help="Translate audio to English using OpenAI Whisper translations API",
+    )
+    translate_group.add_argument(
+        "--translate-to",
+        help="Translate transcript to target language (e.g., 'Spanish', 'French')",
+    )
+
     # Diarization options
     diarize_group = parser.add_argument_group(
         "Speaker Diarization Options",
