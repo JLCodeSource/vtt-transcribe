@@ -144,7 +144,7 @@ If something goes wrong:
 
 ## Notes
 
-- Current PyPI release: v0.3.0
+- Current PyPI release: v0.3.1
 - Package name: `vtt-transcribe`
 - Import name: `vtt_transcribe`
 - CLI command: `vtt`

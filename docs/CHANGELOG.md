@@ -16,11 +16,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   4.x requires torchaudio for audio resampling
 - **Dockerfile updates** — Add `torchcodec>=0.6.0,<0.8` to both diarization Dockerfiles;
   update pyannote.audio constraint to `>=4.0.0`
-- **Improved error reporting** — `check_diarization_dependencies()` now shows the actual import
-  error cause instead of a generic "not installed" message
+- **GPU Dockerfile UID conflict** — NVIDIA CUDA base images ship with `ubuntu` user at UID 1000;
+  now explicitly evicts conflicting user before creating `vttuser`
+- **GPU Docker build disk space** — Added disk cleanup step to free ~20GB of pre-installed
+  software (.NET, Android SDK, GHC, JVM) before building the GPU image in CI
+- **Improved error reporting** — `check_diarization_dependencies()` now uses `importlib.util.find_spec()`
+  instead of bare imports to avoid triggering heavy native library loading (torchcodec C++ extensions)
+- **Python 3.14 test isolation** — Added `@pytest.mark.diarization` to 12 tests that exercise
+  diarization code paths, so `tests_core` session correctly excludes them on Python 3.14
 
 ### Added
 - Dependency constraint tests validating pyannote.audio, torchaudio, and torchcodec version requirements
+- `nox[pbs]` extra for automatic Python interpreter download in multi-version testing
+- `tests_core` added to default nox sessions for Python 3.14 testing
+- **First PyPI publication** — `pip install vtt-transcribe` now works
 
 ## [0.3.0] - 2026-02-09
 

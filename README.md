@@ -139,7 +139,7 @@ cat input.mp4 | docker run -i --gpus all -e OPENAI_API_KEY="your-key" -e HF_TOKE
 - `latest` — Latest stable release (base, transcription-only)
 - `diarization` — Latest release with diarization support (CPU-only, amd64 only)
 - `diarization-gpu` — Latest release with diarization + CUDA GPU support (amd64 only)
-- `0.3.0` — Specific version tags (PEP 440 format)
+- `0.3.1` — Specific version tags (PEP 440 format)
 
 For more Docker usage patterns and troubleshooting, see [Docker Registry Documentation](docs/DOCKER_REGISTRY.md).
 
@@ -382,7 +382,7 @@ make build
 make publish-test
 
 # Production publish to PyPI (via GitHub Actions on release)
-# Tag a release: git tag v0.3.0 && git push origin v0.3.0
+# Tag a release: git tag v0.3.1 && git push origin v0.3.1
 # GitHub release is created automatically by .github/workflows/release.yml
 ```
 
