@@ -730,6 +730,21 @@ class TestVideoFormatDetection:
         data = b"short"
         assert _detect_format_from_data(data) == ".mp3"
 
+    def test_detect_format_with_empty_data_raises(self) -> None:
+        """Test that empty data raises ValueError."""
+        from vtt_transcribe.main import _detect_format_from_data
+
+        with pytest.raises(ValueError, match="Cannot detect format from empty data stream"):
+            _detect_format_from_data(b"")
+
+    def test_detect_ftyp_with_unknown_brand_defaults_to_mp4(self) -> None:
+        """Test that ftyp box with non-standard brand still returns .mp4."""
+        from vtt_transcribe.main import _detect_format_from_data
+
+        # ftyp box with an unusual brand that doesn't match any known prefix
+        data = b"\x00\x00\x00\x20ftypXXXX\x00\x00\x00\x00" + b"\x00" * 100
+        assert _detect_format_from_data(data) == ".mp4"
+
 
 class TestStdinTempFileCreation:
     """Test stdin temp file creation with format detection."""
