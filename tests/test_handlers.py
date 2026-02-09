@@ -205,7 +205,7 @@ class TestHandleReviewSpeakers:
                 mock_context,
             )
 
-            result = handle_review_speakers(input_path=audio_file, hf_token="hf_token")
+            result = handle_review_speakers(input_path=audio_file, hf_token="hf_token")  # noqa: S106
 
             assert "SPEAKER_00" in result
 
@@ -231,7 +231,7 @@ class TestHandleReviewSpeakers:
                 mock_context,
             )
 
-            result = handle_review_speakers(input_path=transcript_file, hf_token="hf_token")
+            result = handle_review_speakers(input_path=transcript_file, hf_token="hf_token")  # noqa: S106
 
             assert "SPEAKER_00" in result
 
@@ -258,7 +258,7 @@ class TestHandleReviewSpeakers:
                 mock_context,
             )
 
-            handle_review_speakers(input_path=audio_file, hf_token="hf_token", save_path=save_path)
+            handle_review_speakers(input_path=audio_file, hf_token="hf_token", save_path=save_path)  # noqa: S106
 
             assert save_path.exists()
 
@@ -306,7 +306,7 @@ class TestHandleStandardTranscription:
         args.force = False
         args.scan_chunks = False
         args.diarize = True
-        args.hf_token = "hf_token"
+        args.hf_token = "hf_token"  # noqa: S105
         args.device = "cpu"
         args.no_review_speakers = True
         args.translate = False
@@ -536,7 +536,7 @@ class TestAudioPathResolution:
         args.force = False
         args.scan_chunks = False
         args.diarize = True
-        args.hf_token = "test_token"
+        args.hf_token = "test_token"  # noqa: S105
         args.device = "cpu"
         args.no_review_speakers = True
         args.translate = False
@@ -582,7 +582,7 @@ class TestAudioPathResolution:
         args.force = False
         args.scan_chunks = False
         args.diarize = True
-        args.hf_token = "test_token"
+        args.hf_token = "test_token"  # noqa: S105
         args.device = "cpu"
         args.no_review_speakers = True
         args.translate = False
@@ -629,7 +629,7 @@ class TestAudioPathResolution:
         args.force = False
         args.scan_chunks = False
         args.diarize = True
-        args.hf_token = "test_token"
+        args.hf_token = "test_token"  # noqa: S105
         args.device = "cpu"
         args.no_review_speakers = True
         args.translate = False
@@ -698,7 +698,7 @@ class TestHandlersCoverage:
             # Test with cuda device (should print GPU info)
             result = handle_diarize_only_mode(
                 audio_file,
-                hf_token="test-token",
+                hf_token="test-token",  # noqa: S106
                 save_path=None,
                 device="cuda",
             )
@@ -751,7 +751,7 @@ class TestHandlersCoverage:
         args.force = False
         args.scan_chunks = False
         args.diarize = True
-        args.hf_token = "test-token"
+        args.hf_token = "test-token"  # noqa: S105
         args.device = "cpu"
         args.no_review_speakers = True
         args.translate = False
@@ -774,7 +774,7 @@ class TestHandlersCoverage:
 
             from vtt_transcribe.handlers import handle_standard_transcription
 
-            result = handle_standard_transcription(args, "test-key")
+            result = handle_standard_transcription(args, "test-key")  # noqa: F841
 
             # Verify custom audio path was used
             mock_diarizer.diarize_audio.assert_called_once()

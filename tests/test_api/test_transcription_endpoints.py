@@ -168,7 +168,7 @@ class TestAPITranscriptionCoverage:
         mock_file.filename = None
 
         # Should raise HTTPException
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(Exception) as exc_info:  # noqa: PT011, PT012
             import asyncio
 
             asyncio.run(create_transcription_job(mock_file, api_key="test", diarize=False))
@@ -188,10 +188,10 @@ class TestAPITranscriptionCoverage:
         mock_file.filename = ""
 
         # Should raise HTTPException
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(Exception) as exc_info:  # noqa: PT011, PT012
             import asyncio
 
-            asyncio.run(create_diarization_job(mock_file, hf_token="test"))
+            asyncio.run(create_diarization_job(mock_file, hf_token="test"))  # noqa: S106
 
         assert "422" in str(exc_info.value) or "filename" in str(exc_info.value).lower()
 
@@ -210,7 +210,7 @@ class TestAPITranscriptionCoverage:
         )
 
         assert response.status_code == 200
-        job_id = response.json()["job_id"]
+        job_id = response.json()["job_id"]  # noqa: F841
         assert response.json()["status"] == "pending"
         assert "job_id" in response.json()
 

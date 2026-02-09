@@ -181,7 +181,7 @@ class TestLoggingConfigCoverage:
 
         # Log with exception
         try:
-            raise ValueError("Test exception")
+            raise ValueError("Test exception")  # noqa: EM101
         except ValueError:
             logger.exception("Error occurred")
 

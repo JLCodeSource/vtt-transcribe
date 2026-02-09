@@ -96,10 +96,4 @@ ignore = [
 [lint.per-file-ignores]
 "test_*.py" = ["SLF001"]
 "tests/test_stdin_mode.py" = ["PT019", "ARG002"]
-"tests/test_api/test_app.py" = ["S104", "S603", "SIM105", "W293", "F811"]
-"tests/test_api/test_transcription_endpoints.py" = ["PT011", "PT012", "S106", "F841"]
-"tests/test_api/test_websockets.py" = ["S110", "SIM105", "F811"]
-"tests/test_dependencies.py" = ["PT012"]
-"tests/test_handlers.py" = ["S105", "S106", "F841"]
-"tests/test_logging_config.py" = ["EM101"]
 

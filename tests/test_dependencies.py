@@ -151,7 +151,7 @@ class TestDependenciesCoverage:
     def test_check_diarization_dependencies_with_module_not_found_exception(self) -> None:
         """Test diarization dependency check handles ModuleNotFoundError in find_spec (lines 46-47)."""
 
-        with (
+        with (  # noqa: PT012
             patch("vtt_transcribe.dependencies.find_spec") as mock_find,
             patch("sys.stderr"),
             pytest.raises(SystemExit) as exc_info,
@@ -167,7 +167,7 @@ class TestDependenciesCoverage:
 
     def test_check_diarization_dependencies_with_value_error(self) -> None:
         """Test diarization dependency check handles ValueError in find_spec (lines 46-47)."""
-        with (
+        with (  # noqa: PT012
             patch("vtt_transcribe.dependencies.find_spec") as mock_find,
             patch("sys.stderr"),
             pytest.raises(SystemExit) as exc_info,

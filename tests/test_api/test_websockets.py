@@ -81,7 +81,7 @@ class TestWebSocketConnection:
                     data = websocket.receive_json()
                     if data.get("status") == "completed":
                         break
-            except Exception:
+            except Exception:  # noqa: S110
                 pass  # Connection closed as expected
 
     def test_websocket_rejects_invalid_job_id(self, client):
@@ -155,7 +155,7 @@ class TestAPIWebsocketsCoverage:
                 data = websocket.receive_json()
                 # Should receive error message
                 assert "error" in data or data.get("status") == "not_found"
-        except Exception:
+        except Exception:  # noqa: S110
             # Websocket may reject connection immediately
             pass
 
@@ -182,7 +182,7 @@ class TestAPIWebsocketsCoverage:
                 # Should receive at least one status update
                 data = websocket.receive_json()
                 assert "status" in data or "error" in data
-        except Exception:
+        except Exception:  # noqa: S110
             pass
 
     def test_websocket_general_exception_handling(self) -> None:
@@ -212,7 +212,7 @@ class TestAPIWebsocketsCoverage:
                 data = websocket.receive_json()
                 # Should handle the error gracefully
                 assert "error" in data or "status" in data
-        except Exception:
+        except Exception:  # noqa: S110
             # Exception may close websocket
             pass
 
@@ -251,7 +251,7 @@ class TestAPIWebsocketsCoverageComplete:
             try:
                 data = websocket.receive_json()
                 assert "error" in data or "status" in data
-            except Exception:
+            except Exception:  # noqa: S110
                 pass  # Websocket may have closed
 
     def test_websocket_status_change_detection(self) -> None:
@@ -325,7 +325,7 @@ class TestAPIWebsocketsCoverageComplete:
             with client.websocket_connect("/ws/jobs/invalid-job-format") as websocket:
                 data = websocket.receive_json()
                 assert "error" in data
-        except Exception:
+        except Exception:  # noqa: S110
             # Websocket may reject connection
             pass
 
@@ -345,7 +345,7 @@ class TestWebsocketEdgeCases:
                 data = websocket.receive_json()
                 # Should get error about missing job
                 assert "error" in str(data).lower() or "not found" in str(data).lower()
-        except Exception:
+        except Exception:  # noqa: S110
             pass  # May reject connection or send error
 
     def test_websocket_status_change_loop(self) -> None:
@@ -380,7 +380,7 @@ class TestWebsocketEdgeCases:
                 # Should detect status change
                 data2 = websocket.receive_json()
                 assert data2["status"] == "processing"  # Line 42 executed
-        except Exception:
+        except Exception:  # noqa: S110
             pass  # May timeout
         finally:
             # Cleanup
@@ -409,9 +409,9 @@ class TestWebsocketEdgeCases:
                     data = websocket.receive_json()
                     # May or may not succeed depending on how JSON handles MagicMock
                     assert "job_id" in data or "error" in data
-                except Exception:
+                except Exception:  # noqa: S110
                     pass  # Exception caught and handled on line 58
-        except Exception:
+        except Exception:  # noqa: S110
             pass  # Connection may fail
         finally:
             # Cleanup
@@ -462,7 +462,7 @@ def test_websocket_job_deleted_check() -> None:
             await asyncio.wait_for(task, timeout=0.1)
         except (asyncio.CancelledError, asyncio.TimeoutError):
             task.cancel()
-            try:
+            try:  # noqa: SIM105
                 await task
             except asyncio.CancelledError:
                 pass
@@ -526,7 +526,7 @@ def test_websocket_status_change() -> None:
 
         # Clean up
         task.cancel()
-        try:
+        try:  # noqa: SIM105
             await task
         except asyncio.CancelledError:
             pass

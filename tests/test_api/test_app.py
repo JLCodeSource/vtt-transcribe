@@ -89,7 +89,7 @@ class TestAPIServerCoverage:
 
             mock_run.assert_called_once()
             call_args = mock_run.call_args
-            assert call_args[1]["host"] == "0.0.0.0"
+            assert call_args[1]["host"] == "0.0.0.0"  # noqa: S104
             assert call_args[1]["port"] == 8000
             assert call_args[1]["reload"] is True
 
@@ -130,15 +130,15 @@ from unittest.mock import patch
 with patch("vtt_transcribe.api.server.uvicorn"):
     # Import the module to ensure all lines are executed
     import vtt_transcribe.api.server
-    
+  # noqa: W293
     # Check that main function exists
     assert hasattr(vtt_transcribe.api.server, "main")
-    
+  # noqa: W293
     print("SUCCESS")
 """
 
         # Run the script
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603
             [sys.executable, "-c", test_script],
             capture_output=True,
             text=True,
@@ -167,13 +167,13 @@ with patch('uvicorn.run', mock_run):
         runpy.run_module('vtt_transcribe.api.server', run_name='__main__')
     except SystemExit:
         pass  # Expected when main() completes
-    
+  # noqa: W293
     # Verify uvicorn.run was called
     assert mock_run.called, "uvicorn.run should have been called"
     print("MAIN_BLOCK_EXECUTED")
 """
 
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603
             [sys.executable, "-c", code],
             capture_output=True,
             text=True,
@@ -196,7 +196,7 @@ def test_server_main_block_coverage() -> None:
             del sys.modules["vtt_transcribe.api.server"]
 
         # Run the module as __main__ to execute line 17
-        try:
+        try:  # noqa: SIM105
             runpy.run_module("vtt_transcribe.api.server", run_name="__main__")
         except SystemExit:
             pass  # Expected when main() completes
