@@ -120,3 +120,39 @@ def test_upload_file_too_large() -> None:
 
     # Should either reject immediately or handle gracefully
     assert response.status_code in [400, 413]  # Bad Request or Payload Too Large
+
+
+def test_get_job_status_success() -> None:
+    """Test getting status of an existing job."""
+    from vtt_transcribe.api import app
+
+    client = TestClient(app)
+
+    # First create a job
+    fake_content = b"fake audio content"
+    files = {"file": ("test.mp3", io.BytesIO(fake_content), "audio/mpeg")}
+    create_response = client.post("/api/v1/transcribe", files=files)
+    assert create_response.status_code == 200
+    job_id = create_response.json()["job_id"]
+
+    # Then check its status
+    status_response = client.get(f"/api/v1/jobs/{job_id}")
+
+    assert status_response.status_code == 200
+    data = status_response.json()
+    assert data["job_id"] == job_id
+    assert "status" in data
+    assert data["status"] in ["pending", "processing", "completed", "failed"]
+
+
+def test_get_job_status_not_found() -> None:
+    """Test getting status of non-existent job returns 404."""
+    from vtt_transcribe.api import app
+
+    client = TestClient(app)
+
+    fake_job_id = "00000000-0000-0000-0000-000000000000"
+    response = client.get(f"/api/v1/jobs/{fake_job_id}")
+
+    assert response.status_code == 404
+    assert "detail" in response.json()
