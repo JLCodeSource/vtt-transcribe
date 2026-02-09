@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from vtt_transcribe import __version__
-from vtt_transcribe.api.routes import health, transcription
+from vtt_transcribe.api.routes import health, transcription, websockets
 
 app = FastAPI(
     title="vtt-transcribe API",
@@ -24,6 +24,7 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(transcription.router)
+app.include_router(websockets.router)
 
 
 @app.get("/")
@@ -33,4 +34,5 @@ async def root() -> dict[str, Any]:
         "message": "Welcome to vtt-transcribe API",
         "version": __version__,
         "docs": "/docs",
+        "websocket": "/ws/jobs/{job_id}",
     }
