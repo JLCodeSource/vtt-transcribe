@@ -145,7 +145,7 @@ For more Docker usage patterns and troubleshooting, see [Docker Registry Documen
 
 ## Upgrading from 0.2.0
 
-**Important:** Version 0.3.0 introduces optional dependencies for speaker diarization. If you are upgrading from 0.2.0 and want to use diarization features, you need to explicitly install the `[diarization]` extra. See the [CHANGELOG](docs/CHANGELOG.md) for detailed upgrade instructions.
+**Important:** Version 0.3.0+ introduces optional dependencies for speaker diarization. If you are upgrading from 0.2.0 and want to use diarization features, you need to explicitly install the `[diarization]` extra. See the [CHANGELOG](docs/CHANGELOG.md) for detailed upgrade instructions.
 
 ## Development Quick Start
 
