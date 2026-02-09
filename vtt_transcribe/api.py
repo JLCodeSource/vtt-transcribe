@@ -1,9 +1,10 @@
 """FastAPI application for VTT Transcribe."""
 
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import mkdtemp
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 
@@ -15,6 +16,9 @@ SUPPORTED_EXTENSIONS = {".mp3", ".mp4", ".mpeg", ".mpga", ".m4a", ".wav", ".webm
 
 # Temporary upload directory
 UPLOAD_DIR = Path(mkdtemp(prefix="vtt_transcribe_"))
+
+# In-memory job storage (will be replaced with database later)
+jobs: dict[str, dict[str, Any]] = {}
 
 app = FastAPI(
     title="VTT Transcribe API",
@@ -70,7 +74,35 @@ async def upload_file(
     upload_path = UPLOAD_DIR / f"{job_id}{file_ext}"
     upload_path.write_bytes(content)
 
+    # Store job metadata
+    jobs[job_id] = {
+        "job_id": job_id,
+        "status": "pending",
+        "filename": file.filename,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "file_path": str(upload_path),
+    }
+
     return {
         "job_id": job_id,
         "status": "pending",
     }
+
+
+@app.get("/api/v1/jobs/{job_id}")
+async def get_job_status(job_id: str) -> dict[str, Any]:
+    """Get status of a transcription job.
+
+    Args:
+        job_id: UUID of the job to check
+
+    Returns:
+        Job status and metadata
+
+    Raises:
+        HTTPException: If job is not found
+    """
+    if job_id not in jobs:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    return jobs[job_id]
