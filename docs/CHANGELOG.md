@@ -5,39 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.0b4] - 2026-02-05
+## [0.3.0] - 2026-02-09
 
 ### Added
-- **Docker support**: Multi-stage Dockerfile with optimized builds for base and diarization variants
-  - Base image: ~500MB (without diarization dependencies)
-  - Diarization image: ~3GB (with PyTorch and pyannote.audio)
+- **Docker support**: Multi-stage Dockerfiles with optimized builds for three image variants
+  - Base image: ~150 MB multi-arch (amd64, arm64) — transcription only
+  - Diarization CPU image: ~700 MB (amd64 only) — PyTorch CPU with torchcodec 0.7
+  - Diarization GPU image: ~6.5 GB (amd64 only) — CUDA 12.8 with torchcodec 0.7
   - Published to Docker Hub (`jlcodesource/vtt-transcribe`) and GitHub Container Registry (GHCR)
-  - Multi-platform support (linux/amd64, linux/arm64)
-  - Automated CD workflows for Docker image publishing on releases
+  - Automated Docker Hub description updates from `docs/DOCKER_HUB.md`
 - **Stdin/stdout support**: Pipe audio/video data through Docker containers
   - Auto-detection of stdin input (non-TTY detection via `sys.stdin.isatty()`)
-  - Binary audio data handling with temporary file management
+  - Binary audio data handling with automatic format detection (MP4, AVI, WebM, MP3, WAV, OGG)
   - Transcript output to stdout (no file saving in stdin mode)
   - Speaker review automatically disabled in stdin mode (non-interactive)
   - Validation: incompatible flags rejected (-s, -o, --apply-diarization, --scan-chunks)
   - BATS smoke tests for Docker integration testing
-  - Usage: `cat video.mp4 | docker run -i vtt:latest`
-- **Issue tracking**: Migrated from GitHub Issues/Projects to beads CLI
-  - Created beads migration workflow for issue management
-  - Updated documentation and developer workflows for beads
-  - Improved task tracking and synchronization with git
+- **Issue tracking**: Migrated from GitHub Issues to beads CLI (`bd`)
+- **CI workflows**: 8 GitHub Actions workflows covering CI, publishing, Docker builds, and releases
 
 ### Changed
-- **Python version support**: Confirmed support for Python 3.10-3.14 across all documentation
-  - Updated CI/CD workflows to test on Python 3.10+
-  - Clarified that Python 3.13+ recommended for diarization features
-- **Test coverage**: Maintained 96% coverage with 254 tests passing
+- **Python version support**: Documented support for Python 3.10–3.14; CI currently tests Python 3.10 only
+- **Test coverage**: 291 tests passing with 100% coverage on all `vtt_transcribe/` source files
   - Added comprehensive stdin/stdout mode tests
-  - Fixed test isolation with autouse fixtures for mocking `sys.stdin.isatty()`
+  - Added format detection edge case tests (empty data, unknown ftyp brands)
+  - Fixed test isolation with autouse fixtures
 
 ### Fixed
-- Documentation consistency: Aligned Python version requirements across README, RELEASE_CHECKLIST, and CI workflows
-- Runtime dependency validation: Added ffmpeg checks before transcription flow execution
+- **Trailing newline**: `--save-transcript` output now always ends with a trailing newline
+- **Docker torchcodec ABI**: Pinned `torchcodec==0.7.0` for compatibility with `torch==2.8.0`
+- **Docker GPU image**: Added `libpython3-dev` to runtime stage; `useradd` fallback for UID conflicts
+- **Docker Hub auth**: Upgraded `peter-evans/dockerhub-description` to v5 for PAT scope compatibility
+- Documentation consistency across README, RELEASE_CHECKLIST, and CI workflows
 
 ## [0.3.0b3] - 2026-02-01
 
