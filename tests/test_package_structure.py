@@ -11,7 +11,7 @@ def test_diarization_extra_requires_pyannote_4x() -> None:
     """Test that pyannote.audio >=4.0.0 is required in diarization extra.
 
     pyannote.audio 4.x uses torchcodec for audio decoding (actively maintained).
-    Combined with torchcodec<0.10 pin for torch 2.8.0 ABI compatibility.
+    Combined with torchcodec<0.8 pin for torch 2.8.0 ABI compatibility.
     """
     meta = metadata("vtt-transcribe")
     # Get all optional dependencies (extras)
@@ -48,10 +48,10 @@ def test_diarization_extra_requires_torchaudio() -> None:
 
 
 def test_diarization_extra_requires_torchcodec() -> None:
-    """Test that torchcodec>=0.7.0,<0.10 is required in diarization extra.
+    """Test that torchcodec>=0.6.0,<0.8 is required in diarization extra.
 
-    pyannote.audio 4.x uses torchcodec for audio decoding. The <0.10 cap
-    ensures ABI compatibility with torch==2.8.0.
+    pyannote.audio 4.x uses torchcodec for audio decoding. The <0.8 cap
+    ensures ABI compatibility with torch==2.8.0 (torchcodec 0.8+ requires torch 2.9+).
     """
     meta = metadata("vtt-transcribe")
     requires = meta.get_all("Requires-Dist") or []
@@ -60,13 +60,13 @@ def test_diarization_extra_requires_torchcodec() -> None:
     assert len(torchcodec_reqs) == 1, f"Expected torchcodec in diarization extra, got: {torchcodec_reqs}"
 
     req = torchcodec_reqs[0]
-    # Verify 0.7.0 is allowed (floor)
+    # Verify 0.7.0 is allowed (compatible with torch 2.8)
     assert req.specifier.contains("0.7.0"), f"torchcodec specifier {req.specifier} should allow 0.7.0"
-    # Verify 0.9.x is allowed
-    assert req.specifier.contains("0.9.0"), f"torchcodec specifier {req.specifier} should allow 0.9.0"
-    # Verify 0.10+ is NOT allowed (ABI incompatible with torch 2.8.0)
-    assert not req.specifier.contains("0.10.0"), (
-        f"torchcodec specifier {req.specifier} allows 0.10.0, which is incompatible with torch==2.8.0"
+    # Verify 0.6.0 is allowed (compatible with torch 2.8)
+    assert req.specifier.contains("0.6.0"), f"torchcodec specifier {req.specifier} should allow 0.6.0"
+    # Verify 0.8+ is NOT allowed (requires torch 2.9+, ABI incompatible with torch 2.8.0)
+    assert not req.specifier.contains("0.8.0"), (
+        f"torchcodec specifier {req.specifier} allows 0.8.0, which requires torch 2.9+ (incompatible with torch==2.8.0)"
     )
 
 

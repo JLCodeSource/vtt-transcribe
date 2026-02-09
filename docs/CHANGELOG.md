@@ -9,12 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Critical: pyannote.audio + torchcodec compatibility** — Upgrade to `pyannote.audio>=4.0.0`
-  with `torchcodec>=0.7.0,<0.10` pinned for `torch==2.8.0` ABI compatibility. pyannote 4.x
-  uses torchcodec for audio decoding and torchaudio for resampling. The `<0.10` cap on
-  torchcodec prevents pulling versions that require torch 2.10+
+  with `torchcodec>=0.6.0,<0.8` pinned for `torch==2.8.0` ABI compatibility. pyannote 4.x
+  uses torchcodec for audio decoding and torchaudio for resampling. The `<0.8` cap on
+  torchcodec prevents pulling versions built for torch 2.9+ (0.8 requires torch 2.9, 0.9 requires torch nightly)
 - **Add torchaudio dependency** — Add `torchaudio>=2.2.0` to `[diarization]` extra; pyannote.audio
   4.x requires torchaudio for audio resampling
-- **Dockerfile updates** — Add `torchcodec>=0.7.0,<0.10` to both diarization Dockerfiles;
+- **Dockerfile updates** — Add `torchcodec>=0.6.0,<0.8` to both diarization Dockerfiles;
   update pyannote.audio constraint to `>=4.0.0`
 - **Improved error reporting** — `check_diarization_dependencies()` now shows the actual import
   error cause instead of a generic "not installed" message

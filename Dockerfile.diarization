@@ -22,7 +22,7 @@ RUN uv pip install torch==2.8.0 torchaudio \
 
 # Layer 2: torchcodec (audio decoding for pyannote.audio 4.x)
 # Pin <0.10 for torch 2.8.0 ABI compatibility
-RUN uv pip install "torchcodec>=0.7.0,<0.10"
+RUN uv pip install "torchcodec>=0.6.0,<0.8"
 
 # Layer 3: pyannote.audio (~1GB)
 RUN uv pip install "pyannote.audio>=4.0.0"
