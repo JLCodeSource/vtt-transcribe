@@ -157,3 +157,37 @@ class TestStructuredLogging:
         assert "message" in log_data
         assert log_data.get("user_id") == "user-123"
         assert log_data.get("action") == "upload"
+
+
+class TestLoggingConfigCoverage:
+    """Tests to cover missing lines in logging_config.py."""
+
+    def test_json_formatter_with_exception(self) -> None:
+        """Test JSON formatter includes exception info (line 117)."""
+        import io
+        import json
+
+        from vtt_transcribe.logging_config import JsonFormatter
+
+        # Create logger with JSON formatter
+        logger = logging.getLogger("test_exception")
+        logger.setLevel(logging.ERROR)
+        logger.handlers.clear()
+
+        stream = io.StringIO()
+        handler = logging.StreamHandler(stream)
+        handler.setFormatter(JsonFormatter())
+        logger.addHandler(handler)
+
+        # Log with exception
+        try:
+            raise ValueError("Test exception")
+        except ValueError:
+            logger.exception("Error occurred")
+
+        output = stream.getvalue()
+        log_data = json.loads(output.strip())
+
+        assert "exception" in log_data
+        assert "ValueError" in log_data["exception"]
+        assert "Test exception" in log_data["exception"]

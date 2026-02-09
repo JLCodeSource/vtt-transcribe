@@ -143,3 +143,40 @@ def test_check_diarization_dependencies_handles_torchaudio_missing() -> None:
     ):
         check_diarization_dependencies()
     assert exc_info.value.code == 1
+
+
+class TestDependenciesCoverage:
+    """Tests to cover missing lines in dependencies.py."""
+
+    def test_check_diarization_dependencies_with_module_not_found_exception(self) -> None:
+        """Test diarization dependency check handles ModuleNotFoundError in find_spec (lines 46-47)."""
+
+        with (
+            patch("vtt_transcribe.dependencies.find_spec") as mock_find,
+            patch("sys.stderr"),
+            pytest.raises(SystemExit) as exc_info,
+        ):
+            # Simulate ModuleNotFoundError during find_spec
+            mock_find.side_effect = ModuleNotFoundError("No module named 'torch'")
+
+            from vtt_transcribe.dependencies import check_diarization_dependencies
+
+            check_diarization_dependencies()
+
+        assert exc_info.value.code == 1
+
+    def test_check_diarization_dependencies_with_value_error(self) -> None:
+        """Test diarization dependency check handles ValueError in find_spec (lines 46-47)."""
+        with (
+            patch("vtt_transcribe.dependencies.find_spec") as mock_find,
+            patch("sys.stderr"),
+            pytest.raises(SystemExit) as exc_info,
+        ):
+            # Simulate ValueError during find_spec (can happen with malformed module names)
+            mock_find.side_effect = ValueError("Invalid module spec")
+
+            from vtt_transcribe.dependencies import check_diarization_dependencies
+
+            check_diarization_dependencies()
+
+        assert exc_info.value.code == 1

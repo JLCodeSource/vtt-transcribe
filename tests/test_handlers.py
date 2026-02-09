@@ -205,7 +205,7 @@ class TestHandleReviewSpeakers:
                 mock_context,
             )
 
-            result = handle_review_speakers(input_path=audio_file, hf_token="hf_token")  # noqa: S106
+            result = handle_review_speakers(input_path=audio_file, hf_token="hf_token")
 
             assert "SPEAKER_00" in result
 
@@ -231,7 +231,7 @@ class TestHandleReviewSpeakers:
                 mock_context,
             )
 
-            result = handle_review_speakers(input_path=transcript_file, hf_token="hf_token")  # noqa: S106
+            result = handle_review_speakers(input_path=transcript_file, hf_token="hf_token")
 
             assert "SPEAKER_00" in result
 
@@ -258,7 +258,7 @@ class TestHandleReviewSpeakers:
                 mock_context,
             )
 
-            handle_review_speakers(input_path=audio_file, hf_token="hf_token", save_path=save_path)  # noqa: S106
+            handle_review_speakers(input_path=audio_file, hf_token="hf_token", save_path=save_path)
 
             assert save_path.exists()
 
@@ -306,7 +306,7 @@ class TestHandleStandardTranscription:
         args.force = False
         args.scan_chunks = False
         args.diarize = True
-        args.hf_token = "hf_token"  # noqa: S105
+        args.hf_token = "hf_token"
         args.device = "cpu"
         args.no_review_speakers = True
         args.translate = False
@@ -536,7 +536,7 @@ class TestAudioPathResolution:
         args.force = False
         args.scan_chunks = False
         args.diarize = True
-        args.hf_token = "test_token"  # noqa: S105
+        args.hf_token = "test_token"
         args.device = "cpu"
         args.no_review_speakers = True
         args.translate = False
@@ -582,7 +582,7 @@ class TestAudioPathResolution:
         args.force = False
         args.scan_chunks = False
         args.diarize = True
-        args.hf_token = "test_token"  # noqa: S105
+        args.hf_token = "test_token"
         args.device = "cpu"
         args.no_review_speakers = True
         args.translate = False
@@ -629,7 +629,7 @@ class TestAudioPathResolution:
         args.force = False
         args.scan_chunks = False
         args.diarize = True
-        args.hf_token = "test_token"  # noqa: S105
+        args.hf_token = "test_token"
         args.device = "cpu"
         args.no_review_speakers = True
         args.translate = False
@@ -657,3 +657,126 @@ class TestAudioPathResolution:
             mock_diarizer.diarize_audio.assert_called_once()
             called_path = mock_diarizer.diarize_audio.call_args[0][0]
             assert str(called_path) == str(audio_file)
+
+
+class TestHandlersCoverage:
+    """Tests to cover missing lines in handlers.py."""
+
+    def test_diarize_only_with_gpu_available(self, tmp_path: Path) -> None:
+        """Test diarize-only mode when GPU is available (lines 64-65, 72)."""
+        import sys
+
+        audio_file = tmp_path / "test.mp3"
+        audio_file.write_bytes(b"fake audio")
+
+        # Mock torch module to simulate CUDA availability
+        mock_torch = MagicMock()
+        mock_torch.cuda.is_available.return_value = True
+        mock_torch.cuda.get_device_name.return_value = "Test GPU"
+        mock_torch.cuda.memory_allocated.return_value = 1024 * 1024 * 100  # 100MB
+
+        mock_diarizer = MagicMock()
+        mock_diarizer.diarize_audio.return_value = [(0.0, 5.0, "SPEAKER_00")]
+
+        # Mock format function
+        mock_format = MagicMock(return_value="[00:00 - 00:05] SPEAKER_00")
+
+        with (
+            patch.dict(sys.modules, {"torch": mock_torch}),
+            patch("vtt_transcribe.handlers._lazy_import_diarization") as mock_lazy,
+            patch("builtins.print"),
+        ):
+            mock_lazy.return_value = (
+                MagicMock(return_value=mock_diarizer),
+                mock_format,
+                MagicMock(),
+                MagicMock(),
+            )
+
+            from vtt_transcribe.handlers import handle_diarize_only_mode
+
+            # Test with cuda device (should print GPU info)
+            result = handle_diarize_only_mode(
+                audio_file,
+                hf_token="test-token",
+                save_path=None,
+                device="cuda",
+            )
+
+            assert "SPEAKER_00" in result
+
+    def test_translate_audio_cleanup(self, tmp_path: Path) -> None:
+        """Test audio cleanup in translation mode (lines 313-317)."""
+        video_file = tmp_path / "test.mp4"
+        video_file.write_bytes(b"fake video")
+        audio_file = tmp_path / "test.mp3"
+        audio_file.write_bytes(b"fake audio")
+
+        args = MagicMock()
+        args.input_file = str(video_file)
+        args.output_audio = str(audio_file)
+        args.delete_audio = True  # Request cleanup
+        args.force = False
+        args.scan_chunks = False
+        args.diarize = False
+        args.translate = True  # Translation mode
+        args.translate_to = None
+
+        mock_translator = MagicMock()
+        mock_translator.translate_audio_file.return_value = "Translated text"
+
+        with (
+            patch("vtt_transcribe.handlers.AudioTranslator", return_value=mock_translator),
+            patch("builtins.print"),
+        ):
+            from vtt_transcribe.handlers import handle_standard_transcription
+
+            result = handle_standard_transcription(args, "test-key")
+
+            assert result == "Translated text"
+            # Verify audio file was deleted
+            assert not audio_file.exists()
+
+    def test_diarization_with_custom_audio_path(self, tmp_path: Path) -> None:
+        """Test diarization with custom audio path (line 339)."""
+        video_file = tmp_path / "test.mp4"
+        video_file.write_bytes(b"fake video")
+        custom_audio = tmp_path / "custom.mp3"
+        custom_audio.write_bytes(b"fake audio")
+
+        args = MagicMock()
+        args.input_file = str(video_file)
+        args.output_audio = str(custom_audio)
+        args.delete_audio = False
+        args.force = False
+        args.scan_chunks = False
+        args.diarize = True
+        args.hf_token = "test-token"
+        args.device = "cpu"
+        args.no_review_speakers = True
+        args.translate = False
+        args.translate_to = None
+
+        mock_transcriber = MagicMock()
+        mock_transcriber.transcribe.return_value = "Test transcript"
+
+        mock_diarizer = MagicMock()
+        mock_diarizer.diarize_audio.return_value = []
+        mock_diarizer.apply_speakers_to_transcript.return_value = "Transcript with speakers"
+
+        with (
+            patch("vtt_transcribe.transcriber.VideoTranscriber", return_value=mock_transcriber) as mock_vt,
+            patch("vtt_transcribe.handlers._lazy_import_diarization") as mock_lazy,
+            patch("builtins.print"),
+        ):
+            mock_vt.SUPPORTED_AUDIO_FORMATS = [".mp3", ".wav"]
+            mock_lazy.return_value = (MagicMock(return_value=mock_diarizer), None, None, None)
+
+            from vtt_transcribe.handlers import handle_standard_transcription
+
+            result = handle_standard_transcription(args, "test-key")
+
+            # Verify custom audio path was used
+            mock_diarizer.diarize_audio.assert_called_once()
+            called_path = mock_diarizer.diarize_audio.call_args[0][0]
+            assert str(called_path) == str(custom_audio)
