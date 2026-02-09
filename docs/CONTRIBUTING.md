@@ -233,7 +233,7 @@ Production releases are automated via GitHub Actions:
 - **CI (`ci.yml`):** Runs on every push/PR to main
   - Installs dependencies
   - Runs linting (`make lint`)
-  - Runs tests (`make test`) on Python 3.10–3.14
+  - Runs tests (`make test`) on Python 3.10
 
 - **Publish (`publish.yml`):** Runs on GitHub release creation
   - Builds package with Hatch
@@ -290,8 +290,9 @@ vtt-transcribe/
 │   ├── RELEASE_CHECKLIST.md
 │   └── DOCKER_HUB.md           # Docker Hub description (auto-synced)
 ├── pyproject.toml               # Package metadata and dependencies
-├── Dockerfile                   # Base + diarization CPU image
-├── Dockerfile.diarization       # Diarization GPU image (CUDA)
+├── Dockerfile                   # Base image (CLI + CPU transcription)
+├── Dockerfile.diarization       # Diarization CPU image
+├── Dockerfile.diarization-gpu   # Diarization GPU image (CUDA)
 ├── Makefile                     # Development commands
 ├── noxfile.py                   # Nox multi-version testing
 └── ruff.toml                   # Ruff linter configuration

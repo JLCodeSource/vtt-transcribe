@@ -10,7 +10,7 @@
 - ✅ Stdin/stdout support: pipe audio/video through Docker containers
 - ✅ PyPI packaging: `pip install vtt-transcribe` with automated OIDC publishing
 - ✅ Comprehensive testing: 291 tests, 100% coverage on all `vtt_transcribe/` source files
-- ✅ Multi-version CI: Python 3.10–3.14 tested in CI
+- ✅ CI coverage: Python 3.10 tested in CI
 - ✅ Docker Hub automation: description auto-updated from `docs/DOCKER_HUB.md`
 
 ## Version 0.4.0 (Next — API & Web Interface)

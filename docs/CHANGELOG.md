@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CI workflows**: 8 GitHub Actions workflows covering CI, publishing, Docker builds, and releases
 
 ### Changed
-- **Python version support**: Confirmed support for Python 3.10-3.14 across all documentation and CI
+- **Python version support**: Documented support for Python 3.10–3.14; CI currently tests Python 3.10 only
 - **Test coverage**: 291 tests passing with 100% coverage on all `vtt_transcribe/` source files
   - Added comprehensive stdin/stdout mode tests
   - Added format detection edge case tests (empty data, unknown ftyp brands)
