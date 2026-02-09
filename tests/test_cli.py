@@ -506,3 +506,26 @@ class TestMainCliArgumentParsing:
                 main()
 
             assert exc_info.value.code == 2
+
+
+class TestTranslationFlags:
+    """Test translation-related CLI flags."""
+
+    def test_parser_accepts_translate_flag(self) -> None:
+        """Should accept --translate flag."""
+        parser = create_parser()
+        args = parser.parse_args(["video.mp4", "--translate"])
+        assert args.translate is True
+
+    def test_parser_accepts_translate_to_flag(self) -> None:
+        """Should accept --translate-to flag with language."""
+        parser = create_parser()
+        args = parser.parse_args(["video.mp4", "--translate-to", "Spanish"])
+        assert args.translate_to == "Spanish"
+
+    def test_translate_to_requires_translate_flag(self) -> None:
+        """--translate-to without --translate should still be valid (will be validated in main)."""
+        parser = create_parser()
+        args = parser.parse_args(["video.mp4", "--translate-to", "French"])
+        assert args.translate_to == "French"
+        assert args.translate is False  # Default value
