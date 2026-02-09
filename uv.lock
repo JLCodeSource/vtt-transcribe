@@ -4736,7 +4736,7 @@ wheels = [
 
 [[package]]
 name = "vtt-transcribe"
-version = "0.3.0b6"
+version = "0.3.1"
 source = { editable = "." }
 dependencies = [
     { name = "moviepy" },

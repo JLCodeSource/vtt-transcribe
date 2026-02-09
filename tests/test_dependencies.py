@@ -107,6 +107,7 @@ def test_check_diarization_dependencies_prints_error_message() -> None:
     error_output = " ".join(print_calls)
     assert "Diarization dependencies not installed" in error_output
     assert "pip install vtt-transcribe[diarization]" in error_output
+    assert "Cause:" in error_output
 
 
 def test_check_diarization_dependencies_handles_torch_missing() -> None:

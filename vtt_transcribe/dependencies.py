@@ -36,8 +36,9 @@ def check_diarization_dependencies() -> None:
     try:
         import pyannote.audio  # noqa: F401
         import torch  # noqa: F401
-    except ImportError:
+    except ImportError as exc:
         print("\nError: Diarization dependencies not installed.", file=sys.stderr)
+        print(f"  Cause: {exc}", file=sys.stderr)
         print(
             "Install with: pip install vtt-transcribe[diarization] or: uv pip install vtt-transcribe[diarization]\n",
             file=sys.stderr,
