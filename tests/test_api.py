@@ -1,6 +1,8 @@
 """Tests for FastAPI application."""
 
 import io
+import time
+from unittest.mock import Mock, patch
 
 from fastapi.testclient import TestClient
 
@@ -120,3 +122,56 @@ def test_upload_file_too_large() -> None:
 
     # Should either reject immediately or handle gracefully
     assert response.status_code in [400, 413]  # Bad Request or Payload Too Large
+
+
+def test_get_job_status() -> None:
+    """Test getting job status."""
+    from vtt_transcribe.api import app
+
+    client = TestClient(app)
+
+    # First upload a file
+    fake_mp3_content = b"fake mp3 content for testing"
+    files = {"file": ("test.mp3", io.BytesIO(fake_mp3_content), "audio/mpeg")}
+    upload_response = client.post("/api/v1/transcribe", files=files)
+    job_id = upload_response.json()["job_id"]
+
+    # Then get job status
+    status_response = client.get(f"/api/v1/jobs/{job_id}")
+
+    assert status_response.status_code == 200
+    data = status_response.json()
+    assert data["job_id"] == job_id
+    assert "status" in data
+
+
+def test_background_transcription_with_api_key() -> None:
+    """Test that background transcription processes file with API key."""
+    from vtt_transcribe.api import app
+
+    client = TestClient(app)
+
+    # Mock the transcriber
+    with patch("vtt_transcribe.api.VideoTranscriber") as mock_transcriber_class:
+        mock_transcriber = Mock()
+        mock_transcriber.transcribe.return_value = "Hello world transcript"
+        mock_transcriber_class.return_value = mock_transcriber
+
+        # Upload file with API key
+        fake_mp3_content = b"fake mp3 content for testing"
+        files = {"file": ("test.mp3", io.BytesIO(fake_mp3_content), "audio/mpeg")}
+        data = {"api_key": "sk-test-key"}
+
+        response = client.post("/api/v1/transcribe", files=files, data=data)
+        job_id = response.json()["job_id"]
+
+        # Wait for background task
+        time.sleep(0.5)
+
+        # Check job status
+        status_response = client.get(f"/api/v1/jobs/{job_id}")
+        job_data = status_response.json()
+
+        assert job_data["status"] == "completed"
+        assert "transcript" in job_data
+        assert job_data["transcript"]["text"] == "Hello world transcript"
