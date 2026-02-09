@@ -4,9 +4,11 @@ This module provides structured logging with environment-based configuration,
 supporting both human-readable dev logs and JSON-formatted production logs.
 """
 
+import json
 import logging
 import os
 import sys
+from typing import Any
 
 
 def get_environment() -> str:
@@ -63,12 +65,8 @@ def setup_logging(*, dev_mode: bool | None = None) -> logging.Logger:
             datefmt="%Y-%m-%d %H:%M:%S",
         )
     else:
-        # JSON format for production (simplified for now)
-        # We'll enhance this with proper JSON formatting in refactor phase
-        formatter = logging.Formatter(
-            '{"time":"%(asctime)s","name":"%(name)s","level":"%(levelname)s","message":"%(message)s"}',
-            datefmt="%Y-%m-%dT%H:%M:%S",
-        )
+        # Proper JSON format for production
+        formatter = JsonFormatter()
 
     handler.setFormatter(formatter)
     logger.addHandler(handler)
@@ -88,5 +86,62 @@ def get_logger(name: str) -> logging.Logger:
     Returns:
         Logger instance
     """
-    # Return child logger of main vtt_transcribe logger
+    # If the name is already under the vtt_transcribe namespace, use it as-is;
+    # otherwise, create a child logger of the main vtt_transcribe logger.
+    if name == "vtt_transcribe" or name.startswith("vtt_transcribe."):
+        return logging.getLogger(name)
     return logging.getLogger(f"vtt_transcribe.{name}")
+
+
+class JsonFormatter(logging.Formatter):
+    """JSON formatter for structured logging in production."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        """Format log record as JSON.
+
+        Args:
+            record: Log record to format
+
+        Returns:
+            JSON-formatted log string
+        """
+        log_data: dict[str, Any] = {
+            "timestamp": self.formatTime(record, "%Y-%m-%dT%H:%M:%S"),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+
+        # Add exception info if present
+        if record.exc_info:
+            log_data["exception"] = self.formatException(record.exc_info)
+
+        # Add extra fields from record
+        # Preserve custom fields passed via extra={} in log calls
+        for key, value in record.__dict__.items():
+            if key not in (
+                "name",
+                "msg",
+                "args",
+                "created",
+                "msecs",
+                "levelname",
+                "levelno",
+                "pathname",
+                "filename",
+                "module",
+                "exc_info",
+                "exc_text",
+                "stack_info",
+                "lineno",
+                "funcName",
+                "processName",
+                "process",
+                "threadName",
+                "thread",
+                "taskName",
+                "relativeCreated",
+            ):
+                log_data[key] = value
+
+        return json.dumps(log_data)

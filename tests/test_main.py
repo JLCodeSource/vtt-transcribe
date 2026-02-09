@@ -826,17 +826,21 @@ class TestTranslationWorkflow:
 
         with (
             patch("sys.argv", ["vtt", str(audio_file), "--translate", "-k", "test-key"]),
-            patch("vtt_transcribe.handlers.AudioTranslator") as mock_translator_class,
+            patch("vtt_transcribe.main.check_ffmpeg_installed"),
+            patch("vtt_transcribe.translator.OpenAI") as mock_openai,
             patch("builtins.print"),
         ):
-            mock_translator = MagicMock()
-            mock_translator.translate_audio_file.return_value = "Translated text"
-            mock_translator_class.return_value = mock_translator
+            # Mock the OpenAI client and its response
+            mock_client = MagicMock()
+            mock_response = MagicMock()
+            mock_response.text = "Translated text"
+            mock_client.audio.translations.create.return_value = mock_response
+            mock_openai.return_value = mock_client
 
             main()
 
-            mock_translator_class.assert_called_once_with("test-key")
-            mock_translator.translate_audio_file.assert_called_once()
+            mock_openai.assert_called_once_with(api_key="test-key")
+            mock_client.audio.translations.create.assert_called_once()
 
     def test_translate_to_flag_translates_transcript(self, tmp_path: Path) -> None:
         """Test that --translate-to flag translates transcription result."""
@@ -845,19 +849,23 @@ class TestTranslationWorkflow:
 
         with (
             patch("sys.argv", ["vtt", str(audio_file), "--translate-to", "Spanish", "-k", "test-key"]),
+            patch("vtt_transcribe.main.check_ffmpeg_installed"),
             patch("vtt_transcribe.transcriber.VideoTranscriber") as mock_transcriber_class,
-            patch("vtt_transcribe.handlers.AudioTranslator") as mock_translator_class,
+            patch("vtt_transcribe.translator.OpenAI") as mock_openai,
             patch("builtins.print"),
         ):
             mock_transcriber = MagicMock()
             mock_transcriber.transcribe.return_value = "English transcript"
             mock_transcriber_class.return_value = mock_transcriber
 
-            mock_translator = MagicMock()
-            mock_translator.translate_text.return_value = "Spanish transcript"
-            mock_translator_class.return_value = mock_translator
+            # Mock the OpenAI client for translation
+            mock_client = MagicMock()
+            mock_chat_response = MagicMock()
+            mock_chat_response.choices = [MagicMock(message=MagicMock(content="Spanish transcript"))]
+            mock_client.chat.completions.create.return_value = mock_chat_response
+            mock_openai.return_value = mock_client
 
             main()
 
-            mock_translator_class.assert_called_once_with("test-key")
-            mock_translator.translate_text.assert_called_once_with("English transcript", target_language="Spanish")
+            mock_openai.assert_called_once_with(api_key="test-key")
+            mock_client.chat.completions.create.assert_called_once()

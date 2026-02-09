@@ -32,11 +32,11 @@ class TestAPIKeyAuthentication:
 
     def test_valid_api_key_accepted(self, client):
         """Valid API keys should be accepted."""
-        from unittest.mock import AsyncMock, patch
+        from unittest.mock import patch
 
         with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber") as mock:
             mock_instance = mock.return_value
-            mock_instance.transcribe = AsyncMock(return_value="[00:00 - 00:05] Test")
+            mock_instance.transcribe.return_value = "[00:00 - 00:05] Test"
 
             response = client.post(
                 "/transcribe",
@@ -51,11 +51,11 @@ class TestAPIKeyHeader:
 
     def test_api_key_via_header(self, client):
         """API key should be acceptable via X-API-Key header."""
-        from unittest.mock import AsyncMock, patch
+        from unittest.mock import patch
 
         with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber") as mock:
             mock_instance = mock.return_value
-            mock_instance.transcribe = AsyncMock(return_value="[00:00 - 00:05] Test")
+            mock_instance.transcribe.return_value = "[00:00 - 00:05] Test"
 
             response = client.post(
                 "/transcribe",
@@ -67,11 +67,11 @@ class TestAPIKeyHeader:
 
     def test_bearer_token_authentication(self, client):
         """Bearer token authentication should work."""
-        from unittest.mock import AsyncMock, patch
+        from unittest.mock import patch
 
         with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber") as mock:
             mock_instance = mock.return_value
-            mock_instance.transcribe = AsyncMock(return_value="[00:00 - 00:05] Test")
+            mock_instance.transcribe.return_value = "[00:00 - 00:05] Test"
 
             response = client.post(
                 "/transcribe",

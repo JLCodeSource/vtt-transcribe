@@ -6,6 +6,7 @@ from openai import OpenAI
 
 from vtt_transcribe.audio_chunker import AudioChunker
 from vtt_transcribe.audio_manager import AudioFileManager
+from vtt_transcribe.logging_config import get_logger
 from vtt_transcribe.transcript_formatter import TranscriptFormatter
 
 if TYPE_CHECKING:
@@ -14,6 +15,9 @@ if TYPE_CHECKING:
 # Constants
 MAX_FILE_SIZE_MB = 25
 AUDIO_EXTENSION = ".mp3"
+
+# Get logger for this module
+logger = get_logger(__name__)
 
 
 class VideoTranscriber:
@@ -53,6 +57,10 @@ class VideoTranscriber:
         """Extract audio from video file (delegates to AudioFileManager)."""
         if audio_path.exists() and not force:
             file_size_mb = audio_path.stat().st_size / (1024 * 1024)
+            logger.info(
+                "Using existing audio file",
+                extra={"audio_path": str(audio_path), "size_mb": round(file_size_mb, 1)},
+            )
             print(f"Using existing audio file: {audio_path} ({file_size_mb:.1f}MB)")
             return
         AudioFileManager.extract_from_video(input_path, audio_path, force=force)
@@ -74,6 +82,7 @@ class VideoTranscriber:
         AudioFileManager.cleanup_files(audio_path)
 
         # Report what was deleted
+        logger.info("Deleted audio file", extra={"audio_path": str(audio_path), "chunks": len(chunks)})
         print(f"Deleted audio file: {audio_path}")
         for chunk in chunks:
             print(f"Deleted chunk file: {chunk}")

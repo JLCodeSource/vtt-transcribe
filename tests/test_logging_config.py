@@ -99,3 +99,95 @@ class TestEnvironmentBasedConfiguration:
         """Test is_production helper for development environment."""
         monkeypatch.setenv("VTT_ENV", "development")
         assert logging_config.is_production() is False
+
+
+class TestStructuredLogging:
+    """Test structured logging with context."""
+
+    def test_logger_supports_structured_fields(self) -> None:
+        """Test that logger can log with structured fields."""
+        import io
+        import logging
+
+        # Create a test logger
+        test_logger = logging.getLogger("vtt_transcribe.test")
+        test_logger.setLevel(logging.INFO)
+        test_logger.handlers.clear()
+
+        # Capture output
+        stream = io.StringIO()
+        handler = logging.StreamHandler(stream)
+        handler.setLevel(logging.INFO)
+        test_logger.addHandler(handler)
+
+        # Log with structured fields
+        test_logger.info("Test message", extra={"job_id": "test-123", "duration": 1.5})
+
+        # Verify log was generated
+        output = stream.getvalue()
+        assert output.strip(), "Should have generated log output"
+        assert "Test message" in output
+
+    def test_json_formatter_includes_structured_fields(self) -> None:
+        """Test that JSON formatter includes structured fields in output."""
+        import json
+        from io import StringIO
+
+        # Capture log output
+        log_stream = StringIO()
+        handler = logging.StreamHandler(log_stream)
+
+        # Use production mode (JSON format)
+        logger = logging_config.setup_logging(dev_mode=False)
+        logger.handlers.clear()
+
+        # Add custom formatter that outputs proper JSON
+        formatter = logging_config.JsonFormatter()
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
+        # Log with structured data
+        logger.info("Test event", extra={"user_id": "user-123", "action": "upload"})
+
+        # Parse output as JSON
+        log_output = log_stream.getvalue()
+        assert log_output.strip(), "Log output should not be empty - logging may be misconfigured"
+
+        log_data = json.loads(log_output.strip())
+        assert "message" in log_data
+        assert log_data.get("user_id") == "user-123"
+        assert log_data.get("action") == "upload"
+
+
+class TestLoggingConfigCoverage:
+    """Tests to cover missing lines in logging_config.py."""
+
+    def test_json_formatter_with_exception(self) -> None:
+        """Test JSON formatter includes exception info (line 117)."""
+        import io
+        import json
+
+        from vtt_transcribe.logging_config import JsonFormatter
+
+        # Create logger with JSON formatter
+        logger = logging.getLogger("test_exception")
+        logger.setLevel(logging.ERROR)
+        logger.handlers.clear()
+
+        stream = io.StringIO()
+        handler = logging.StreamHandler(stream)
+        handler.setFormatter(JsonFormatter())
+        logger.addHandler(handler)
+
+        # Log with exception
+        try:
+            raise ValueError("Test exception")  # noqa: EM101
+        except ValueError:
+            logger.exception("Error occurred")
+
+        output = stream.getvalue()
+        log_data = json.loads(output.strip())
+
+        assert "exception" in log_data
+        assert "ValueError" in log_data["exception"]
+        assert "Test exception" in log_data["exception"]
