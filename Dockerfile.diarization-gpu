@@ -30,12 +30,15 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # Install PyTorch + torchaudio with CUDA support in their own layer
 # BOTH must come from the same CUDA index to ensure matching C++ ABI.
-# torchaudio required by pyannote.audio 3.x for audio I/O
+# torchaudio required by pyannote.audio 4.x for resampling
 RUN uv pip install torch==2.8.0 torchaudio --index-url https://download.pytorch.org/whl/cu128
 
+# Install torchcodec (audio decoding for pyannote.audio 4.x)
+# Pin <0.10 for torch 2.8.0 ABI compatibility
+RUN uv pip install "torchcodec>=0.7.0,<0.10"
+
 # Install remaining diarization dependencies in a separate layer
-# Pin to 3.x — 4.x switches to torchcodec-based IO incompatible with torch 2.8
-RUN uv pip install "pyannote.audio>=3.1.0,<4.0.0"
+RUN uv pip install "pyannote.audio>=4.0.0"
 
 # Copy source code
 COPY vtt_transcribe ./vtt_transcribe
@@ -47,7 +50,8 @@ RUN uv pip install ".[diarization]"
 RUN cp -a /opt/venv/lib/python3.12/site-packages /opt/venv/site-packages-rest \
     && rm -rf /opt/venv/site-packages-rest/nvidia \
               /opt/venv/site-packages-rest/torch \
-              /opt/venv/site-packages-rest/torchaudio
+              /opt/venv/site-packages-rest/torchaudio \
+              /opt/venv/site-packages-rest/torchcodec
 
 # Runtime stage: CUDA runtime image with only runtime dependencies
 FROM nvidia/cuda:12.8.1-runtime-ubuntu24.04
@@ -75,8 +79,9 @@ RUN useradd -m -u "$USER_UID" vttuser 2>/dev/null \
 COPY --from=builder /opt/venv/lib/python3.12/site-packages/nvidia /opt/venv/lib/python3.12/site-packages/nvidia
 # Layer 2: PyTorch core ~1.5GB
 COPY --from=builder /opt/venv/lib/python3.12/site-packages/torch /opt/venv/lib/python3.12/site-packages/torch
-# Layer 3: torchaudio
+# Layer 3: torchaudio + torchcodec
 COPY --from=builder /opt/venv/lib/python3.12/site-packages/torchaudio /opt/venv/lib/python3.12/site-packages/torchaudio
+COPY --from=builder /opt/venv/lib/python3.12/site-packages/torchcodec /opt/venv/lib/python3.12/site-packages/torchcodec
 # Layer 4: All remaining packages (pyannote, speechbrain, vtt-transcribe, etc.)
 # Uses the pre-stripped site-packages-rest from the builder stage
 COPY --from=builder /opt/venv/site-packages-rest /opt/venv/lib/python3.12/site-packages

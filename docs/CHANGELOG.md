@@ -8,19 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.1] - 2026-02-09
 
 ### Fixed
-- **Critical: pyannote.audio 4.x compatibility** — Pin `pyannote.audio>=3.1.0,<4.0.0` to prevent
-  installation of pyannote.audio 4.x which switched from torchaudio to torchcodec for audio I/O.
-  pyannote 4.x pulls in `torchcodec>=0.10` which requires `torch>=2.10`, causing ABI mismatch with
-  our pinned `torch==2.8.0` and runtime `NameError: name 'AudioDecoder' is not defined`
+- **Critical: pyannote.audio + torchcodec compatibility** — Upgrade to `pyannote.audio>=4.0.0`
+  with `torchcodec>=0.7.0,<0.10` pinned for `torch==2.8.0` ABI compatibility. pyannote 4.x
+  uses torchcodec for audio decoding and torchaudio for resampling. The `<0.10` cap on
+  torchcodec prevents pulling versions that require torch 2.10+
 - **Add torchaudio dependency** — Add `torchaudio>=2.2.0` to `[diarization]` extra; pyannote.audio
-  3.x requires torchaudio for audio I/O and without it `import pyannote.audio` fails
-- **Remove unnecessary torchcodec pin** — Removed `torchcodec==0.7.0` from `[diarization]` extra;
-  torchcodec is only used by pyannote.audio 4.x (which we exclude with `<4.0.0`)
-- **Dockerfile pins** — Pin `pyannote.audio<4.0.0` in both `Dockerfile.diarization` and
-  `Dockerfile.diarization-gpu` to match pyproject.toml constraints; remove unnecessary torchcodec pins
+  4.x requires torchaudio for audio resampling
+- **Dockerfile updates** — Add `torchcodec>=0.7.0,<0.10` to both diarization Dockerfiles;
+  update pyannote.audio constraint to `>=4.0.0`
+- **Improved error reporting** — `check_diarization_dependencies()` now shows the actual import
+  error cause instead of a generic "not installed" message
 
 ### Added
-- Dependency constraint tests validating pyannote.audio and torchaudio version requirements
+- Dependency constraint tests validating pyannote.audio, torchaudio, and torchcodec version requirements
 
 ## [0.3.0] - 2026-02-09
 

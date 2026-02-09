@@ -7,13 +7,11 @@ from importlib.metadata import metadata
 from packaging.requirements import Requirement
 
 
-def test_diarization_extra_pins_pyannote_below_4() -> None:
-    """Test that pyannote.audio is pinned to <4.0.0 in diarization extra.
+def test_diarization_extra_requires_pyannote_4x() -> None:
+    """Test that pyannote.audio >=4.0.0 is required in diarization extra.
 
-    pyannote.audio 4.x switched audio I/O from torchaudio to torchcodec,
-    which requires torch>=2.10 and is incompatible with our torch==2.8.0 pin.
-    This causes 'NameError: name AudioDecoder is not defined' at runtime.
-    See: https://github.com/pyannote/pyannote-audio/blob/main/CHANGELOG.md#version-400
+    pyannote.audio 4.x uses torchcodec for audio decoding (actively maintained).
+    Combined with torchcodec<0.10 pin for torch 2.8.0 ABI compatibility.
     """
     meta = metadata("vtt-transcribe")
     # Get all optional dependencies (extras)
@@ -24,21 +22,18 @@ def test_diarization_extra_pins_pyannote_below_4() -> None:
     assert len(pyannote_reqs) == 1, f"Expected exactly 1 pyannote.audio req in diarization extra, got: {pyannote_reqs}"
 
     req = pyannote_reqs[0]
-    # Verify that version 4.0.0 is NOT allowed by the specifier
-    assert not req.specifier.contains("4.0.0"), (
-        f"pyannote.audio specifier {req.specifier} allows version 4.0.0, "
-        "which is incompatible with torch==2.8.0 (torchcodec ABI mismatch)"
+    # Verify that version 4.0.4 IS allowed
+    assert req.specifier.contains("4.0.4"), f"pyannote.audio specifier {req.specifier} should allow 4.0.4"
+    # Verify that version 3.x is NOT allowed (we require >=4.0.0)
+    assert not req.specifier.contains("3.4.0"), (
+        f"pyannote.audio specifier {req.specifier} allows version 3.4.0, but we require >=4.0.0 for torchcodec-based audio I/O"
     )
-    # Verify that version 3.3.2 IS allowed
-    assert req.specifier.contains("3.3.2"), f"pyannote.audio specifier {req.specifier} should allow 3.x versions"
 
 
 def test_diarization_extra_requires_torchaudio() -> None:
     """Test that torchaudio is required in diarization extra.
 
-    pyannote.audio 3.x uses torchaudio for audio I/O. Without torchaudio,
-    'import pyannote.audio' fails with ImportError, causing the
-    'Diarization dependencies not installed' error message.
+    pyannote.audio 4.x uses torchaudio for audio resampling.
     """
     meta = metadata("vtt-transcribe")
     requires = meta.get_all("Requires-Dist") or []
@@ -47,9 +42,32 @@ def test_diarization_extra_requires_torchaudio() -> None:
     assert len(torchaudio_reqs) == 1, f"Expected torchaudio in diarization extra, got: {torchaudio_reqs}"
 
     req = torchaudio_reqs[0]
-    # Verify that torchaudio 2.2.0+ is allowed (matching pyannote.audio 3.x requirement)
+    # Verify that torchaudio 2.2.0+ is allowed
     assert req.specifier.contains("2.2.0"), f"torchaudio specifier {req.specifier} should allow 2.2.0"
     assert req.specifier.contains("2.8.0"), f"torchaudio specifier {req.specifier} should allow 2.8.0"
+
+
+def test_diarization_extra_requires_torchcodec() -> None:
+    """Test that torchcodec>=0.7.0,<0.10 is required in diarization extra.
+
+    pyannote.audio 4.x uses torchcodec for audio decoding. The <0.10 cap
+    ensures ABI compatibility with torch==2.8.0.
+    """
+    meta = metadata("vtt-transcribe")
+    requires = meta.get_all("Requires-Dist") or []
+
+    torchcodec_reqs = [Requirement(r) for r in requires if "torchcodec" in r and "diarization" in r]
+    assert len(torchcodec_reqs) == 1, f"Expected torchcodec in diarization extra, got: {torchcodec_reqs}"
+
+    req = torchcodec_reqs[0]
+    # Verify 0.7.0 is allowed (floor)
+    assert req.specifier.contains("0.7.0"), f"torchcodec specifier {req.specifier} should allow 0.7.0"
+    # Verify 0.9.x is allowed
+    assert req.specifier.contains("0.9.0"), f"torchcodec specifier {req.specifier} should allow 0.9.0"
+    # Verify 0.10+ is NOT allowed (ABI incompatible with torch 2.8.0)
+    assert not req.specifier.contains("0.10.0"), (
+        f"torchcodec specifier {req.specifier} allows 0.10.0, which is incompatible with torch==2.8.0"
+    )
 
 
 def test_vtt_transcribe_package_import() -> None:
