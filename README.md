@@ -356,8 +356,9 @@ cat recording.mp3 | vtt | tee transcript.txt | grep "SPEAKER_00"
  - [Makefile](Makefile) — Convenience commands for dev tooling
  - [ruff.toml](ruff.toml) — Ruff linter configuration
  - [noxfile.py](noxfile.py) — Nox multi-version test configuration
- - [Dockerfile](Dockerfile) — Base and diarization Docker image
- - [Dockerfile.diarization](Dockerfile.diarization) — GPU diarization Docker image
+ - [Dockerfile](Dockerfile) — Base Docker image
+ - [Dockerfile.diarization](Dockerfile.diarization) — CPU diarization Docker image
+ - [Dockerfile.diarization-gpu](Dockerfile.diarization-gpu) — GPU diarization Docker image
  - [.pre-commit-config.yaml](.pre-commit-config.yaml) — Pre-commit hooks for formatting/linting
 
 ### Contributing
