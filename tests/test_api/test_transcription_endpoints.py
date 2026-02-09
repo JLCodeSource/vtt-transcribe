@@ -319,7 +319,7 @@ class TestTranscriptionAsyncPaths:
             mock_vt.return_value = mock_instance
 
             # Run the async function
-            asyncio.run(_process_transcription(job_id, mock_file, "test-key"))
+            asyncio.run(_process_transcription(job_id=job_id, file=mock_file, api_key="test-key"))
 
             # Verify job marked as failed
             assert jobs[job_id]["status"] == "failed"
@@ -345,7 +345,7 @@ class TestTranscriptionAsyncPaths:
             mock_vt.return_value = mock_instance
 
             # Run async function
-            asyncio.run(_process_transcription(job_id, mock_file, "test-api-key"))
+            asyncio.run(_process_transcription(job_id=job_id, file=mock_file, api_key="test-api-key"))
 
             # Verify lines 168-169 executed (status completed, result set)
             assert jobs[job_id]["status"] == "completed"
