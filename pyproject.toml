@@ -40,6 +40,11 @@ Issues = "https://github.com/JLCodeSource/vtt-transcribe/issues"
 Changelog = "https://github.com/JLCodeSource/vtt-transcribe/blob/main/docs/CHANGELOG.md"
 
 [project.optional-dependencies]
+api = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "python-multipart>=0.0.20",  # For file upload support
+]
 diarization = [
     "pyannote.audio>=4.0.0",  # 4.x uses torchcodec for audio I/O (actively maintained)
     "torch==2.8.0",  # Pinned due to torch 2.10+ breaking change in weights_only
@@ -52,6 +57,7 @@ dev = [
     "mypy>=1.5.0",
     "ruff>=0.1.0",
     "pre-commit>=3.4.0",
+    "httpx>=0.27.0",  # For TestClient support
 ]
 build = [
     "build>=1.0.0",
@@ -73,6 +79,10 @@ dev = [
     "pytest-cov>=7.0.0",
     "ruff>=0.14.14",
     "pre-commit>=3.4.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "python-multipart>=0.0.20",
+    "httpx>=0.27.0",
 ]
 
 [tool.pytest.ini_options]
