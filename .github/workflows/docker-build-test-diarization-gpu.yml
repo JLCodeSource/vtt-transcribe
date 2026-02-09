@@ -11,6 +11,18 @@ jobs:
       contents: read
 
     steps:
+      - name: Free disk space
+        run: |
+          echo "=== Disk before cleanup ==="
+          df -h /
+          # Remove pre-installed software that eats runner disk
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /usr/local/share/powershell /usr/share/swift \
+            /usr/local/.ghcup /usr/lib/jvm
+          sudo docker image prune --all --force || true
+          echo "=== Disk after cleanup ==="
+          df -h /
+
       - name: Checkout code
         uses: actions/checkout@v4
 
