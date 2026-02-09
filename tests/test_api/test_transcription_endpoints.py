@@ -157,14 +157,12 @@ class TestAPITranscriptionCoverage:
 
     def test_transcribe_with_missing_filename(self) -> None:
         """Test transcribe endpoint checks for filename (line 39)."""
-        from unittest.mock import AsyncMock
-
         from fastapi import UploadFile
 
         from vtt_transcribe.api.routes.transcription import create_transcription_job
 
         # Create UploadFile with no filename
-        mock_file = AsyncMock(spec=UploadFile)
+        mock_file = MagicMock(spec=UploadFile)
         mock_file.filename = None
 
         # Should raise HTTPException
@@ -177,14 +175,12 @@ class TestAPITranscriptionCoverage:
 
     def test_diarize_endpoint_with_missing_filename(self) -> None:
         """Test diarize endpoint checks for filename (line 94)."""
-        from unittest.mock import AsyncMock
-
         from fastapi import UploadFile
 
         from vtt_transcribe.api.routes.transcription import create_diarization_job
 
         # Create UploadFile with no filename
-        mock_file = AsyncMock(spec=UploadFile)
+        mock_file = MagicMock(spec=UploadFile)
         mock_file.filename = ""
 
         # Should raise HTTPException
@@ -294,14 +290,7 @@ class TestTranscriptionAsyncPaths:
 
     def test_process_transcription_exception_path(self) -> None:
         """Test _process_transcription exception handling (lines 161-172)."""
-        from unittest.mock import AsyncMock
-
         from vtt_transcribe.api.routes.transcription import _process_transcription, jobs
-
-        # Create an async mock UploadFile
-        mock_file = AsyncMock(spec=UploadFile)
-        mock_file.filename = "test.mp3"
-        mock_file.read = AsyncMock(return_value=b"fake audio")
 
         job_id = "test-exception-job"
         jobs[job_id] = {"status": "pending", "job_id": job_id}
@@ -330,11 +319,6 @@ class TestTranscriptionAsyncPaths:
     def test_transcription_complete_success_path(self) -> None:
         """Test successful transcription completion (lines 168-169)."""
         from vtt_transcribe.api.routes.transcription import _process_transcription, jobs
-
-        # Create async mock UploadFile
-        mock_file = AsyncMock(spec=UploadFile)
-        mock_file.filename = "success.mp3"
-        mock_file.read = AsyncMock(return_value=b"test audio content")
 
         job_id = "success-job"
         jobs[job_id] = {"status": "pending", "job_id": job_id}

@@ -1,7 +1,7 @@
 """Tests for diarization API endpoints."""
 
 import io
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -33,7 +33,7 @@ class TestDiarizationEndpoint:
     def test_transcribe_with_diarization_accepts_hf_token(self, mock_transcriber, client):
         """POST /transcribe with diarize=true and hf_token should succeed."""
         mock_instance = mock_transcriber.return_value
-        mock_instance.transcribe = AsyncMock(return_value="[00:00 - 00:05] Speaker 1: Test")
+        mock_instance.transcribe.return_value = "[00:00 - 00:05] Speaker 1: Test"
 
         response = client.post(
             "/transcribe",
@@ -47,7 +47,7 @@ class TestDiarizationEndpoint:
     def test_transcribe_with_diarization_device_parameter(self, mock_transcriber, client):
         """POST /transcribe with device parameter should be accepted."""
         mock_instance = mock_transcriber.return_value
-        mock_instance.transcribe = AsyncMock(return_value="[00:00 - 00:05] Speaker 1: Test")
+        mock_instance.transcribe.return_value = "[00:00 - 00:05] Speaker 1: Test"
 
         response = client.post(
             "/transcribe",
@@ -83,7 +83,7 @@ class TestDiarizeOnlyEndpoint:
     def test_diarize_with_hf_token_succeeds(self, mock_transcriber, client):
         """POST /diarize with HF token should succeed."""
         mock_instance = mock_transcriber.return_value
-        mock_instance.transcribe = AsyncMock(return_value="[00:00 - 00:05] Speaker 1: Test")
+        mock_instance.transcribe.return_value = "[00:00 - 00:05] Speaker 1: Test"
 
         response = client.post(
             "/diarize",
@@ -97,7 +97,7 @@ class TestDiarizeOnlyEndpoint:
     def test_diarize_with_device_parameter(self, mock_transcriber, client):
         """POST /diarize with device parameter should be accepted."""
         mock_instance = mock_transcriber.return_value
-        mock_instance.transcribe = AsyncMock(return_value="[00:00 - 00:05] Speaker 1: Test")
+        mock_instance.transcribe.return_value = "[00:00 - 00:05] Speaker 1: Test"
 
         response = client.post(
             "/diarize",

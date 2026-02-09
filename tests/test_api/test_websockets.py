@@ -70,7 +70,7 @@ class TestWebSocketConnection:
         """WebSocket should close when job completes."""
         with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber") as mock:
             mock_instance = mock.return_value
-            mock_instance.transcribe = AsyncMock(return_value="[00:00 - 00:05] Test")
+            mock_instance.transcribe.return_value = "[00:00 - 00:05] Test"
 
             response = client.post(
                 "/transcribe",
