@@ -86,7 +86,10 @@ def get_logger(name: str) -> logging.Logger:
     Returns:
         Logger instance
     """
-    # Return child logger of main vtt_transcribe logger
+    # If the name is already under the vtt_transcribe namespace, use it as-is;
+    # otherwise, create a child logger of the main vtt_transcribe logger.
+    if name == "vtt_transcribe" or name.startswith("vtt_transcribe."):
+        return logging.getLogger(name)
     return logging.getLogger(f"vtt_transcribe.{name}")
 
 

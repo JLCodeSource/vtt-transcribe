@@ -106,10 +106,27 @@ class TestStructuredLogging:
 
     def test_logger_supports_structured_fields(self) -> None:
         """Test that logger can log with structured fields."""
-        logger = logging_config.setup_logging(dev_mode=True)
-        # Should be able to log with extra fields
-        logger.info("Test message", extra={"job_id": "test-123", "duration": 1.5})
-        assert True  # If no exception, test passes
+        import io
+        import logging
+
+        # Create a test logger
+        test_logger = logging.getLogger("vtt_transcribe.test")
+        test_logger.setLevel(logging.INFO)
+        test_logger.handlers.clear()
+
+        # Capture output
+        stream = io.StringIO()
+        handler = logging.StreamHandler(stream)
+        handler.setLevel(logging.INFO)
+        test_logger.addHandler(handler)
+
+        # Log with structured fields
+        test_logger.info("Test message", extra={"job_id": "test-123", "duration": 1.5})
+
+        # Verify log was generated
+        output = stream.getvalue()
+        assert output.strip(), "Should have generated log output"
+        assert "Test message" in output
 
     def test_json_formatter_includes_structured_fields(self) -> None:
         """Test that JSON formatter includes structured fields in output."""
@@ -134,8 +151,9 @@ class TestStructuredLogging:
 
         # Parse output as JSON
         log_output = log_stream.getvalue()
-        if log_output.strip():
-            log_data = json.loads(log_output.strip())
-            assert "message" in log_data
-            assert log_data.get("user_id") == "user-123"
-            assert log_data.get("action") == "upload"
+        assert log_output.strip(), "Log output should not be empty - logging may be misconfigured"
+
+        log_data = json.loads(log_output.strip())
+        assert "message" in log_data
+        assert log_data.get("user_id") == "user-123"
+        assert log_data.get("action") == "upload"
