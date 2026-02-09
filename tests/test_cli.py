@@ -346,6 +346,7 @@ class TestMainCliArgumentParsing:
 
                 mock_diarizer_class.assert_called_once_with(hf_token=None, device="cuda")
 
+    @pytest.mark.diarization
     def test_main_with_diarize_only_flag(self, tmp_path: Path) -> None:
         """Should run diarization without transcription when --diarize-only flag is provided."""
         with (

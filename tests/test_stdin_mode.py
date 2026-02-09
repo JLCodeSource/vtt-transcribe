@@ -297,6 +297,7 @@ class TestStdinIntegration:
             output = mock_stdout.getvalue()
             assert "[00:00 - 00:05] Hello world" in output
 
+    @pytest.mark.diarization
     def test_stdin_mode_with_diarization_flag(self, mock_stdin_tty: MagicMock) -> None:
         """Test stdin mode works with --diarize flag."""
         with (

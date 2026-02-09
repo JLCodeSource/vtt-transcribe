@@ -406,6 +406,7 @@ class TestM4aAudioSupport:
         assert ".m4a" in VideoTranscriber.SUPPORTED_AUDIO_FORMATS, ".m4a should be in SUPPORTED_AUDIO_FORMATS"
 
 
+@pytest.mark.diarization
 class TestNoReviewSpeakersFlag:
     """Test --no-review-speakers flag disables automatic review."""
 
