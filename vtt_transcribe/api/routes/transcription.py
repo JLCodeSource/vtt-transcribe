@@ -14,6 +14,12 @@ router = APIRouter(tags=["transcription"])
 
 jobs: dict[str, dict[str, Any]] = {}
 
+# Maximum file size: 100MB
+MAX_FILE_SIZE = 100 * 1024 * 1024
+
+# Supported file extensions
+SUPPORTED_EXTENSIONS = {".mp3", ".mp4", ".wav", ".m4a", ".ogg", ".mpeg", ".mpga", ".webm"}
+
 
 @router.post("/transcribe")
 async def create_transcription_job(
@@ -44,18 +50,38 @@ async def create_transcription_job(
             detail="HuggingFace token required for diarization. Provide hf_token parameter.",
         )
 
+    # Validate file extension
+    file_ext = Path(file.filename).suffix.lower()
+    if file_ext not in SUPPORTED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type: {file_ext}. Supported types: {', '.join(sorted(SUPPORTED_EXTENSIONS))}",
+        )
+
+    # Read and validate file size
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        max_mb = MAX_FILE_SIZE // (1024 * 1024)
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large: {len(content)} bytes. Maximum size: {MAX_FILE_SIZE} bytes ({max_mb}MB)",
+        )
+
     job_id = str(uuid.uuid4())
 
     jobs[job_id] = {
         "job_id": job_id,
         "status": "pending",
         "filename": file.filename,
+        "file_size": len(content),
         "diarize": diarize,
         "hf_token": hf_token if diarize else None,
         "device": device if diarize else None,
     }
 
-    task = asyncio.create_task(_process_transcription(job_id, file, api_key, diarize, hf_token, device))
+    task = asyncio.create_task(
+        _process_transcription(job_id, content, file.filename or "audio.mp3", api_key, diarize, hf_token, device)
+    )
     _ = task
 
     return {
@@ -144,7 +170,8 @@ async def _process_diarization(job_id: str, file: UploadFile, _hf_token: str, _d
 
 async def _process_transcription(
     job_id: str,
-    file: UploadFile,
+    content: bytes,
+    filename: str,
     api_key: str,
     _diarize: bool = False,  # noqa: FBT001, FBT002
     _hf_token: str | None = None,
@@ -155,9 +182,7 @@ async def _process_transcription(
     try:
         jobs[job_id]["status"] = "processing"
 
-        filename = file.filename or "audio.mp3"
         with tempfile.NamedTemporaryFile(delete=False, suffix=Path(filename).suffix) as tmp:
-            content = await file.read()
             tmp.write(content)
             tmp_path = Path(tmp.name)
 
