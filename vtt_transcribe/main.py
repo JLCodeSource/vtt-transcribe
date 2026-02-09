@@ -232,5 +232,5 @@ def main() -> None:
             temp_file_path.unlink()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

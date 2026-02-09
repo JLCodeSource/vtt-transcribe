@@ -272,7 +272,7 @@ def _lazy_import_diarization() -> tuple:
         elif is_missing_dependency:
             # Missing dependency within the diarization module (e.g., torch, pyannote.audio)
             raise ImportError(DIARIZATION_DEPS_ERROR_MSG) from e
-        else:
+        else:  # pragma: no cover
             # Should never reach here, but re-raise just in case
             raise
     return SpeakerDiarizer, format_diarization_output, get_unique_speakers, get_speaker_context_lines
