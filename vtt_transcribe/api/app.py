@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from vtt_transcribe import __version__
-from vtt_transcribe.api.routes import health, transcription
+from vtt_transcribe.api.routes import health, transcription, websocket
 
 app = FastAPI(
     title="vtt-transcribe API",
@@ -24,6 +24,7 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(transcription.router)
+app.include_router(websocket.router)
 
 
 @app.get("/")
