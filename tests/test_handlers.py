@@ -269,7 +269,7 @@ class TestHandleStandardTranscription:
     def test_handle_standard_transcription_basic(self, tmp_path: Path) -> None:
         """Test basic transcription without diarization."""
         audio_file = tmp_path / "test.mp3"
-        audio_file.write_text("fake audio")
+        audio_file.write_bytes(b"fake audio content")
 
         args = MagicMock()
         args.input_file = str(audio_file)
@@ -278,15 +278,17 @@ class TestHandleStandardTranscription:
         args.force = False
         args.scan_chunks = False
         args.diarize = False
+        args.translate = False  # No audio translation
+        args.translate_to = None  # No text translation
+
+        # Create a mock instance
+        mock_transcriber = MagicMock()
+        mock_transcriber.transcribe.return_value = "Test transcript"
 
         with (
-            patch("vtt_transcribe.transcriber.VideoTranscriber") as mock_transcriber_class,
+            patch("vtt_transcribe.transcriber.VideoTranscriber", return_value=mock_transcriber),
             patch("builtins.print"),
         ):
-            mock_transcriber = MagicMock()
-            mock_transcriber.transcribe.return_value = "Test transcript"
-            mock_transcriber_class.return_value = mock_transcriber
-
             result = handle_standard_transcription(args, "test_api_key")
 
             assert result == "Test transcript"
@@ -309,6 +311,7 @@ class TestHandleStandardTranscription:
         args.no_review_speakers = True
 
         with (
+            patch("vtt_transcribe.transcriber.OpenAI"),  # Mock OpenAI client creation
             patch("vtt_transcribe.transcriber.VideoTranscriber") as mock_transcriber_class,
             patch("vtt_transcribe.handlers._lazy_import_diarization") as mock_import,
             patch("builtins.print"),
@@ -541,8 +544,10 @@ class TestAudioPathResolution:
         mock_diarizer.apply_speakers_to_transcript.return_value = "test transcript with speakers"
 
         with (
+            patch("vtt_transcribe.transcriber.OpenAI"),  # Mock OpenAI client creation
             patch("vtt_transcribe.transcriber.VideoTranscriber", return_value=mock_transcriber) as mock_vt,
             patch("vtt_transcribe.handlers._lazy_import_diarization") as mock_lazy,
+            patch("builtins.print"),
         ):
             # Set SUPPORTED_AUDIO_FORMATS on mock class
             mock_vt.SUPPORTED_AUDIO_FORMATS = [".mp3", ".wav"]
@@ -578,8 +583,10 @@ class TestAudioPathResolution:
         mock_diarizer.apply_speakers_to_transcript.return_value = "test transcript with speakers"
 
         with (
+            patch("vtt_transcribe.transcriber.OpenAI"),  # Mock OpenAI client creation
             patch("vtt_transcribe.transcriber.VideoTranscriber", return_value=mock_transcriber) as mock_vt,
             patch("vtt_transcribe.handlers._lazy_import_diarization") as mock_lazy,
+            patch("builtins.print"),
         ):
             # Set SUPPORTED_AUDIO_FORMATS on mock class
             mock_vt.SUPPORTED_AUDIO_FORMATS = [".mp3", ".wav"]
@@ -615,8 +622,10 @@ class TestAudioPathResolution:
         mock_diarizer.apply_speakers_to_transcript.return_value = "test transcript with speakers"
 
         with (
+            patch("vtt_transcribe.transcriber.OpenAI"),  # Mock OpenAI client creation
             patch("vtt_transcribe.transcriber.VideoTranscriber", return_value=mock_transcriber) as mock_vt,
             patch("vtt_transcribe.handlers._lazy_import_diarization") as mock_lazy,
+            patch("builtins.print"),
         ):
             # Set SUPPORTED_AUDIO_FORMATS on mock class
             mock_vt.SUPPORTED_AUDIO_FORMATS = [".mp3", ".wav"]

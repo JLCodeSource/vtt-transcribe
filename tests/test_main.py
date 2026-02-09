@@ -826,6 +826,7 @@ class TestTranslationWorkflow:
 
         with (
             patch("sys.argv", ["vtt", str(audio_file), "--translate", "-k", "test-key"]),
+            patch("vtt_transcribe.transcriber.OpenAI"),  # Mock OpenAI client creation
             patch("vtt_transcribe.handlers.AudioTranslator") as mock_translator_class,
             patch("builtins.print"),
         ):
@@ -845,6 +846,7 @@ class TestTranslationWorkflow:
 
         with (
             patch("sys.argv", ["vtt", str(audio_file), "--translate-to", "Spanish", "-k", "test-key"]),
+            patch("vtt_transcribe.transcriber.OpenAI"),  # Mock OpenAI client creation
             patch("vtt_transcribe.transcriber.VideoTranscriber") as mock_transcriber_class,
             patch("vtt_transcribe.handlers.AudioTranslator") as mock_translator_class,
             patch("builtins.print"),
