@@ -26,7 +26,12 @@ class TestWebSocketConnection:
     def test_websocket_sends_initial_status(self, client):
         """WebSocket should send initial job status on connect."""
         # Create a job first
-        with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber"):
+        with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber") as mock_vt:
+            # Mock transcriber to return a string result
+            mock_instance = MagicMock()
+            mock_instance.transcribe.return_value = "[00:00 - 00:05] Test transcript"
+            mock_vt.return_value = mock_instance
+
             response = client.post(
                 "/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
