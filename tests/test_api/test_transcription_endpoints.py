@@ -740,8 +740,24 @@ class TestProgressEventsInTranscription:
 
         # Check if progress events were emitted
         queue = jobs[job_id]["progress_updates"]
-        # Queue may have progress events
+        # Queue should be an asyncio.Queue
         assert isinstance(queue, asyncio.Queue)
+        
+        # Drain queue and verify events were emitted
+        events = []
+        while not queue.empty():
+            try:
+                events.append(queue.get_nowait())
+            except asyncio.QueueEmpty:
+                break
+        
+        # Assert that at least one progress event was emitted
+        assert len(events) >= 1, f"Expected at least 1 progress event, got {len(events)}"
+        # Verify events have required structure
+        for event in events:
+            assert "type" in event, f"Event missing 'type' field: {event}"
+            assert "message" in event, f"Event missing 'message' field: {event}"
+            assert "timestamp" in event, f"Event missing 'timestamp' field: {event}"
 
     @patch("vtt_transcribe.api.routes.transcription.VideoTranscriber")
     def test_progress_events_for_language_detection(self, mock_transcriber, client):
@@ -765,18 +781,21 @@ class TestProgressEventsInTranscription:
         time.sleep(0.3)
 
         # Check for language detection in progress
-        if job_id in jobs and "progress_updates" in jobs[job_id]:
-            queue = jobs[job_id]["progress_updates"]
-            events = []
-            while not queue.empty():
-                try:
-                    events.append(queue.get_nowait())
-                except asyncio.QueueEmpty:
-                    break
+        assert job_id in jobs and "progress_updates" in jobs[job_id], "Job or progress queue not found"
+        
+        queue = jobs[job_id]["progress_updates"]
+        events = []
+        while not queue.empty():
+            try:
+                events.append(queue.get_nowait())
+            except asyncio.QueueEmpty:
+                break
 
-            # May have language-related events
-            # Events are emitted asynchronously, so may or may not be captured
-            _ = [e for e in events if e.get("type") == "language"]
+        # Assert language-related events were emitted
+        language_events = [e for e in events if e.get("type") == "language"]
+        assert len(language_events) >= 1, f"Expected at least 1 language event, got {len(language_events)}"
+        # Check that language detection was mentioned
+        assert any("language" in e["message"].lower() for e in language_events)
 
     @patch("vtt_transcribe.api.routes.transcription.VideoTranscriber")
     @patch("vtt_transcribe.api.routes.transcription.AudioTranslator")

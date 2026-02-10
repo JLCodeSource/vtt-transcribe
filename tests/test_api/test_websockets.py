@@ -199,24 +199,26 @@ class TestWebSocketProgressUpdates:
             msg = websocket.receive_json()
             messages_received.append(msg)
 
-            # May receive progress updates
-            try:
-                import time
+            # Receive progress updates (with reasonable timeout)
+            import time
 
-                time.sleep(0.2)  # Give progress queue time to be processed
-                while True:
+            time.sleep(0.2)  # Give progress queue time to be processed
+            while True:
+                try:
                     msg = websocket.receive_json(timeout=0.5)
                     messages_received.append(msg)
                     if len(messages_received) >= 4:  # Status + 3 progress
                         break
-            except Exception:  # noqa: S110
-                pass
+                except TimeoutError:
+                    # No more messages within timeout
+                    break
 
         # Should have received at least the status message
         assert len(messages_received) >= 1
         # Check if any progress messages were received
-        # Progress streaming is async, so may or may not catch all events
-        _ = [m for m in messages_received if "type" in m and m["type"] in ["info", "language"]]
+        progress_events = [m for m in messages_received if "type" in m and m["type"] in ["info", "language"]]
+        # Assert at least one progress event was streamed
+        assert len(progress_events) >= 1, f"Expected at least 1 progress event, got {len(progress_events)}"
 
     def test_websocket_progress_language_detection(self, client):
         """WebSocket should emit progress for language detection."""
@@ -239,6 +241,21 @@ class TestWebSocketProgressUpdates:
         assert "progress_updates" in jobs[job_id]
         queue = jobs[job_id]["progress_updates"]
         assert not queue.empty()
+        
+        # Drain and verify events
+        events = []
+        while not queue.empty():
+            try:
+                events.append(queue.get_nowait())
+            except asyncio.QueueEmpty:
+                break
+        
+        # Assert we have language detection events
+        assert len(events) >= 2, f"Expected at least 2 language events, got {len(events)}"
+        language_events = [e for e in events if e.get("type") == "language"]
+        assert len(language_events) >= 2, f"Expected at least 2 language events, got {len(language_events)}"
+        assert any("Detecting" in e["message"] for e in language_events)
+        assert any("Spanish" in e["message"] for e in language_events)
 
     def test_websocket_progress_translation(self, client):
         """WebSocket should emit progress for translation."""
@@ -329,8 +346,6 @@ class TestWebSocketProgressUpdates:
             job_id = response.json()["job_id"]
 
         # Fill the queue (default maxsize is 0, unlimited, so patch it)
-        import asyncio
-
         from vtt_transcribe.api.routes.transcription import jobs
 
         jobs[job_id]["progress_updates"] = asyncio.Queue(maxsize=2)
