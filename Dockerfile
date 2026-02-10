@@ -28,14 +28,15 @@ COPY vtt_transcribe ./vtt_transcribe
 RUN uv pip install "."
 
 # Runtime stage: Minimal image with only runtime dependencies
-FROM python:3.13-slim
+FROM python:3.13-slim AS base
 
 # Configurable UID for non-root user (default 1000 for typical Linux desktops)
 ARG USER_UID=1000
 
-# Install only runtime system dependencies
+# Install only runtime system dependencies (including curl for healthchecks)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
@@ -45,14 +46,56 @@ RUN useradd -m -u "$USER_UID" vttuser
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
+# Ensure Python output is unbuffered
+ENV PYTHONUNBUFFERED=1
+
+# ============================================================================
+# CLI Target (default) - for standalone transcription
+# ============================================================================
+FROM base AS cli
+
 # Set working directory for user files
 WORKDIR /workspace
 
 # Switch to non-root user
 USER vttuser
 
-# Ensure Python output is unbuffered
-ENV PYTHONUNBUFFERED=1
-
 # Set entrypoint (no CMD - let stdin detection or user args determine behavior)
 ENTRYPOINT ["vtt"]
+
+# ============================================================================
+# API Target - for FastAPI server
+# ============================================================================
+FROM base AS api
+
+# Create directories for uploads and logs
+RUN mkdir -p /app/uploads /app/logs && \
+    chown -R vttuser:vttuser /app
+
+WORKDIR /app
+
+# Switch to non-root user
+USER vttuser
+
+# Expose API port
+EXPOSE 8000
+
+# Run FastAPI with uvicorn
+CMD ["uvicorn", "vtt_transcribe.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# ============================================================================
+# Worker Target - for background transcription jobs
+# ============================================================================
+FROM base AS worker
+
+# Create directories for uploads and logs
+RUN mkdir -p /app/uploads /app/logs && \
+    chown -R vttuser:vttuser /app
+
+WORKDIR /app
+
+# Switch to non-root user
+USER vttuser
+
+# Run worker process (will be implemented in vtt_transcribe/worker.py)
+CMD ["python", "-m", "vtt_transcribe.worker"]
