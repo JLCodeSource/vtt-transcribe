@@ -44,6 +44,13 @@ api = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.34.0",
     "python-multipart>=0.0.20",  # For file upload support
+    "sqlalchemy[asyncio]>=2.0.0",
+    "asyncpg>=0.29.0",  # PostgreSQL async driver
+    "aiosqlite>=0.19.0",  # SQLite async driver
+    "python-jose[cryptography]>=3.3.0",  # JWT token handling
+    "passlib[bcrypt]>=1.7.4",  # Password hashing
+    "cryptography>=41.0.0",  # API key encryption
+    "email-validator>=2.0.0",  # Pydantic email validation
 ]
 diarization = [
     "pyannote.audio>=4.0.0",  # 4.x uses torchcodec for audio I/O (actively maintained)

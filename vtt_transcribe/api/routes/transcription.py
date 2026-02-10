@@ -69,7 +69,7 @@ SUPPORTED_EXTENSIONS = {".mp3", ".mp4", ".wav", ".m4a", ".ogg", ".mpeg", ".mpga"
 
 @router.post("/transcribe")
 async def create_transcription_job(
-    file: UploadFile = File(...),  # noqa: B008
+    file: UploadFile = File(...),
     api_key: str = Form(...),
     diarize: bool = Form(False),  # noqa: FBT001, FBT003
     hf_token: str | None = Form(None),
@@ -190,7 +190,7 @@ async def get_job_status(job_id: str) -> dict[str, Any]:
 
 @router.post("/detect-language")
 async def detect_language(
-    file: UploadFile = File(...),  # noqa: B008
+    file: UploadFile = File(...),
     api_key: str = Form(...),
 ) -> dict[str, str]:
     """Detect language of audio file.
@@ -279,7 +279,7 @@ async def translate_transcript(
 
 @router.post("/diarize")
 async def create_diarization_job(
-    file: UploadFile = File(...),  # noqa: B008
+    file: UploadFile = File(...),
     hf_token: str = Form(...),
     device: str | None = Form(None),
 ) -> dict[str, str]:
