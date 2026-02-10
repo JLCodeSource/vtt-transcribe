@@ -144,8 +144,8 @@
     on:dragover={handleDragOver}
     on:dragleave={handleDragLeave}
     on:drop={handleDrop}
-    role="button"
-    tabindex="0"
+    role="region"
+    aria-label="File upload dropzone"
   >
     {#if !selectedFile}
       <div class="dropzone-content">
