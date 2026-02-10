@@ -9,6 +9,7 @@ ARG USER_GID=$USER_UID
 # Install ffmpeg (required for pyannote.audio torchcodec backend)
 # Install GitHub CLI for task management
 # Install bats for smoke testing
+# Install Node.js 22 LTS for frontend development
 # Note: beads CLI for issue tracking is installed via post-create.sh, not in this Dockerfile layer
 RUN if getent passwd ubuntu; then \
     usermod -l vscode ubuntu && \
@@ -21,8 +22,9 @@ RUN if getent passwd ubuntu; then \
     && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
     > /etc/apt/sources.list.d/github-cli.list \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get update \
-    && apt-get install -y gh \
+    && apt-get install -y gh nodejs \
     && echo vscode ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/vscode \
     && chmod 0440 /etc/sudoers.d/vscode \
     && rm -rf /var/lib/apt/lists/*

@@ -26,8 +26,7 @@
     return segments.filter((seg) => {
       const matchesSearch =
         !searchQuery || seg.text.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesSpeaker =
-        selectedSpeaker === 'all' || seg.speaker === selectedSpeaker;
+      const matchesSpeaker = selectedSpeaker === 'all' || seg.speaker === selectedSpeaker;
       return matchesSearch && matchesSpeaker;
     });
   });

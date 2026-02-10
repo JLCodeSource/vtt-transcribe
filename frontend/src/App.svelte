@@ -6,12 +6,10 @@
 
   let currentJob: TranscriptionJob | null = $state(null);
   let transcript: TranscriptSegment[] = $state([]);
-  let isProcessing = $state(false);
 
   function handleUploadStart(event: CustomEvent<TranscriptionJob>) {
     currentJob = event.detail;
     transcript = [];
-    isProcessing = true;
   }
 
   function handleProgress(event: CustomEvent<{ progress: number; status: string }>) {
@@ -22,14 +20,12 @@
 
   function handleComplete(event: CustomEvent<TranscriptSegment[]>) {
     transcript = event.detail;
-    isProcessing = false;
     if (currentJob) {
       currentJob = { ...currentJob, status: 'completed', progress: 100 };
     }
   }
 
   function handleError(event: CustomEvent<string>) {
-    isProcessing = false;
     if (currentJob) {
       currentJob = { ...currentJob, status: 'failed' };
     }
@@ -39,7 +35,6 @@
   function handleReset() {
     currentJob = null;
     transcript = [];
-    isProcessing = false;
   }
 </script>
 

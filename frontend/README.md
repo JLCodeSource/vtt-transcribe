@@ -21,6 +21,7 @@ npm run preview
 ## Development
 
 The dev server runs on port 3000 and proxies API requests to the backend:
+
 - `/api/*` → `http://api:8000`
 - `/ws/*` → `ws://api:8000` (WebSocket)
 

@@ -83,6 +83,9 @@
 
 <div class="upload-container">
   <div
+    role="region"
+    aria-label="File upload dropzone"
+    tabindex="0"
     class="dropzone"
     class:dragging={isDragging}
     class:has-file={selectedFile}
@@ -103,7 +106,11 @@
         <h3>Drop your video file here</h3>
         <p>or</p>
         <label for="file-input" class="file-label">
-          <button type="button" class="primary" onclick={() => document.getElementById('file-input')?.click()}>
+          <button
+            type="button"
+            class="primary"
+            onclick={() => document.getElementById('file-input')?.click()}
+          >
             Choose File
           </button>
         </label>
@@ -172,7 +179,12 @@
         </select>
       </label>
 
-      <button type="button" class="primary upload-btn" onclick={handleUpload} disabled={isUploading}>
+      <button
+        type="button"
+        class="primary upload-btn"
+        onclick={handleUpload}
+        disabled={isUploading}
+      >
         {isUploading ? 'Uploading...' : 'Start Transcription'}
       </button>
     </div>
