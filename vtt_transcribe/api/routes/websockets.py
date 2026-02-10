@@ -37,6 +37,14 @@ async def websocket_job_updates(websocket: WebSocket, job_id: str) -> None:
                     "status": current_status,
                     "filename": current_job.get("filename"),
                 }
+                
+                # Include detected language if available
+                if "detected_language" in current_job:
+                    message["detected_language"] = current_job["detected_language"]
+                
+                # Include translation info if available
+                if "translated_to" in current_job:
+                    message["translated_to"] = current_job["translated_to"]
 
                 if current_status == "completed":
                     message["result"] = current_job.get("result")

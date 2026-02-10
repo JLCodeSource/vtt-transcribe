@@ -30,6 +30,7 @@ class TestWebSocketConnection:
             # Mock transcriber to return a string result
             mock_instance = MagicMock()
             mock_instance.transcribe.return_value = "[00:00 - 00:05] Test transcript"
+            mock_instance.detect_language.return_value = "en"
             mock_vt.return_value = mock_instance
 
             response = client.post(
@@ -71,6 +72,7 @@ class TestWebSocketConnection:
         with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber") as mock:
             mock_instance = mock.return_value
             mock_instance.transcribe.return_value = "[00:00 - 00:05] Test"
+            mock_instance.detect_language.return_value = "en"
 
             response = client.post(
                 "/transcribe",
@@ -112,6 +114,7 @@ class TestWebSocketProgressUpdates:
 
             mock_instance = mock.return_value
             mock_instance.transcribe = slow_transcribe
+            mock_instance.detect_language.return_value = "en"
 
             response = client.post(
                 "/transcribe",
@@ -292,6 +295,7 @@ class TestAPIWebsocketsCoverageComplete:
         with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber") as mock_vt:
             mock_instance = MagicMock()
             mock_instance.transcribe.side_effect = Exception("Test error")
+            mock_instance.detect_language.return_value = "en"
             mock_vt.return_value = mock_instance
 
             response = client.post(

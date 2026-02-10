@@ -59,3 +59,56 @@ class TestLanguageDetection:
             result = transcriber.detect_language(audio_file)
 
             assert result == "unknown"
+
+    def test_detect_language_handles_dict_response(self, tmp_path: Path) -> None:
+        """Test that detect_language handles dict-like responses."""
+        audio_file = tmp_path / "test.mp3"
+        audio_file.write_bytes(b"fake audio content")
+
+        with patch("vtt_transcribe.transcriber.OpenAI") as mock_openai:
+            mock_client = MagicMock()
+            mock_openai.return_value = mock_client
+
+            # Mock response as dict
+            mock_response = {"language": "fr", "text": "Bonjour"}
+            mock_client.audio.transcriptions.create.return_value = mock_response
+
+            transcriber = VideoTranscriber("test-api-key")
+            result = transcriber.detect_language(audio_file)
+
+            assert result == "fr"
+
+    def test_detect_language_handles_large_files(self, tmp_path: Path) -> None:
+        """Test that detect_language extracts a chunk for large files."""
+        # Create a file that appears to be > 25MB
+        audio_file = tmp_path / "large.mp3"
+        # Create a file with size > 25MB (26MB)
+        audio_file.write_bytes(b"x" * (26 * 1024 * 1024))
+
+        with (
+            patch("vtt_transcribe.transcriber.OpenAI") as mock_openai,
+            patch("vtt_transcribe.transcriber.AudioFileManager") as mock_manager,
+        ):
+            mock_client = MagicMock()
+            mock_openai.return_value = mock_client
+
+            # Mock the chunk extraction
+            chunk_path = tmp_path / "large_chunk999999.mp3"
+            chunk_path.write_bytes(b"small chunk content")
+            mock_manager.get_duration.return_value = 120.0  # 2 minutes
+            mock_manager.extract_chunk.return_value = chunk_path
+
+            # Mock the language detection response
+            mock_response = MagicMock()
+            mock_response.language = "de"
+            mock_client.audio.transcriptions.create.return_value = mock_response
+
+            transcriber = VideoTranscriber("test-api-key")
+            result = transcriber.detect_language(audio_file)
+
+            assert result == "de"
+            # Verify that chunk extraction was called for first 30 seconds
+            mock_manager.extract_chunk.assert_called_once()
+            call_args = mock_manager.extract_chunk.call_args
+            assert call_args[0][1] == 0  # start_time
+            assert call_args[0][2] == 30  # end_time (30 seconds)

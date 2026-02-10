@@ -34,6 +34,9 @@ class VideoTranscriber:
     def detect_language(self, audio_path: Path) -> str:
         """Detect language of audio file using Whisper API.
 
+        For large files (>25MB), extracts and analyzes only the first 30 seconds
+        to avoid Whisper API upload limits.
+
         Args:
             audio_path: Path to audio file
 
@@ -47,17 +50,47 @@ class VideoTranscriber:
             msg = f"Audio file not found: {audio_path}"
             raise FileNotFoundError(msg)
 
-        with open(audio_path, "rb") as audio_file:
-            response = self.client.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio_file,
-                response_format="verbose_json",
-            )
+        # Check file size
+        file_size_mb = audio_path.stat().st_size / (1024 * 1024)
+        
+        # If file is larger than 25MB, extract a small chunk for detection
+        temp_chunk = None
+        if file_size_mb > MAX_FILE_SIZE_MB:
+            # Extract first 30 seconds for language detection
+            try:
+                duration = AudioFileManager.get_duration(audio_path)
+                chunk_duration = min(30.0, duration)
+                temp_chunk = self.extract_audio_chunk(audio_path, 0, chunk_duration, 999999)
+                detection_path = temp_chunk
+            except Exception:
+                # If chunking fails, use original file and let it fail gracefully
+                detection_path = audio_path
+                temp_chunk = None
+        else:
+            detection_path = audio_path
 
-        # Whisper verbose response includes detected language
-        if hasattr(response, "language"):
-            return response.language
-        return "unknown"
+        try:
+            with open(detection_path, "rb") as audio_file:
+                response = self.client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio_file,
+                    response_format="verbose_json",
+                )
+
+            # Whisper verbose response includes detected language
+            # Handle both object and dict responses
+            language = getattr(response, "language", None)
+            if not language and isinstance(response, dict):
+                language = response.get("language")
+
+            if isinstance(language, str) and language:
+                return language
+            return "unknown"
+        finally:
+            # Clean up temp chunk if created
+            if temp_chunk and temp_chunk.exists():
+                with contextlib.suppress(Exception):
+                    temp_chunk.unlink()
 
     def validate_input_file(self, input_path: Path) -> Path:
         """Validate and return video file path."""

@@ -118,7 +118,7 @@ async def detect_language(
         api_key: OpenAI API key
 
     Returns:
-        Detected language code and name
+        Detected language code and original filename
     """
     if not file.filename:
         raise HTTPException(status_code=422, detail="File must have a filename")
@@ -284,6 +284,11 @@ async def _process_transcription(
 
         try:
             transcriber = VideoTranscriber(api_key)
+            
+            # Detect language before transcription
+            detected_language = await asyncio.to_thread(transcriber.detect_language, tmp_path)
+            jobs[job_id]["detected_language"] = detected_language
+            
             result = await asyncio.to_thread(transcriber.transcribe, tmp_path)
 
             # If translation requested, translate the transcript
