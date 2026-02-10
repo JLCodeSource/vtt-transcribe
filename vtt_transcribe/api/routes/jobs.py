@@ -11,7 +11,7 @@ from vtt_transcribe.api.auth import get_current_active_user
 from vtt_transcribe.api.database import get_db
 from vtt_transcribe.api.models import TranscriptionJob, User
 
-router = APIRouter(prefix="/job-history", tags=["job-history"])
+router = APIRouter(prefix="/user/jobs", tags=["job-history"])
 
 
 # Response models

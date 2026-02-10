@@ -1,5 +1,6 @@
 """FastAPI application factory and configuration."""
 
+import contextlib
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -15,7 +16,9 @@ from vtt_transcribe.api.routes import api_keys, auth, health, jobs, transcriptio
 async def lifespan(_app: FastAPI):  # type: ignore
     """Lifespan event handler for database initialization."""
     # Startup: Initialize database tables
-    await init_db()
+    with contextlib.suppress(Exception):
+        # Database initialization failed, continue without DB functionality
+        await init_db()
     yield
     # Shutdown: cleanup if needed
 
