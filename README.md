@@ -143,6 +143,24 @@ cat input.mp4 | docker run -i --gpus all -e OPENAI_API_KEY="your-key" -e HF_TOKE
 
 For more Docker usage patterns and troubleshooting, see [Docker Registry Documentation](docs/DOCKER_REGISTRY.md).
 
+### Using Docker Compose (Full Stack)
+
+For local development with the complete API, worker, and database stack:
+
+```bash
+# 1. Copy environment template
+cp .env.example .env
+
+# 2. Edit .env - set OPENAI_API_KEY and change default passwords
+# 3. Start services
+docker compose up -d
+
+# 4. Access API at http://localhost:8000
+# API docs: http://localhost:8000/docs
+```
+
+See [Docker Compose Guide](docs/DOCKER_COMPOSE.md) for complete setup instructions, architecture details, and troubleshooting.
+
 ## Upgrading from 0.2.0
 
 **Important:** Version 0.3.0+ introduces optional dependencies for speaker diarization. If you are upgrading from 0.2.0 and want to use diarization features, you need to explicitly install the `[diarization]` extra. See the [CHANGELOG](docs/CHANGELOG.md) for detailed upgrade instructions.
