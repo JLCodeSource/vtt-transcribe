@@ -639,6 +639,42 @@ class TestDirectAudioTranscription:
             # And no transcription API calls were made
             assert mock_client.audio.transcriptions.create.call_count == 0
 
+    def test_scan_chunks_with_language_parameter(self, tmp_path: Path) -> None:
+        """Should pass language parameter to transcribe_audio_file when using scan_chunks."""
+        # Given multiple chunk files exist and a language is specified
+        with patch("vtt_transcribe.transcriber.OpenAI") as mock_openai:
+            mock_client = MagicMock()
+            mock_openai.return_value = mock_client
+            mock_client.audio.transcriptions.create.side_effect = [
+                {"segments": [{"start": 0.0, "end": 1.0, "text": "First chunk"}]},
+                {"segments": [{"start": 0.0, "end": 1.0, "text": "Second chunk"}]},
+            ]
+
+            chunk0 = tmp_path / "audio_chunk0.mp3"
+            chunk1 = tmp_path / "audio_chunk1.mp3"
+            chunk0.write_text("x" * 1024)
+            chunk1.write_text("x" * 1024)
+
+            with patch("builtins.print"), patch.object(VideoTranscriber, "get_audio_duration", return_value=60.0):
+                transcriber = VideoTranscriber("key")
+
+                # When transcribe is called with scan_chunks=True and language='es'
+                result = transcriber.transcribe(
+                    chunk0,
+                    audio_path=None,
+                    scan_chunks=True,
+                    language="es",
+                )
+
+                # Then all API calls should include the language parameter
+                assert mock_client.audio.transcriptions.create.call_count == 2
+                for call in mock_client.audio.transcriptions.create.call_args_list:
+                    call_kwargs = call[1]
+                    assert call_kwargs.get("language") == "es", "Language parameter should be passed to each chunk"
+                # And result contains both chunks
+                assert "First chunk" in result
+                assert "Second chunk" in result
+
 
 class TestTranscribeChunkedAudio:
     """Test chunked audio transcription."""
