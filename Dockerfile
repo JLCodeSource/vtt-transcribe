@@ -46,8 +46,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Create non-root user
 RUN useradd -m -u "$USER_UID" vttuser
 
-# Copy virtual environment from builder (includes installed package)
-COPY --from=builder /opt/venv /opt/venv
+# Set PATH for virtual environment (targets will copy venv)
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Ensure Python output is unbuffered
@@ -81,6 +80,9 @@ CMD ["uvicorn", "vtt_transcribe.api.app:app", "--host", "0.0.0.0", "--port", "80
 # ============================================================================
 FROM base AS worker
 
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+
 # Create directories for uploads and logs
 RUN mkdir -p /app/uploads /app/logs && \
     chown -R vttuser:vttuser /app
@@ -93,12 +95,16 @@ USER vttuser
 # Worker runs background tasks
 # TODO: Uncomment when worker module is implemented
 # CMD ["python", "-m", "vtt_transcribe.worker"]
-CMD ["echo", "Worker module not yet implemented. Use profiles to skip this service."]
+# Placeholder: long-running no-op to prevent restart loops
+CMD ["sleep", "infinity"]
 
 # ============================================================================
 # CLI Target (default) - for standalone transcription
 # ============================================================================
 FROM base AS cli
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
 
 # Set working directory for user files
 WORKDIR /workspace
