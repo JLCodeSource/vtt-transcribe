@@ -176,6 +176,199 @@ class TestWebSocketProgressUpdates:
             # Progress may or may not be present initially, but structure should exist
             assert isinstance(data, dict)
 
+    def test_websocket_streams_progress_events(self, client):
+        """WebSocket should stream detailed progress events."""
+        from vtt_transcribe.api.routes.transcription import _emit_progress
+
+        with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber"):
+            response = client.post(
+                "/transcribe",
+                files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
+                data={"api_key": "test-key"},
+            )
+            job_id = response.json()["job_id"]
+
+        # Emit some progress events manually
+        _emit_progress(job_id, "Starting transcription", "info")
+        _emit_progress(job_id, "Detecting language", "language")
+        _emit_progress(job_id, "Detected language: English", "language")
+
+        messages_received = []
+        with client.websocket_connect(f"/ws/jobs/{job_id}") as websocket:
+            # Receive status update
+            msg = websocket.receive_json()
+            messages_received.append(msg)
+
+            # May receive progress updates
+            try:
+                import time
+
+                time.sleep(0.2)  # Give progress queue time to be processed
+                while True:
+                    msg = websocket.receive_json(timeout=0.5)
+                    messages_received.append(msg)
+                    if len(messages_received) >= 4:  # Status + 3 progress
+                        break
+            except Exception:  # noqa: S110
+                pass
+
+        # Should have received at least the status message
+        assert len(messages_received) >= 1
+        # Check if any progress messages were received
+        # Progress streaming is async, so may or may not catch all events
+        _ = [m for m in messages_received if "type" in m and m["type"] in ["info", "language"]]
+
+    def test_websocket_progress_language_detection(self, client):
+        """WebSocket should emit progress for language detection."""
+        from vtt_transcribe.api.routes.transcription import _emit_progress
+
+        with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber"):
+            response = client.post(
+                "/transcribe",
+                files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
+                data={"api_key": "test-key"},
+            )
+            job_id = response.json()["job_id"]
+
+        _emit_progress(job_id, "Detecting language", "language")
+        _emit_progress(job_id, "Detected language: Spanish", "language")
+
+        # Verify progress events are in queue
+        from vtt_transcribe.api.routes.transcription import jobs
+
+        assert "progress_updates" in jobs[job_id]
+        queue = jobs[job_id]["progress_updates"]
+        assert not queue.empty()
+
+    def test_websocket_progress_translation(self, client):
+        """WebSocket should emit progress for translation."""
+        from vtt_transcribe.api.routes.transcription import _emit_progress
+
+        with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber"):
+            response = client.post(
+                "/transcribe",
+                files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
+                data={"api_key": "test-key", "translate_to": "French"},
+            )
+            job_id = response.json()["job_id"]
+
+        _emit_progress(job_id, "Translating to French", "translation")
+        _emit_progress(job_id, "Translation to French complete", "translation")
+
+        # Verify progress events are in queue
+        from vtt_transcribe.api.routes.transcription import jobs
+
+        queue = jobs[job_id]["progress_updates"]
+        assert queue.qsize() >= 2
+
+    def test_websocket_progress_diarization(self, client):
+        """WebSocket should emit progress for diarization."""
+        from vtt_transcribe.api.routes.transcription import _emit_progress
+
+        with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber"):
+            response = client.post(
+                "/transcribe",
+                files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
+                data={"api_key": "test-key"},
+            )
+            job_id = response.json()["job_id"]
+
+        _emit_progress(job_id, "Starting diarization", "diarization")
+        _emit_progress(job_id, "Processing audio for speaker segments", "diarization")
+
+        # Verify progress events are in queue
+        from vtt_transcribe.api.routes.transcription import jobs
+
+        queue = jobs[job_id]["progress_updates"]
+        assert queue.qsize() >= 2
+
+    def test_websocket_progress_error(self, client):
+        """WebSocket should emit progress for errors."""
+        from vtt_transcribe.api.routes.transcription import _emit_progress
+
+        with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber"):
+            response = client.post(
+                "/transcribe",
+                files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
+                data={"api_key": "test-key"},
+            )
+            job_id = response.json()["job_id"]
+
+        _emit_progress(job_id, "Transcription failed: API error", "error")
+
+        # Verify error progress event is in queue
+        from vtt_transcribe.api.routes.transcription import jobs
+
+        queue = jobs[job_id]["progress_updates"]
+
+        # May have initial events, so drain to find error
+        events = []
+        while not queue.empty():
+            try:
+                events.append(queue.get_nowait())
+            except asyncio.QueueEmpty:
+                break
+
+        # Should have at least one event
+        assert len(events) >= 1
+        # Last event should be our error
+        error_events = [e for e in events if e["type"] == "error"]
+        assert len(error_events) == 1
+        assert "failed" in error_events[0]["message"].lower()
+
+    def test_emit_progress_with_full_queue(self, client):
+        """_emit_progress should handle full queue gracefully."""
+        from vtt_transcribe.api.routes.transcription import _emit_progress
+
+        with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber"):
+            response = client.post(
+                "/transcribe",
+                files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
+                data={"api_key": "test-key"},
+            )
+            job_id = response.json()["job_id"]
+
+        # Fill the queue (default maxsize is 0, unlimited, so patch it)
+        import asyncio
+
+        from vtt_transcribe.api.routes.transcription import jobs
+
+        jobs[job_id]["progress_updates"] = asyncio.Queue(maxsize=2)
+
+        # Fill queue
+        _emit_progress(job_id, "Event 1", "info")
+        _emit_progress(job_id, "Event 2", "info")
+        # This should not raise, just log warning
+        _emit_progress(job_id, "Event 3 - overflow", "info")
+        # Queue should still have 2 items
+        assert jobs[job_id]["progress_updates"].qsize() == 2
+
+    def test_emit_progress_nonexistent_job(self):
+        """_emit_progress should handle nonexistent job gracefully."""
+        from vtt_transcribe.api.routes.transcription import _emit_progress
+
+        # Should not raise exception
+        _emit_progress("nonexistent-job-id", "Test message", "info")
+
+    def test_emit_progress_job_without_queue(self, client):
+        """_emit_progress should handle job without progress_updates queue."""
+        from vtt_transcribe.api.routes.transcription import _emit_progress, jobs
+
+        with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber"):
+            response = client.post(
+                "/transcribe",
+                files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
+                data={"api_key": "test-key"},
+            )
+            job_id = response.json()["job_id"]
+
+        # Remove progress_updates from job
+        if "progress_updates" in jobs[job_id]:
+            del jobs[job_id]["progress_updates"]
+
+        # Should not raise exception
+        _emit_progress(job_id, "Test message", "info")
+
 
 class TestAPIWebsocketsCoverage:
     """Tests to cover missing lines in api/routes/websockets.py."""

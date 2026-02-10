@@ -37,8 +37,13 @@ def _build_status_message(job_id: str, current_job: dict[str, Any]) -> dict[str,
 
 
 @router.websocket("/ws/jobs/{job_id}")
-async def websocket_job_updates(websocket: WebSocket, job_id: str) -> None:
-    """WebSocket endpoint for real-time job status updates."""
+async def websocket_job_updates(websocket: WebSocket, job_id: str) -> None:  # noqa: C901
+    """WebSocket endpoint for real-time job status and progress updates.
+
+    Streams both:
+    - Status changes (pending -> processing -> completed/failed)
+    - Detailed progress events (language detection, transcription progress, diarization, translation)
+    """
     logger.info(
         "WebSocket connection initiated",
         extra={"job_id": job_id},
@@ -61,6 +66,7 @@ async def websocket_job_updates(websocket: WebSocket, job_id: str) -> None:
 
     try:
         last_status = None
+
         while True:
             if job_id not in jobs:
                 await websocket.send_json({"error": "Job deleted"})
@@ -69,7 +75,7 @@ async def websocket_job_updates(websocket: WebSocket, job_id: str) -> None:
             current_job = jobs[job_id]
             current_status = current_job.get("status")
 
-            # Send update if status changed
+            # Send status update if changed
             if current_status != last_status:
                 message = _build_status_message(job_id, current_job)
                 await websocket.send_json(message)
@@ -80,8 +86,20 @@ async def websocket_job_updates(websocket: WebSocket, job_id: str) -> None:
                     await websocket.close()
                     break
 
+            # Stream any queued progress updates
+            if "progress_updates" in current_job:
+                progress_queue = current_job["progress_updates"]
+                while not progress_queue.empty():
+                    try:
+                        progress_update = progress_queue.get_nowait()
+                        # Add job_id to progress message
+                        progress_update["job_id"] = job_id
+                        await websocket.send_json(progress_update)
+                    except asyncio.QueueEmpty:
+                        break
+
             # Poll interval
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.1)  # Reduced for more responsive progress updates
 
     except WebSocketDisconnect:
         logger.info(

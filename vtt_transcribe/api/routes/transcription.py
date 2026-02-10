@@ -18,7 +18,33 @@ from vtt_transcribe.translator import AudioTranslator
 router = APIRouter(tags=["transcription"])
 logger = get_logger(__name__)
 
+# Jobs dictionary now includes progress_updates queue for each job
 jobs: dict[str, dict[str, Any]] = {}
+
+
+def _emit_progress(job_id: str, message: str, progress_type: str = "info") -> None:
+    """Emit a progress update for a job.
+
+    Args:
+        job_id: Job identifier
+        message: Progress message
+        progress_type: Type of progress update (info, chunk, diarization, language, translation)
+    """
+    if job_id in jobs and "progress_updates" in jobs[job_id]:
+        update = {
+            "type": progress_type,
+            "message": message,
+            "timestamp": time.time(),
+        }
+        try:
+            jobs[job_id]["progress_updates"].put_nowait(update)
+        except asyncio.QueueFull:
+            # Log but don't fail if queue is full (renamed to avoid LogRecord conflict)
+            logger.warning(
+                "Progress queue full for job",
+                extra={"job_id": job_id, "progress_message": message},
+            )
+
 
 # Maximum file size: 100MB
 MAX_FILE_SIZE = 100 * 1024 * 1024
@@ -123,6 +149,7 @@ async def create_transcription_job(
         "hf_token": hf_token if diarize else None,
         "device": device if diarize else None,
         "translate_to": translate_to,
+        "progress_updates": asyncio.Queue(),  # Queue for real-time progress updates
     }
 
     task = asyncio.create_task(
@@ -143,7 +170,8 @@ async def get_job_status(job_id: str) -> dict[str, Any]:
     if job_id not in jobs:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    return jobs[job_id]
+    # Return job data excluding progress_updates queue (not JSON serializable)
+    return {k: v for k, v in jobs[job_id].items() if k != "progress_updates"}
 
 
 @router.post("/detect-language")
@@ -263,6 +291,7 @@ async def create_diarization_job(
         "diarize_only": True,
         "hf_token": hf_token,
         "device": device,
+        "progress_updates": asyncio.Queue(),  # Queue for real-time progress updates
     }
 
     task = asyncio.create_task(_process_diarization(job_id, file, hf_token, device))
@@ -280,6 +309,7 @@ async def _process_diarization(job_id: str, file: UploadFile, _hf_token: str, _d
     # Note: hf_token and device will be used when integrating pyannote.audio
     try:
         jobs[job_id]["status"] = "processing"
+        _emit_progress(job_id, "Starting diarization", "diarization")
 
         filename = file.filename or "audio.mp3"
         with tempfile.NamedTemporaryFile(delete=False, suffix=Path(filename).suffix) as tmp:
@@ -290,10 +320,12 @@ async def _process_diarization(job_id: str, file: UploadFile, _hf_token: str, _d
         try:
             # Note: Actual diarization logic would go here
             # For now, placeholder result
+            _emit_progress(job_id, "Processing audio for speaker segments", "diarization")
             result = f"Diarization result for {filename}"
 
             jobs[job_id]["status"] = "completed"
             jobs[job_id]["result"] = result
+            _emit_progress(job_id, "Diarization complete", "diarization")
 
         finally:
             await asyncio.to_thread(tmp_path.unlink, missing_ok=True)
@@ -301,6 +333,7 @@ async def _process_diarization(job_id: str, file: UploadFile, _hf_token: str, _d
     except Exception as e:
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = str(e)
+        _emit_progress(job_id, f"Diarization failed: {e}", "error")
 
 
 async def _process_transcription(
@@ -328,6 +361,7 @@ async def _process_transcription(
     # Note: diarize, hf_token, device will be used when integrating diarization
     try:
         jobs[job_id]["status"] = "processing"
+        _emit_progress(job_id, "Starting transcription", "info")
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=Path(filename).suffix) as tmp:
             tmp.write(content)
@@ -337,21 +371,29 @@ async def _process_transcription(
             transcriber = VideoTranscriber(api_key)
 
             # Detect language before transcription
+            _emit_progress(job_id, "Detecting language", "language")
             detected_language = await asyncio.to_thread(transcriber.detect_language, tmp_path)
             jobs[job_id]["detected_language"] = detected_language
+            _emit_progress(job_id, f"Detected language: {detected_language}", "language")
 
+            # Transcribe audio
+            _emit_progress(job_id, "Transcribing audio", "info")
             result = await asyncio.to_thread(transcriber.transcribe, tmp_path)
+            _emit_progress(job_id, "Transcription complete", "info")
 
             # If translation requested, translate the transcript
             if translate_to:
+                _emit_progress(job_id, f"Translating to {translate_to}", "translation")
                 translator = AudioTranslator(api_key)
                 result = await asyncio.to_thread(
                     translator.translate_transcript, result, translate_to, preserve_timestamps=True
                 )
                 jobs[job_id]["translated_to"] = translate_to
+                _emit_progress(job_id, f"Translation to {translate_to} complete", "translation")
 
             jobs[job_id]["status"] = "completed"
             jobs[job_id]["result"] = result
+            _emit_progress(job_id, "Job completed successfully", "info")
 
             duration = time.time() - start_time
             logger.info(
@@ -378,6 +420,7 @@ async def _process_transcription(
         )
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = str(e)
+        _emit_progress(job_id, f"Transcription failed: {e}", "error")
 
 
 def _parse_transcript_segments(transcript: str) -> list[dict[str, Any]]:
