@@ -186,7 +186,15 @@ def setup_logging(
     console_handler = logging.StreamHandler(stream)
     console_handler.setLevel(logging.DEBUG if dev_mode else logging.INFO)
     console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
+
+    # Add handler only if the stream is not closed (important for test compatibility)
+    try:
+        if (hasattr(stream, "closed") and not stream.closed) or not hasattr(stream, "closed"):
+            logger.addHandler(console_handler)
+    except (ValueError, OSError):
+        # Stream is closed or unavailable, skip adding console handler
+        # This can happen during testing when streams are mocked
+        pass
 
     # Add file handler if log_file is specified
     if log_file:
