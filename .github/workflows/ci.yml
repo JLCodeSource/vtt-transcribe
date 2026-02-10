@@ -29,16 +29,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          uv venv --clear
-          uv sync --extra diarization --extra api
-          uv run pre-commit install
+          make install-diarization
 
       - name: Lint
         run: make lint
 
       - name: Test
-        env:
-          SECRET_KEY: test-secret-key-for-jwt-signing-only
-          ENCRYPTION_KEY: eZG7WcaEfouAvUvzsF8dpS1Arw-lfhjCs5LU4gzuXVE=
         run: make test

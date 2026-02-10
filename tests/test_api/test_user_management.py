@@ -72,22 +72,22 @@ class TestJobHistoryEndpoints:
 
     def test_list_jobs_endpoint_requires_auth(self, client: TestClient) -> None:
         """Job listing endpoint should require authentication."""
-        response = client.get("/job-history/")
+        response = client.get("/user/jobs/")
         assert response.status_code == 401
 
     def test_get_job_detail_endpoint_requires_auth(self, client: TestClient) -> None:
         """Job detail endpoint should require authentication."""
-        response = client.get("/job-history/test-job")
+        response = client.get("/user/jobs/test-job")
         assert response.status_code == 401
 
     def test_delete_job_endpoint_requires_auth(self, client: TestClient) -> None:
         """Job deletion endpoint should require authentication."""
-        response = client.delete("/job-history/test-job")
+        response = client.delete("/user/jobs/test-job")
         assert response.status_code == 401
 
     def test_stats_endpoint_requires_auth(self, client: TestClient) -> None:
         """Job statistics endpoint should require authentication."""
-        response = client.get("/job-history/stats/summary")
+        response = client.get("/user/jobs/stats/summary")
         assert response.status_code == 401
 
 
