@@ -6,8 +6,10 @@ from typing import Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from vtt_transcribe.api.routes.transcription import jobs
+from vtt_transcribe.logging_config import get_logger
 
 router = APIRouter(tags=["websockets"])
+logger = get_logger(__name__)
 
 
 def _build_status_message(job_id: str, current_job: dict[str, Any]) -> dict[str, Any]:
@@ -37,9 +39,22 @@ def _build_status_message(job_id: str, current_job: dict[str, Any]) -> dict[str,
 @router.websocket("/ws/jobs/{job_id}")
 async def websocket_job_updates(websocket: WebSocket, job_id: str) -> None:
     """WebSocket endpoint for real-time job status updates."""
+    logger.info(
+        "WebSocket connection initiated",
+        extra={"job_id": job_id},
+    )
+
     await websocket.accept()
+    logger.info(
+        "WebSocket connection accepted",
+        extra={"job_id": job_id},
+    )
 
     if job_id not in jobs:
+        logger.warning(
+            "WebSocket connection for unknown job",
+            extra={"job_id": job_id},
+        )
         await websocket.send_json({"error": "Job not found", "job_id": job_id})
         await websocket.close(code=1008)
         return
@@ -69,7 +84,14 @@ async def websocket_job_updates(websocket: WebSocket, job_id: str) -> None:
             await asyncio.sleep(0.5)
 
     except WebSocketDisconnect:
-        pass
+        logger.info(
+            "WebSocket disconnected by client",
+            extra={"job_id": job_id},
+        )
     except Exception as e:
+        logger.exception(
+            "WebSocket error",
+            extra={"job_id": job_id, "error": str(e)},
+        )
         await websocket.send_json({"error": str(e)})
         await websocket.close(code=1011)

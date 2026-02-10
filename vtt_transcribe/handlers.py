@@ -1,10 +1,14 @@
 """Handler functions for different transcription and diarization workflows."""
 
 import re
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from vtt_transcribe.logging_config import get_logger
 from vtt_transcribe.translator import AudioTranslator
+
+logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from vtt_transcribe.diarization import SpeakerDiarizer, format_diarization_output  # noqa: F401
@@ -28,6 +32,15 @@ def save_transcript(output_path: Path, transcript: str) -> None:
         output_path = output_path.with_suffix(TRANSCRIPT_EXTENSION)
     if not transcript.endswith("\n"):
         transcript += "\n"
+
+    logger.info(
+        "Saving transcript to file",
+        extra={
+            "output_path": str(output_path),
+            "transcript_length": len(transcript),
+        },
+    )
+
     output_path.write_text(transcript)
     print(f"\nTranscript saved to: {output_path}")
 
@@ -46,6 +59,17 @@ def handle_diarize_only_mode(input_path: Path, hf_token: str | None, save_path: 
     Returns:
         The formatted diarization output transcript.
     """
+    start_time = time.time()
+
+    logger.info(
+        "Starting diarize-only workflow",
+        extra={
+            "input_path": str(input_path),
+            "save_path": str(save_path) if save_path else None,
+            "device": device,
+        },
+    )
+
     if not input_path.exists():
         msg = f"Audio file not found: {input_path}"
         raise FileNotFoundError(msg)
@@ -77,6 +101,16 @@ def handle_diarize_only_mode(input_path: Path, hf_token: str | None, save_path: 
     if save_path:
         save_transcript(save_path, result)
 
+    duration = time.time() - start_time
+    logger.info(
+        "Diarize-only workflow complete",
+        extra={
+            "duration_seconds": round(duration, 2),
+            "num_segments": len(segments),
+            "result_length": len(result),
+        },
+    )
+
     return result
 
 
@@ -88,6 +122,18 @@ def handle_apply_diarization_mode(
     Returns:
         The transcript with speaker labels applied.
     """
+    start_time = time.time()
+
+    logger.info(
+        "Starting apply-diarization workflow",
+        extra={
+            "input_path": str(input_path),
+            "transcript_path": str(transcript_path),
+            "save_path": str(save_path) if save_path else None,
+            "device": device,
+        },
+    )
+
     if not transcript_path.exists():
         msg = f"Transcript file not found: {transcript_path}"
         raise FileNotFoundError(msg)
@@ -97,6 +143,7 @@ def handle_apply_diarization_mode(
         raise FileNotFoundError(msg)
 
     # Load transcript
+    logger.info("Loading transcript file", extra={"path": str(transcript_path)})
     transcript = transcript_path.read_text()
 
     # Run diarization
@@ -112,6 +159,16 @@ def handle_apply_diarization_mode(
 
     if save_path:
         save_transcript(save_path, result)
+
+    duration = time.time() - start_time
+    logger.info(
+        "Apply-diarization workflow complete",
+        extra={
+            "duration_seconds": round(duration, 2),
+            "num_segments": len(segments),
+            "result_length": len(result),
+        },
+    )
 
     return result
 
@@ -197,6 +254,17 @@ def handle_review_speakers(
     Returns:
         Final transcript with speaker labels applied.
     """
+    start_time = time.time()
+
+    logger.info(
+        "Starting speaker review workflow",
+        extra={
+            "input_path": str(input_path) if input_path else None,
+            "has_transcript": transcript is not None,
+            "save_path": str(save_path) if save_path else None,
+        },
+    )
+
     _, _, _get_unique_speakers, get_speaker_context_lines = _lazy_import_diarization()
 
     # Determine final transcript source
@@ -223,6 +291,15 @@ def handle_review_speakers(
 
     if save_path:
         save_transcript(save_path, final_transcript)
+
+    duration = time.time() - start_time
+    logger.info(
+        "Speaker review workflow complete",
+        extra={
+            "duration_seconds": round(duration, 2),
+            "speakers_reviewed": len(speakers),
+        },
+    )
 
     return final_transcript
 
@@ -286,6 +363,18 @@ def handle_standard_transcription(args: Any, api_key: str) -> str:
     Returns:
         The final transcript (with or without speaker labels and/or translation).
     """
+    start_time = time.time()
+
+    logger.info(
+        "Starting standard transcription workflow",
+        extra={
+            "input_file": args.input_file,
+            "translate": args.translate if hasattr(args, "translate") else False,
+            "diarize": args.diarize if hasattr(args, "diarize") else False,
+            "translate_to": args.translate_to if hasattr(args, "translate_to") else None,
+        },
+    )
+
     from vtt_transcribe.transcriber import VideoTranscriber
 
     # Handle --translate flag (audio translation)
@@ -360,5 +449,14 @@ def handle_standard_transcription(args: Any, api_key: str) -> str:
         translator = AudioTranslator(api_key)
         print(f"\nTranslating transcript to {args.translate_to}...")
         result = translator.translate_text(result, target_language=args.translate_to)
+
+    duration = time.time() - start_time
+    logger.info(
+        "Standard transcription workflow complete",
+        extra={
+            "duration_seconds": round(duration, 2),
+            "result_length": len(result),
+        },
+    )
 
     return result

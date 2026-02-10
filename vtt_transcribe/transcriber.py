@@ -165,12 +165,36 @@ class VideoTranscriber:
 
     def transcribe_audio_file(self, audio_path: Path) -> str:
         """Transcribe a single audio file using Whisper API with timestamps."""
+        import time
+
+        start_time = time.time()
+        file_size_mb = audio_path.stat().st_size / (1024 * 1024)
+
+        logger.info(
+            "Starting transcription API call",
+            extra={
+                "audio_path": str(audio_path),
+                "size_mb": round(file_size_mb, 2),
+                "model": "whisper-1",
+            },
+        )
+
         with open(audio_path, "rb") as audio_file:
             response: TranscriptionVerbose = self.client.audio.transcriptions.create(
                 model="whisper-1",
                 file=audio_file,
                 response_format="verbose_json",
             )
+
+        api_duration = time.time() - start_time
+        has_segments = hasattr(response, "segments") and response.segments and len(response.segments) > 0
+        logger.info(
+            "Transcription API call complete",
+            extra={
+                "duration_seconds": round(api_duration, 2),
+                "has_segments": has_segments,
+            },
+        )
 
         formatted = self._format_transcript_with_timestamps(response)
 
@@ -220,13 +244,39 @@ class VideoTranscriber:
         per-chunk cleanup logic is delegated to `_transcribe_chunk_files` to
         reduce cyclomatic complexity.
         """
+        import time
+
+        function_start_time = time.time()
+
+        logger.info(
+            "Starting chunked transcription",
+            extra={
+                "audio_path": str(audio_path),
+                "duration": round(duration, 2),
+                "num_chunks": num_chunks,
+                "chunk_duration": round(chunk_duration, 1),
+                "keep_chunks": keep_chunks,
+            },
+        )
+
         print(f"Splitting into {num_chunks} chunks ({chunk_duration:.1f}s each)...")
 
         # Determine chunk file list: reuse existing or create new ones
         existing_chunks = self.find_existing_chunks(audio_path)
         if existing_chunks and len(existing_chunks) == num_chunks:
+            logger.info(
+                "Reusing existing chunk files",
+                extra={"num_chunks": len(existing_chunks)},
+            )
             chunk_files = existing_chunks
         else:
+            logger.info(
+                "Creating new chunk files",
+                extra={
+                    "existing_count": len(existing_chunks),
+                    "expected_count": num_chunks,
+                },
+            )
             chunk_files = []
             for i in range(num_chunks):
                 start_time: float = i * chunk_duration
@@ -241,6 +291,16 @@ class VideoTranscriber:
         if keep_chunks and chunk_files:
             print(f"Kept {len(chunk_files)} chunk files for reference")
 
+        duration_total = time.time() - function_start_time
+        logger.info(
+            "Chunked transcription complete",
+            extra={
+                "duration_seconds": round(duration_total, 2),
+                "chunks_processed": len(chunk_files),
+                "transcript_length": len(" ".join(transcripts)),
+            },
+        )
+
         return " ".join(transcripts)
 
     def _transcribe_chunk_files(self, chunk_files: list[Path], chunk_duration: float, *, keep_chunks: bool) -> list[str]:
@@ -252,6 +312,15 @@ class VideoTranscriber:
         transcripts: list[str] = []
         for i, chunk_path in enumerate(chunk_files):
             start_time = i * chunk_duration
+            logger.debug(
+                "Processing chunk",
+                extra={
+                    "chunk_index": i + 1,
+                    "total_chunks": len(chunk_files),
+                    "chunk_path": str(chunk_path),
+                    "offset_seconds": start_time,
+                },
+            )
             print(f"Transcribing chunk {i + 1}/{len(chunk_files)}...")
             transcript: str = self.transcribe_audio_file(chunk_path)
             if transcript and start_time > 0:
@@ -313,6 +382,21 @@ class VideoTranscriber:
         Returns:
             Transcribed text from the video audio
         """
+        import time
+
+        start_time = time.time()
+
+        logger.info(
+            "Starting transcription workflow",
+            extra={
+                "input_path": str(input_path),
+                "audio_path": str(audio_path) if audio_path else None,
+                "force": force,
+                "keep_audio": keep_audio,
+                "scan_chunks": scan_chunks,
+            },
+        )
+
         # Check if input is already an audio file
         is_audio_input = input_path.suffix.lower() in self.SUPPORTED_AUDIO_FORMATS
 
@@ -369,5 +453,15 @@ class VideoTranscriber:
         # Clean up audio files if not keeping them
         if not keep_audio:
             self.cleanup_audio_files(audio_path)
+
+        duration_total = time.time() - start_time
+        logger.info(
+            "Transcription workflow complete",
+            extra={
+                "duration_seconds": round(duration_total, 2),
+                "transcript_length": len(result),
+                "kept_audio": keep_audio,
+            },
+        )
 
         return result

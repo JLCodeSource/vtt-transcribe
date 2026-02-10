@@ -1,8 +1,13 @@
 """Audio translation functionality using OpenAI API."""
 
+import time
 from pathlib import Path
 
 from openai import OpenAI
+
+from vtt_transcribe.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 class AudioTranslator:
@@ -29,11 +34,33 @@ class AudioTranslator:
             msg = f"Audio file not found: {audio_path}"
             raise FileNotFoundError(msg)
 
+        start_time = time.time()
+        file_size_mb = audio_path.stat().st_size / (1024 * 1024)
+
+        logger.info(
+            "Starting audio translation API call",
+            extra={
+                "audio_path": str(audio_path),
+                "size_mb": round(file_size_mb, 2),
+                "model": "whisper-1",
+                "target_language": "English",
+            },
+        )
+
         with open(audio_path, "rb") as audio_file:
             response = self.client.audio.translations.create(
                 model="whisper-1",
                 file=audio_file,
             )
+
+        api_duration = time.time() - start_time
+        logger.info(
+            "Audio translation API call complete",
+            extra={
+                "duration_seconds": round(api_duration, 2),
+                "result_length": len(response.text),
+            },
+        )
 
         return response.text
 
@@ -47,6 +74,17 @@ class AudioTranslator:
         Returns:
             Translated text
         """
+        start_time = time.time()
+
+        logger.info(
+            "Starting text translation",
+            extra={
+                "text_length": len(text),
+                "target_language": target_language,
+                "model": "gpt-4",
+            },
+        )
+
         response = self.client.chat.completions.create(
             model="gpt-4",
             messages=[
@@ -61,7 +99,18 @@ class AudioTranslator:
             ],
         )
 
-        return response.choices[0].message.content or ""
+        result = response.choices[0].message.content or ""
+        api_duration = time.time() - start_time
+
+        logger.info(
+            "Text translation complete",
+            extra={
+                "duration_seconds": round(api_duration, 2),
+                "result_length": len(result),
+            },
+        )
+
+        return result
 
     def _parse_line_for_translation(self, line: str) -> tuple[str, str, str] | tuple[str, str, str, str]:
         """Parse a line to extract timestamp and text for translation.
@@ -149,6 +198,17 @@ class AudioTranslator:
         Returns:
             Translated transcript with timestamps preserved
         """
+        start_time = time.time()
+
+        logger.info(
+            "Starting transcript translation",
+            extra={
+                "transcript_length": len(transcript),
+                "target_language": target_language,
+                "preserve_timestamps": preserve_timestamps,
+            },
+        )
+
         if not preserve_timestamps:
             return self.translate_text(transcript, target_language)
 
@@ -159,10 +219,18 @@ class AudioTranslator:
         # Batch translate all text portions
         texts_to_translate = [info[2] for info in line_info if info[2]]
         if not texts_to_translate:
+            logger.info("No text to translate in transcript")
             return transcript
 
+        logger.info(
+            "Sending batch translation request",
+            extra={
+                "num_lines": len(texts_to_translate),
+                "batch_size": len(batch_text := "\n".join(f"LINE_{i}: {text}" for i, text in enumerate(texts_to_translate))),
+            },
+        )
+
         # Create batch request
-        batch_text = "\n".join(f"LINE_{i}: {text}" for i, text in enumerate(texts_to_translate))
         response = self.client.chat.completions.create(
             model="gpt-4",
             messages=[
@@ -189,4 +257,16 @@ class AudioTranslator:
             reconstructed, text_idx = self._reconstruct_line(info, translated_texts, text_idx)
             translated_lines.append(reconstructed)
 
-        return "\n".join(translated_lines)
+        result = "\n".join(translated_lines)
+        total_duration = time.time() - start_time
+
+        logger.info(
+            "Transcript translation complete",
+            extra={
+                "duration_seconds": round(total_duration, 2),
+                "lines_translated": len(texts_to_translate),
+                "result_length": len(result),
+            },
+        )
+
+        return result
