@@ -7,6 +7,7 @@ For production use, consider using Alembic for migrations.
 import asyncio
 import os
 
+import vtt_transcribe.api.models  # noqa: F401  # Ensure models are imported so Base.metadata is populated
 from vtt_transcribe.api.database import init_db
 
 

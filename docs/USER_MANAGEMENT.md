@@ -79,10 +79,10 @@ The User Management system (Epic wq5) adds multi-user support to vtt-transcribe 
 - `DELETE /api-keys/{key_id}` - Delete API key
 
 ### Job History
-- `GET /jobs/` - List user's transcription jobs (with filtering)
-- `GET /jobs/{job_id}` - Get detailed job information
-- `DELETE /jobs/{job_id}` - Delete job from history
-- `GET /jobs/stats/summary` - Get user statistics
+- `GET /job-history/` - List user's transcription jobs (with filtering)
+- `GET /job-history/{job_id}` - Get detailed job information
+- `DELETE /job-history/{job_id}` - Delete job from history
+- `GET /job-history/stats/summary` - Get user statistics
 
 ## Setup
 
@@ -100,7 +100,7 @@ DATABASE_URL=sqlite+aiosqlite:///./vtt_transcribe.db  # Development
 SECRET_KEY=your-secret-key-here
 
 # JWT Configuration
-ALGORITHM=HS256
+JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 
 # Generate ENCRYPTION_KEY with:
@@ -160,7 +160,7 @@ curl -X POST http://localhost:8000/api-keys/ \
   -H "Content-Type: application/json" \
   -d '{
     "service": "openai",
-    "key": "sk-...",
+    "api_key": "sk-...",
     "key_name": "My OpenAI Key"
   }'
 ```
@@ -168,17 +168,17 @@ curl -X POST http://localhost:8000/api-keys/ \
 ### List Jobs
 ```bash
 # All jobs
-curl http://localhost:8000/jobs/ \
+curl http://localhost:8000/job-history/ \
   -H "Authorization: Bearer eyJ..."
 
 # Filter by status
-curl http://localhost:8000/jobs/?status_filter=completed \
+curl http://localhost:8000/job-history/?status_filter=completed \
   -H "Authorization: Bearer eyJ..."
 ```
 
 ### Get Job Statistics
 ```bash
-curl http://localhost:8000/jobs/stats/summary \
+curl http://localhost:8000/job-history/stats/summary \
   -H "Authorization: Bearer eyJ..."
 ```
 
@@ -228,10 +228,8 @@ alembic upgrade head
 
 ## Testing
 
-Tests are located in `tests/test_api/`:
+Tests for the user management API are located in `tests/test_api/`, including:
 - `test_auth.py` - Authentication endpoints
-- `test_api_keys.py` - API key management
-- `test_jobs.py` - Job history endpoints
 
 Run tests:
 ```bash

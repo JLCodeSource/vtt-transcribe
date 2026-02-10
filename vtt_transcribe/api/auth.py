@@ -14,7 +14,17 @@ from vtt_transcribe.api.database import get_db
 from vtt_transcribe.api.models import User
 
 # Security configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "development-secret-key-change-in-production")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    dev_mode = os.getenv("VTT_TRANSCRIBE_DEV_MODE", "").lower()
+    if dev_mode in {"1", "true", "yes"}:
+        SECRET_KEY = "development-secret-key-change-in-production"  # noqa: S105
+    else:
+        msg = (
+            "SECRET_KEY environment variable must be set for JWT signing. "
+            "To use the built-in development key, explicitly set VTT_TRANSCRIBE_DEV_MODE=1."
+        )
+        raise RuntimeError(msg)
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
@@ -22,7 +32,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2 scheme for token authentication
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token", auto_error=False)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

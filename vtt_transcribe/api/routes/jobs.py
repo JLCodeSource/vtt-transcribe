@@ -11,7 +11,7 @@ from vtt_transcribe.api.auth import get_current_active_user
 from vtt_transcribe.api.database import get_db
 from vtt_transcribe.api.models import TranscriptionJob, User
 
-router = APIRouter(prefix="/jobs", tags=["job-history"])
+router = APIRouter(prefix="/job-history", tags=["job-history"])
 
 
 # Response models
@@ -118,10 +118,10 @@ async def get_user_stats(
     result = await db.execute(
         select(
             func.count(TranscriptionJob.id).label("total"),
-            func.sum(TranscriptionJob.status == "completed").label("completed"),
-            func.sum(TranscriptionJob.status == "failed").label("failed"),
-            func.sum(TranscriptionJob.status == "processing").label("processing"),
-            func.sum(TranscriptionJob.status == "pending").label("pending"),
+            func.count().filter(TranscriptionJob.status == "completed").label("completed"),
+            func.count().filter(TranscriptionJob.status == "failed").label("failed"),
+            func.count().filter(TranscriptionJob.status == "processing").label("processing"),
+            func.count().filter(TranscriptionJob.status == "pending").label("pending"),
         ).where(TranscriptionJob.user_id == current_user.id)
     )
 

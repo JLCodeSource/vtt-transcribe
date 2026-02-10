@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from vtt_transcribe.api.database import Base
@@ -40,7 +40,7 @@ class APIKey(Base):
     __tablename__ = "api_keys"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     service: Mapped[str] = mapped_column(String(50), nullable=False)  # 'openai', 'huggingface'
     encrypted_key: Mapped[str] = mapped_column(String(500), nullable=False)
     key_name: Mapped[str | None] = mapped_column(String(100), nullable=True)  # User-friendly name
@@ -61,7 +61,7 @@ class TranscriptionJob(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     job_id: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
-    user_id: Mapped[int] = mapped_column(nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="pending"

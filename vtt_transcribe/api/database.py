@@ -40,6 +40,9 @@ AsyncSessionLocal = async_sessionmaker(
 
 async def init_db() -> None:
     """Initialize database tables."""
+    # Import models so that all SQLAlchemy mappings are registered with Base.metadata
+    from . import models  # noqa: F401
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
