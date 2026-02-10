@@ -23,7 +23,7 @@ Add structured logging across all vtt-transcribe modules to improve debugging, m
 - Log API calls and responses (sanitized)
 - Log file operations and cleanup
 
-### 4. Diarization (diarization.py) - PARTIALLY DONE
+### 4. Diarization (diarization.py)
 - Enhance existing logging
 - Add speaker segment details
 - Log model loading and device info

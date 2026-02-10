@@ -54,7 +54,7 @@ async def create_transcription_job(
         extra={
             "file_name": file.filename,
             "diarize": diarize,
-            "has_hf_token": hf_token is not None,
+            "has_hf_token": bool(hf_token),
             "device": device,
             "translate_to": translate_to,
         },

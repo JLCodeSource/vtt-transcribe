@@ -308,7 +308,16 @@ class SpeakerDiarizer:
         )
 
         if not speaker_segments:
+            duration = time.time() - start_time
             logger.warning("No speaker segments provided, returning original transcript")
+            logger.info(
+                "Speaker label application complete",
+                extra={
+                    "duration_seconds": round(duration, 2),
+                    "lines_processed": transcript.count("\n") + 1 if transcript else 0,
+                    "result_length": len(transcript),
+                },
+            )
             return transcript
 
         lines = transcript.split("\n")

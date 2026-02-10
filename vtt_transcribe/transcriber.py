@@ -186,7 +186,8 @@ class VideoTranscriber:
             )
 
         api_duration = time.time() - api_start_time
-        has_segments = hasattr(response, "segments") and response.segments and len(response.segments) > 0
+        segments = getattr(response, "segments", None)
+        has_segments = bool(segments and len(segments) > 0)
         logger.info(
             "Transcription API call complete",
             extra={

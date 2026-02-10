@@ -29,13 +29,15 @@ def is_production() -> bool:
     return get_environment() == "production"
 
 
-def setup_logging(*, dev_mode: bool | None = None) -> logging.Logger:
+def setup_logging(*, dev_mode: bool | None = None, use_stderr: bool = False) -> logging.Logger:
     """Set up and configure logging for vtt-transcribe.
 
     Args:
         dev_mode: If True, use DEBUG level and human-readable format.
                  If False, use INFO level and JSON format.
                  If None, auto-detect from environment.
+        use_stderr: If True, log to stderr instead of stdout.
+                   Use this in stdin mode to avoid polluting stdout.
 
     Returns:
         Configured logger instance
@@ -53,8 +55,9 @@ def setup_logging(*, dev_mode: bool | None = None) -> logging.Logger:
     # Set log level based on mode
     logger.setLevel(logging.DEBUG if dev_mode else logging.INFO)
 
-    # Create console handler
-    handler = logging.StreamHandler(sys.stdout)
+    # Create console handler - use stderr in stdin mode to avoid polluting stdout
+    stream = sys.stderr if use_stderr else sys.stdout
+    handler = logging.StreamHandler(stream)
     handler.setLevel(logging.DEBUG if dev_mode else logging.INFO)
 
     # Configure formatter based on environment

@@ -212,8 +212,13 @@ def main() -> None:
     parser = create_parser()
     args = parser.parse_args()
 
+    # Check if we're in stdin mode (data piped from stdin) BEFORE setting up logging
+    # so we can route logs to stderr to avoid polluting stdout in stdin mode
+    stdin_mode = not sys.stdin.isatty()
+
     # Initialize logging after argument parsing (so --version doesn't trigger logging)
-    setup_logging()
+    # Use stderr in stdin mode to avoid polluting stdout with logs
+    setup_logging(use_stderr=stdin_mode)
     logger.info("Starting vtt-transcribe CLI")
     start_time = time.time()
 
@@ -229,8 +234,6 @@ def main() -> None:
         },
     )
 
-    # Check if we're in stdin mode (data piped from stdin)
-    stdin_mode = not sys.stdin.isatty()
     if stdin_mode:
         logger.info("Stdin mode detected")
 
