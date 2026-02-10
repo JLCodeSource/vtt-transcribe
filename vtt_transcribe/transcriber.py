@@ -52,7 +52,7 @@ class VideoTranscriber:
 
         # Check file size
         file_size_mb = audio_path.stat().st_size / (1024 * 1024)
-        
+
         # If file is larger than 25MB, extract a small chunk for detection
         temp_chunk = None
         if file_size_mb > MAX_FILE_SIZE_MB:

@@ -69,6 +69,8 @@ class TestWebSocketConnection:
 
     def test_websocket_closes_on_completion(self, client):
         """WebSocket should close when job completes."""
+        from vtt_transcribe.api.routes.transcription import jobs
+
         with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber") as mock:
             mock_instance = mock.return_value
             mock_instance.transcribe.return_value = "[00:00 - 00:05] Test"
@@ -81,15 +83,16 @@ class TestWebSocketConnection:
             )
             job_id = response.json()["job_id"]
 
+        # Manually complete the job since TestClient doesn't run background tasks
+        if job_id in jobs:
+            jobs[job_id]["status"] = "completed"
+            jobs[job_id]["result"] = "[00:00 - 00:05] Test"
+
         with client.websocket_connect(f"/ws/jobs/{job_id}") as websocket:
-            # Receive updates until connection closes or completion
-            try:
-                while True:
-                    data = websocket.receive_json()
-                    if data.get("status") == "completed":
-                        break
-            except Exception:  # noqa: S110
-                pass  # Connection closed as expected
+            # Should receive completion status and then close
+            data = websocket.receive_json()
+            assert data.get("status") == "completed"
+            assert data.get("result") == "[00:00 - 00:05] Test"
 
     def test_websocket_rejects_invalid_job_id(self, client):
         """WebSocket should reject connection for non-existent job."""
@@ -97,6 +100,34 @@ class TestWebSocketConnection:
             data = websocket.receive_json()
             assert "error" in data
             assert data["error"] == "Job not found"
+
+    def test_websocket_includes_translation_info(self, client):
+        """WebSocket should include translation info when job has translated_to field."""
+        from vtt_transcribe.api.routes.transcription import jobs
+
+        with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber") as mock:
+            mock_instance = mock.return_value
+            mock_instance.transcribe.return_value = "[00:00 - 00:05] Test"
+            mock_instance.detect_language.return_value = "en"
+
+            response = client.post(
+                "/transcribe",
+                files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
+                data={"api_key": "test-key"},
+            )
+            job_id = response.json()["job_id"]
+
+        # Manually complete the job and add translation info
+        if job_id in jobs:
+            jobs[job_id]["status"] = "completed"
+            jobs[job_id]["result"] = "[00:00 - 00:05] Hola"
+            jobs[job_id]["translated_to"] = "es"
+
+        with client.websocket_connect(f"/ws/jobs/{job_id}") as websocket:
+            data = websocket.receive_json()
+            assert data.get("status") == "completed"
+            assert data.get("translated_to") == "es"
+            assert data.get("result") == "[00:00 - 00:05] Hola"
 
 
 class TestWebSocketProgressUpdates:

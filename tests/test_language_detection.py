@@ -112,3 +112,33 @@ class TestLanguageDetection:
             call_args = mock_manager.extract_chunk.call_args
             assert call_args[0][1] == 0  # start_time
             assert call_args[0][2] == 30  # end_time (30 seconds)
+
+    def test_detect_language_handles_chunking_failure(self, tmp_path: Path) -> None:
+        """Test that detect_language falls back to full file if chunking fails."""
+        # Create a file that appears to be > 25MB
+        audio_file = tmp_path / "large.mp3"
+        audio_file.write_bytes(b"x" * (26 * 1024 * 1024))
+
+        with (
+            patch("vtt_transcribe.transcriber.OpenAI") as mock_openai,
+            patch("vtt_transcribe.transcriber.AudioFileManager") as mock_manager,
+        ):
+            mock_client = MagicMock()
+            mock_openai.return_value = mock_client
+
+            # Mock the chunk extraction to fail
+            mock_manager.get_duration.side_effect = Exception("Duration extraction failed")
+
+            # Mock the language detection response on full file
+            mock_response = MagicMock()
+            mock_response.language = "fr"
+            mock_client.audio.transcriptions.create.return_value = mock_response
+
+            transcriber = VideoTranscriber("test-api-key")
+            result = transcriber.detect_language(audio_file)
+
+            assert result == "fr"
+            # Should have tried to get duration, but fallen back to full file
+            mock_manager.get_duration.assert_called_once()
+            # Should not have tried to extract chunk
+            mock_manager.extract_chunk.assert_not_called()

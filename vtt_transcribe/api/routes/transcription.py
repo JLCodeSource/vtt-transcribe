@@ -284,11 +284,11 @@ async def _process_transcription(
 
         try:
             transcriber = VideoTranscriber(api_key)
-            
+
             # Detect language before transcription
             detected_language = await asyncio.to_thread(transcriber.detect_language, tmp_path)
             jobs[job_id]["detected_language"] = detected_language
-            
+
             result = await asyncio.to_thread(transcriber.transcribe, tmp_path)
 
             # If translation requested, translate the transcript
@@ -418,7 +418,7 @@ def _format_srt_time(seconds: int) -> str:
 @router.get("/jobs/{job_id}/download")
 async def download_transcript(
     job_id: str,
-    format: str = Query("txt", regex="^(txt|vtt|srt)$"),  # noqa: A002
+    format: str = Query("txt", pattern="^(txt|vtt|srt)$"),  # noqa: A002
 ) -> PlainTextResponse:
     """Download transcript in specified format.
 

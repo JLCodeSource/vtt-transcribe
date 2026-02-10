@@ -63,6 +63,81 @@ class AudioTranslator:
 
         return response.choices[0].message.content or ""
 
+    def _parse_line_for_translation(self, line: str) -> tuple[str, str, str] | tuple[str, str, str, str]:
+        """Parse a line to extract timestamp and text for translation.
+
+        Returns:
+            Tuple of (original_line, timestamp, text_to_translate) or
+            (original_line, timestamp, text_to_translate, speaker_label)
+        """
+        line = line.strip()
+        if not line:
+            return (line, "", "")
+
+        # Check if line has timestamp format
+        if line.startswith("[") and "]" in line:
+            timestamp_end = line.index("]")
+            timestamp = line[: timestamp_end + 1]
+            remaining_text = line[timestamp_end + 1 :].strip()
+
+            # Check for speaker label
+            if remaining_text and ":" in remaining_text:
+                import re
+
+                speaker_match = re.match(r"^(SPEAKER_\d+:)\s*(.*)$", remaining_text)
+                if speaker_match:
+                    return (line, timestamp, speaker_match.group(2), speaker_match.group(1))
+
+            return (line, timestamp, remaining_text)
+
+        # No timestamp
+        return (line, "", line)
+
+    def _parse_translated_batch(self, translated_batch: str) -> dict[int, str]:
+        """Parse batch translation response into indexed dictionary."""
+        translated_texts: dict[int, str] = {}
+        for line in translated_batch.split("\n"):
+            line = line.strip()
+            if line.startswith("LINE_"):
+                try:
+                    idx_end = line.index(":")
+                    idx = int(line[5:idx_end])
+                    text = line[idx_end + 1 :].strip()
+                    translated_texts[idx] = text
+                except (ValueError, IndexError):
+                    continue
+        return translated_texts
+
+    def _reconstruct_line(
+        self, info: tuple[str, str, str] | tuple[str, str, str, str], translated_texts: dict[int, str], text_idx: int
+    ) -> tuple[str, int]:
+        """Reconstruct a single line with translation.
+
+        Returns:
+            Tuple of (reconstructed_line, new_text_idx)
+        """
+        if not info[1]:  # No timestamp
+            if not info[0]:  # Empty line
+                return ("", text_idx)
+            if info[2]:  # Plain text to translate
+                return (translated_texts.get(text_idx, info[2]), text_idx + 1)
+            return (info[0], text_idx)
+
+        # Has timestamp
+        timestamp = info[1]
+        if not info[2]:  # No text to translate
+            return (timestamp, text_idx)
+
+        # Has text to translate
+        translated_text = translated_texts.get(text_idx, info[2])
+        text_idx += 1
+
+        if len(info) > 3:  # Has speaker label
+            speaker_label = info[3]
+            return (f"{timestamp} {speaker_label} {translated_text}", text_idx)
+
+        return (f"{timestamp} {translated_text}", text_idx)
+
     def translate_transcript(self, transcript: str, target_language: str, *, preserve_timestamps: bool = True) -> str:
         """Translate a formatted transcript while preserving timestamps.
 
@@ -75,54 +150,19 @@ class AudioTranslator:
             Translated transcript with timestamps preserved
         """
         if not preserve_timestamps:
-            # Simple translation of entire text
             return self.translate_text(transcript, target_language)
 
-        # Split into lines and extract text portions for batch translation
+        # Parse lines and extract text for translation
         lines = transcript.strip().split("\n")
-        line_info: list[tuple[str, str, str]] = []  # (original_line, timestamp, text_to_translate)
-        
-        for line in lines:
-            line = line.strip()
-            if not line:
-                line_info.append((line, "", ""))
-                continue
-
-            # Check if line has timestamp format: [MM:SS - MM:SS] or [HH:MM:SS - HH:MM:SS]
-            if line.startswith("[") and "]" in line:
-                # Extract timestamp and text
-                timestamp_end = line.index("]")
-                timestamp = line[: timestamp_end + 1]
-                remaining_text = line[timestamp_end + 1 :].strip()
-                
-                # Check for speaker label (SPEAKER_XX:)
-                speaker_label = ""
-                text_to_translate = remaining_text
-                if remaining_text and ":" in remaining_text:
-                    # Check if it matches speaker pattern
-                    import re
-                    speaker_match = re.match(r"^(SPEAKER_\d+:)\s*(.*)$", remaining_text)
-                    if speaker_match:
-                        speaker_label = speaker_match.group(1)
-                        text_to_translate = speaker_match.group(2)
-
-                line_info.append((line, timestamp, text_to_translate))
-                # Store speaker label if present
-                if speaker_label:
-                    line_info[-1] = (line, timestamp, text_to_translate, speaker_label)  # type: ignore[assignment]
-            else:
-                # No timestamp, translate entire line
-                line_info.append((line, "", line))
+        line_info = [self._parse_line_for_translation(line) for line in lines]
 
         # Batch translate all text portions
         texts_to_translate = [info[2] for info in line_info if info[2]]
-        
         if not texts_to_translate:
             return transcript
-        
-        # Create a single batch request with all texts
+
+        # Create batch request
         batch_text = "\n".join(f"LINE_{i}: {text}" for i, text in enumerate(texts_to_translate))
-        
         response = self.client.chat.completions.create(
             model="gpt-4",
             messages=[
@@ -137,47 +177,16 @@ class AudioTranslator:
                 {"role": "user", "content": batch_text},
             ],
         )
-        
+
+        # Parse translation results
         translated_batch = response.choices[0].message.content or ""
-        
-        # Parse the translated batch back into individual lines
-        translated_texts: dict[int, str] = {}
-        for line in translated_batch.split("\n"):
-            line = line.strip()
-            if line.startswith("LINE_"):
-                try:
-                    idx_end = line.index(":")
-                    idx = int(line[5:idx_end])
-                    text = line[idx_end + 1:].strip()
-                    translated_texts[idx] = text
-                except (ValueError, IndexError):
-                    continue
-        
-        # Reconstruct the transcript with translated text
+        translated_texts = self._parse_translated_batch(translated_batch)
+
+        # Reconstruct transcript with translations
         translated_lines = []
         text_idx = 0
-        
         for info in line_info:
-            if not info[1]:  # No timestamp (empty line or plain text)
-                if not info[0]:  # Empty line
-                    translated_lines.append("")
-                elif info[2]:  # Plain text to translate
-                    translated_lines.append(translated_texts.get(text_idx, info[2]))
-                    text_idx += 1
-                else:
-                    translated_lines.append(info[0])
-            else:  # Has timestamp
-                timestamp = info[1]
-                if info[2]:  # Has text to translate
-                    translated_text = translated_texts.get(text_idx, info[2])
-                    text_idx += 1
-                    # Check if we stored a speaker label
-                    if len(info) > 3:  # Has speaker label
-                        speaker_label = info[3]  # type: ignore[misc]
-                        translated_lines.append(f"{timestamp} {speaker_label} {translated_text}")
-                    else:
-                        translated_lines.append(f"{timestamp} {translated_text}")
-                else:
-                    translated_lines.append(timestamp)
+            reconstructed, text_idx = self._reconstruct_line(info, translated_texts, text_idx)
+            translated_lines.append(reconstructed)
 
         return "\n".join(translated_lines)
