@@ -146,7 +146,6 @@
     on:drop={handleDrop}
     role="region"
     aria-label="File upload dropzone"
-    tabindex="0"
   >
     {#if !selectedFile}
       <div class="dropzone-content">
