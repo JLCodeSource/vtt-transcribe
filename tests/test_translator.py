@@ -168,3 +168,48 @@ class TestAudioTranslator:
             assert "[00:05 - 00:10] SPEAKER_01: Estoy bien." in result
             # Should make only one API call
             assert mock_client.chat.completions.create.call_count == 1
+
+    def test_translate_transcript_line_without_timestamp(self) -> None:
+        """Test translating line without timestamp in preserve mode."""
+        transcript = "[00:00 - 00:05] Hello\nPlain text without timestamp"
+
+        with patch("vtt_transcribe.translator.OpenAI") as mock_openai:
+            mock_client = MagicMock()
+            mock_openai.return_value = mock_client
+
+            # Mock responses - two separate translations
+            mock_resp1 = MagicMock()
+            mock_resp1.choices = [MagicMock(message=MagicMock(content="Hola"))]
+            mock_resp2 = MagicMock()
+            mock_resp2.choices = [MagicMock(message=MagicMock(content="Texto plano sin marca de tiempo"))]
+            mock_client.chat.completions.create.side_effect = [mock_resp1, mock_resp2]
+
+            translator = AudioTranslator("test-api-key")
+            result = translator.translate_transcript(transcript, "Spanish", preserve_timestamps=True)
+
+            assert "[00:00 - 00:05] Hola" in result
+            assert "Texto plano sin marca de tiempo" in result
+            # Should call translate twice - once for timestamped, once for plain
+            assert mock_client.chat.completions.create.call_count == 2
+
+    def test_translate_transcript_timestamp_without_text(self) -> None:
+        """Test translating line with timestamp but no text."""
+        transcript = "[00:00 - 00:05] \n[00:05 - 00:10] Hello"
+
+        with patch("vtt_transcribe.translator.OpenAI") as mock_openai:
+            mock_client = MagicMock()
+            mock_openai.return_value = mock_client
+
+            # Mock response for only the line with text
+            mock_resp = MagicMock()
+            mock_resp.choices = [MagicMock(message=MagicMock(content="Hola"))]
+            mock_client.chat.completions.create.return_value = mock_resp
+
+            translator = AudioTranslator("test-api-key")
+            result = translator.translate_transcript(transcript, "Spanish", preserve_timestamps=True)
+
+            # Empty timestamp should be preserved
+            assert "[00:00 - 00:05]" in result
+            assert "[00:05 - 00:10] Hola" in result
+            # Should only translate once (the line with text)
+            mock_client.chat.completions.create.assert_called_once()

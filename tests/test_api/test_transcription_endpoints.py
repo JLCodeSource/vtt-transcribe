@@ -476,3 +476,235 @@ class TestTranscribeWithTranslation:
             assert jobs[job_id]["status"] == "completed"
             assert "Texto español" in jobs[job_id]["result"]
             mock_at_instance.translate_transcript.assert_called_once()
+
+
+class TestDetectLanguageErrorHandling:
+    """Tests for error handling in /detect-language endpoint."""
+
+    def test_detect_language_missing_filename(self) -> None:
+        """Test detect_language when file has no filename."""
+        import asyncio
+        import io
+
+        from fastapi import UploadFile
+        from fastapi.exceptions import HTTPException
+
+        from vtt_transcribe.api.routes.transcription import detect_language
+
+        # Create UploadFile with None filename
+        mock_file = UploadFile(file=io.BytesIO(b"test"), filename=None)  # type: ignore[arg-type]
+
+        # This should raise HTTPException with 422 status
+        with pytest.raises(HTTPException) as exc_info:
+            asyncio.run(detect_language(file=mock_file, api_key="test-key"))
+
+        assert exc_info.value.status_code == 422
+        assert "filename" in exc_info.value.detail.lower()
+
+    def test_detect_language_unsupported_extension(self, client, sample_audio_file):
+        """Test detect_language with unsupported file extension."""
+        files = {"file": ("test.xyz", sample_audio_file, "application/octet-stream")}
+        data = {"api_key": "test-api-key"}
+        response = client.post("/detect-language", files=files, data=data)
+
+        assert response.status_code == 400
+        assert "Unsupported file type" in response.json()["detail"]
+
+    def test_detect_language_file_too_large(self, client):
+        """Test detect_language with file exceeding size limit."""
+        # Create a file larger than MAX_FILE_SIZE (100MB)
+        large_content = b"x" * (101 * 1024 * 1024)
+        files = {"file": ("test.mp3", io.BytesIO(large_content), "audio/mpeg")}
+        data = {"api_key": "test-api-key"}
+        response = client.post("/detect-language", files=files, data=data)
+
+        assert response.status_code == 413
+        assert "File too large" in response.json()["detail"]
+
+    @patch("vtt_transcribe.api.routes.transcription.VideoTranscriber")
+    def test_detect_language_processing_exception(self, mock_transcriber, client, sample_audio_file):
+        """Test detect_language when transcriber raises exception."""
+        mock_instance = mock_transcriber.return_value
+        mock_instance.detect_language = MagicMock(side_effect=RuntimeError("Detection failed"))
+
+        files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
+        data = {"api_key": "test-api-key"}
+        response = client.post("/detect-language", files=files, data=data)
+
+        assert response.status_code == 500
+        assert "Language detection failed" in response.json()["detail"]
+
+
+class TestTranslateErrorHandling:
+    """Tests for error handling in /translate endpoint."""
+
+    @patch("vtt_transcribe.api.routes.transcription.AudioTranslator")
+    def test_translate_processing_exception(self, mock_translator, client):
+        """Test translate when translator raises exception."""
+        mock_instance = mock_translator.return_value
+        mock_instance.translate_transcript = MagicMock(side_effect=RuntimeError("Translation failed"))
+
+        response = client.post(
+            "/translate",
+            data={
+                "transcript": "[00:00 - 00:05] Hello",
+                "target_language": "Spanish",
+                "api_key": "test-api-key",
+            },
+        )
+
+        assert response.status_code == 500
+        assert "Translation failed" in response.json()["detail"]
+
+
+class TestDownloadTranscriptEndpoint:
+    """Tests for /jobs/{job_id}/download endpoint."""
+
+    def test_download_job_not_found(self, client):
+        """Test download with non-existent job ID."""
+        response = client.get("/jobs/nonexistent-job/download?format=txt")
+        assert response.status_code == 404
+        assert "Job not found" in response.json()["detail"]
+
+    @patch("vtt_transcribe.api.routes.transcription.VideoTranscriber")
+    def test_download_job_not_completed(self, mock_transcriber, client, sample_audio_file):
+        """Test download when job is still processing."""
+        # Create a job
+        mock_instance = mock_transcriber.return_value
+        mock_instance.transcribe_from_buffer = MagicMock(return_value="[00:00 - 00:05] Test")
+
+        files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
+        data = {"api_key": "test-api-key"}
+        create_response = client.post("/transcribe", files=files, data=data)
+        job_id = create_response.json()["job_id"]
+
+        # Manually set job to processing state
+        from vtt_transcribe.api.routes.transcription import jobs
+
+        jobs[job_id]["status"] = "processing"
+
+        # Try to download
+        response = client.get(f"/jobs/{job_id}/download?format=txt")
+        assert response.status_code == 400
+        assert "Job not completed" in response.json()["detail"]
+
+    def test_download_no_result_available(self, client):
+        """Test download when job has no result."""
+        # Create a completed job with empty result
+        from vtt_transcribe.api.routes.transcription import jobs
+
+        job_id = "test-empty-job"
+        jobs[job_id] = {"status": "completed", "job_id": job_id, "result": ""}
+
+        response = client.get(f"/jobs/{job_id}/download?format=txt")
+        assert response.status_code == 404
+        assert "No transcript available" in response.json()["detail"]
+
+    def test_download_no_segments_parsed(self, client):
+        """Test download when transcript has no valid segments."""
+        from vtt_transcribe.api.routes.transcription import jobs
+
+        job_id = "test-no-segments-job"
+        jobs[job_id] = {"status": "completed", "job_id": job_id, "result": "Invalid transcript format"}
+
+        response = client.get(f"/jobs/{job_id}/download?format=txt")
+        assert response.status_code == 404
+        assert "No segments found" in response.json()["detail"]
+
+    def test_download_txt_format(self, client):
+        """Test downloading transcript in TXT format."""
+        from vtt_transcribe.api.routes.transcription import jobs
+
+        job_id = "test-txt-job"
+        jobs[job_id] = {
+            "status": "completed",
+            "job_id": job_id,
+            "result": "[00:00:00 - 00:00:05] Hello world\n[00:00:05 - 00:00:10] How are you?",
+        }
+
+        response = client.get(f"/jobs/{job_id}/download?format=txt")
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "text/plain; charset=utf-8"
+        assert "Hello world" in response.text
+        assert "How are you?" in response.text
+        assert "attachment" in response.headers.get("content-disposition", "")
+
+    def test_download_vtt_format(self, client):
+        """Test downloading transcript in VTT format."""
+        from vtt_transcribe.api.routes.transcription import jobs
+
+        job_id = "test-vtt-job"
+        jobs[job_id] = {
+            "status": "completed",
+            "job_id": job_id,
+            "result": "[00:00:00 - 00:00:05] Hello world",
+        }
+
+        response = client.get(f"/jobs/{job_id}/download?format=vtt")
+        assert response.status_code == 200
+        assert "text/vtt" in response.headers["content-type"]
+        assert "WEBVTT" in response.text
+
+    def test_download_srt_format(self, client):
+        """Test downloading transcript in SRT format."""
+        from vtt_transcribe.api.routes.transcription import jobs
+
+        job_id = "test-srt-job"
+        jobs[job_id] = {
+            "status": "completed",
+            "job_id": job_id,
+            "result": "[00:00:00 - 00:00:05] Hello world",
+        }
+
+        response = client.get(f"/jobs/{job_id}/download?format=srt")
+        assert response.status_code == 200
+        assert "application/x-subrip" in response.headers["content-type"]
+        assert "1" in response.text  # SRT sequence number
+        assert "-->" in response.text
+
+    def test_download_with_empty_lines(self, client):
+        """Test downloading transcript with empty lines in middle."""
+        from vtt_transcribe.api.routes.transcription import jobs
+
+        job_id = "test-empty-lines-job"
+        jobs[job_id] = {
+            "status": "completed",
+            "job_id": job_id,
+            "result": "[00:00:00 - 00:00:05] First line\n\n[00:00:10 - 00:00:15] Second line",
+        }
+
+        response = client.get(f"/jobs/{job_id}/download?format=txt")
+        assert response.status_code == 200
+        # Empty lines should be skipped during parsing
+        assert "First line" in response.text
+        assert "Second line" in response.text
+
+    def test_download_with_speaker_labels(self, client):
+        """Test downloading transcript with speaker labels."""
+        from vtt_transcribe.api.routes.transcription import jobs
+
+        job_id = "test-speaker-job"
+        jobs[job_id] = {
+            "status": "completed",
+            "job_id": job_id,
+            "result": (
+                "[SPEAKER_00] [00:00:00 - 00:00:05] Hello from speaker 0\n"
+                "[SPEAKER_01] [00:00:05 - 00:00:10] Hello from speaker 1"
+            ),
+        }
+
+        # Test TXT format with speakers
+        response = client.get(f"/jobs/{job_id}/download?format=txt")
+        assert response.status_code == 200
+        assert "[SPEAKER_00]" in response.text
+        assert "[SPEAKER_01]" in response.text
+
+        # Test VTT format with speakers
+        response = client.get(f"/jobs/{job_id}/download?format=vtt")
+        assert response.status_code == 200
+        assert "<v SPEAKER_00>" in response.text
+
+        # Test SRT format with speakers
+        response = client.get(f"/jobs/{job_id}/download?format=srt")
+        assert response.status_code == 200
+        assert "[SPEAKER_00]" in response.text
