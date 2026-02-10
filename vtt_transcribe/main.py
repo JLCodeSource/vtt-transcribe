@@ -1,6 +1,7 @@
 import os
 import sys
 import tempfile
+import time
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
@@ -16,17 +17,25 @@ from vtt_transcribe.handlers import (
     handle_standard_transcription,
     save_transcript,
 )
+from vtt_transcribe.logging_config import get_logger, setup_logging
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Initialize logger
+logger = get_logger(__name__)
 
 
 def get_api_key(api_key_arg: str | None) -> str:
     """Get API key from argument or environment variable."""
     api_key = api_key_arg or os.environ.get("OPENAI_API_KEY")
     if not api_key:
+        logger.error("OpenAI API key not provided")
         msg = "OpenAI API key not provided. Use -k/--api-key or set OPENAI_API_KEY environment variable."
         raise ValueError(msg)
+
+    source = "argument" if api_key_arg else "environment"
+    logger.debug("API key retrieved", extra={"source": source})
     return api_key
 
 
@@ -36,6 +45,15 @@ def handle_diarization_modes(args: Namespace) -> bool:
 
     # Handle diarization-only mode
     if args.diarize_only:
+        logger.info(
+            "Starting diarization-only mode",
+            extra={
+                "input_file": args.input_file,
+                "device": args.device,
+                "save_path": str(save_path) if save_path else None,
+                "no_review_speakers": args.no_review_speakers,
+            },
+        )
         diarization_result = handle_diarize_only_mode(Path(args.input_file), args.hf_token, save_path, args.device)
 
         # Run review unless disabled
@@ -51,6 +69,15 @@ def handle_diarization_modes(args: Namespace) -> bool:
 
     # Handle apply-diarization mode
     if args.apply_diarization:
+        logger.info(
+            "Starting apply-diarization mode",
+            extra={
+                "input_file": args.input_file,
+                "diarization_file": args.apply_diarization,
+                "device": args.device,
+                "save_path": str(save_path) if save_path else None,
+            },
+        )
         apply_result = handle_apply_diarization_mode(
             Path(args.input_file), Path(args.apply_diarization), args.hf_token, save_path, args.device
         )
@@ -93,6 +120,7 @@ def _validate_stdin_mode(args: Namespace, parser: ArgumentParser, *, stdin_mode:
         )
 
     if incompatible_flags:
+        logger.error("Stdin mode validation failed", extra={"incompatible_flags": incompatible_flags})
         parser.error(f"stdin mode is incompatible with: {', '.join(incompatible_flags)}")
 
 
@@ -161,14 +189,18 @@ def _create_temp_file_from_stdin(args: Namespace) -> Path:
 
     Returns Path to temporary file that MUST be cleaned up by the caller.
     """
+    logger.debug("Reading audio data from stdin")
     # Read binary data from stdin
     audio_data = sys.stdin.buffer.read()
+    logger.info("Stdin data read", extra={"size_bytes": len(audio_data)})
 
     # Determine file extension from args.input_file or detect from data
     if args.input_file:  # noqa: SIM108
         extension = Path(args.input_file).suffix or ".mp3"
     else:
         extension = _detect_format_from_data(audio_data)
+
+    logger.debug("Detected format from stdin", extra={"extension": extension})
 
     # Create temp file with appropriate extension
     with tempfile.NamedTemporaryFile(mode="wb", suffix=extension, delete=False) as temp_file:
@@ -180,8 +212,30 @@ def main() -> None:
     parser = create_parser()
     args = parser.parse_args()
 
-    # Check if we're in stdin mode (data piped from stdin)
+    # Check if we're in stdin mode (data piped from stdin) BEFORE setting up logging
+    # so we can route logs to stderr to avoid polluting stdout in stdin mode
     stdin_mode = not sys.stdin.isatty()
+
+    # Initialize logging after argument parsing (so --version doesn't trigger logging)
+    # Use stderr in stdin mode to avoid polluting stdout with logs
+    setup_logging(use_stderr=stdin_mode)
+    logger.info("Starting vtt-transcribe CLI")
+    start_time = time.time()
+
+    logger.debug(
+        "Arguments parsed",
+        extra={
+            "input_file": args.input_file,
+            "diarize": args.diarize,
+            "diarize_only": args.diarize_only,
+            "apply_diarization": args.apply_diarization is not None,
+            "translate": args.translate,
+            "translate_to": args.translate_to,
+        },
+    )
+
+    if stdin_mode:
+        logger.info("Stdin mode detected")
 
     # Validate incompatible flags with stdin mode
     _validate_stdin_mode(args, parser, stdin_mode=stdin_mode)
@@ -194,10 +248,12 @@ def main() -> None:
         parser.error("the following arguments are required: input_file")
 
     # Run dependency checks before any processing
+    logger.debug("Checking dependencies")
     check_ffmpeg_installed()
 
     # Check diarization dependencies if any diarization flag is used
     if args.diarize or args.diarize_only or args.apply_diarization:
+        logger.debug("Checking diarization dependencies")
         check_diarization_dependencies()
 
     try:
@@ -214,22 +270,30 @@ def main() -> None:
 
         # Standard transcription flow
         api_key = get_api_key(args.api_key)
+        logger.info("Starting standard transcription")
         result = handle_standard_transcription(args, api_key)
         _output_result(result, stdin_mode=stdin_mode, save_path=args.save_transcript)
 
     except FileNotFoundError as e:
+        logger.exception("File not found", extra={"error": str(e)})
         print(f"Error: {e}", file=sys.stderr, flush=True)
         sys.exit(1)
     except ValueError as e:
+        logger.exception("Validation error", extra={"error": str(e)})
         print(f"Error: {e}", file=sys.stderr, flush=True)
         sys.exit(1)
     except Exception as e:
+        logger.exception("Unexpected error", extra={"error": str(e)})
         print(f"Error: {e}", file=sys.stderr, flush=True)
         sys.exit(1)
     finally:
         # Clean up temp file if created
         if stdin_mode and temp_file_path is not None and temp_file_path.exists():
+            logger.debug("Cleaning up temporary file", extra={"path": str(temp_file_path)})
             temp_file_path.unlink()
+
+        duration = time.time() - start_time
+        logger.info("vtt-transcribe CLI completed", extra={"duration_seconds": round(duration, 2)})
 
 
 if __name__ == "__main__":  # pragma: no cover

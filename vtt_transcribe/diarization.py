@@ -6,17 +6,19 @@ Timestamp Format:
     compatibility with the legacy MM:SS format for parsing existing transcripts.
 """
 
-import logging
 import os
 import re
 import sys
+import time
 import warnings
 from pathlib import Path
 
 import torch
 from pyannote.audio import Pipeline
 
-logger = logging.getLogger(__name__)
+from vtt_transcribe.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 # Constants
@@ -132,7 +134,36 @@ class SpeakerDiarizer:
             If MP3 encoding causes sample mismatch errors, the audio will be automatically
             converted to WAV format for more reliable processing.
         """
-        return self._diarize_with_fallback(audio_path)
+        start_time = time.time()
+
+        # Get file size if file exists (for logging)
+        try:
+            file_size_mb = audio_path.stat().st_size / (1024 * 1024)
+        except (FileNotFoundError, OSError):
+            file_size_mb = 0.0
+
+        logger.info(
+            "Starting audio diarization",
+            extra={
+                "audio_path": str(audio_path),
+                "size_mb": round(file_size_mb, 2),
+                "device": self.device,
+            },
+        )
+
+        result = self._diarize_with_fallback(audio_path)
+
+        duration = time.time() - start_time
+        logger.info(
+            "Audio diarization complete",
+            extra={
+                "duration_seconds": round(duration, 2),
+                "num_segments": len(result),
+                "num_speakers": len({seg[2] for seg in result}),
+            },
+        )
+
+        return result
 
     def _diarize_with_fallback(self, audio_path: Path) -> list[tuple[float, float, str]]:
         """Try diarization, falling back to WAV conversion if MP3 has sample mismatch."""
@@ -166,6 +197,14 @@ class SpeakerDiarizer:
         """Convert audio file to WAV format using ffmpeg."""
         import subprocess
 
+        logger.info(
+            "Converting audio to WAV format",
+            extra={
+                "input_path": str(input_path),
+                "output_path": str(output_path),
+            },
+        )
+
         cmd = [
             "ffmpeg",
             "-loglevel",
@@ -183,8 +222,14 @@ class SpeakerDiarizer:
         ]
         result = subprocess.run(cmd, capture_output=True, text=True, check=False)  # noqa: S603
         if result.returncode != 0:
+            logger.error(
+                "WAV conversion failed",
+                extra={"error": result.stderr},
+            )
             msg = f"Failed to convert to WAV: {result.stderr}"
             raise RuntimeError(msg)
+
+        logger.info("WAV conversion successful")
 
     def _diarize_audio_internal(self, audio_path: Path) -> list[tuple[float, float, str]]:
         """Internal diarization implementation."""
@@ -251,12 +296,45 @@ class SpeakerDiarizer:
         Returns:
             Transcript with speaker labels: [HH:MM:SS - HH:MM:SS] Speaker: text
         """
+        start_time = time.time()
+
+        logger.info(
+            "Starting speaker label application",
+            extra={
+                "transcript_length": len(transcript),
+                "num_segments": len(speaker_segments),
+                "num_speakers": len({seg[2] for seg in speaker_segments}) if speaker_segments else 0,
+            },
+        )
+
         if not speaker_segments:
+            duration = time.time() - start_time
+            logger.warning("No speaker segments provided, returning original transcript")
+            logger.info(
+                "Speaker label application complete",
+                extra={
+                    "duration_seconds": round(duration, 2),
+                    "lines_processed": transcript.count("\n") + 1 if transcript else 0,
+                    "result_length": len(transcript),
+                },
+            )
             return transcript
 
         lines = transcript.split("\n")
         labeled_lines = [self._process_line(line, speaker_segments) for line in lines]
-        return "\n".join(labeled_lines)
+        result = "\n".join(labeled_lines)
+
+        duration = time.time() - start_time
+        logger.info(
+            "Speaker label application complete",
+            extra={
+                "duration_seconds": round(duration, 2),
+                "lines_processed": len(lines),
+                "result_length": len(result),
+            },
+        )
+
+        return result
 
     def _process_line(self, line: str, speaker_segments: list[tuple[float, float, str]]) -> str:
         """Process a single transcript line and add speaker label if applicable.

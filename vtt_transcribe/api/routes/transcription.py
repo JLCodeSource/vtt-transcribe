@@ -3,6 +3,7 @@
 import asyncio
 import re
 import tempfile
+import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -10,10 +11,12 @@ from typing import Any
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import PlainTextResponse
 
+from vtt_transcribe.logging_config import get_logger
 from vtt_transcribe.transcriber import VideoTranscriber
 from vtt_transcribe.translator import AudioTranslator
 
 router = APIRouter(tags=["transcription"])
+logger = get_logger(__name__)
 
 jobs: dict[str, dict[str, Any]] = {}
 
@@ -46,10 +49,26 @@ async def create_transcription_job(
     Returns:
         Job ID and status
     """
+    logger.info(
+        "Creating transcription job",
+        extra={
+            "file_name": file.filename,
+            "diarize": diarize,
+            "has_hf_token": bool(hf_token),
+            "device": device,
+            "translate_to": translate_to,
+        },
+    )
+
     if not file.filename:
+        logger.warning("Job creation failed: missing filename")
         raise HTTPException(status_code=422, detail="File must have a filename")
 
     if diarize and not hf_token:
+        logger.warning(
+            "Job creation failed: diarization requested without HF token",
+            extra={"file_name": file.filename},
+        )
         raise HTTPException(
             status_code=400,
             detail="HuggingFace token required for diarization. Provide hf_token parameter.",
@@ -58,6 +77,10 @@ async def create_transcription_job(
     # Validate file extension
     file_ext = Path(file.filename).suffix.lower()
     if file_ext not in SUPPORTED_EXTENSIONS:
+        logger.warning(
+            "Job creation failed: unsupported file type",
+            extra={"file_name": file.filename, "extension": file_ext},
+        )
         raise HTTPException(
             status_code=400,
             detail=f"Unsupported file type: {file_ext}. Supported types: {', '.join(sorted(SUPPORTED_EXTENSIONS))}",
@@ -67,12 +90,29 @@ async def create_transcription_job(
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
         max_mb = MAX_FILE_SIZE // (1024 * 1024)
+        logger.warning(
+            "Job creation failed: file too large",
+            extra={
+                "file_name": file.filename,
+                "file_size_bytes": len(content),
+                "max_size_bytes": MAX_FILE_SIZE,
+            },
+        )
         raise HTTPException(
             status_code=413,
             detail=f"File too large: {len(content)} bytes. Maximum size: {MAX_FILE_SIZE} bytes ({max_mb}MB)",
         )
 
     job_id = str(uuid.uuid4())
+
+    logger.info(
+        "Transcription job created successfully",
+        extra={
+            "job_id": job_id,
+            "file_name": file.filename,
+            "file_size_mb": round(len(content) / (1024 * 1024), 2),
+        },
+    )
 
     jobs[job_id] = {
         "job_id": job_id,
@@ -274,6 +314,17 @@ async def _process_transcription(
     translate_to: str | None = None,
 ) -> None:
     """Process transcription job asynchronously."""
+    start_time = time.time()
+
+    logger.info(
+        "Starting transcription job processing",
+        extra={
+            "job_id": job_id,
+            "file_name": filename,
+            "translate_to": translate_to,
+        },
+    )
+
     # Note: diarize, hf_token, device will be used when integrating diarization
     try:
         jobs[job_id]["status"] = "processing"
@@ -302,10 +353,29 @@ async def _process_transcription(
             jobs[job_id]["status"] = "completed"
             jobs[job_id]["result"] = result
 
+            duration = time.time() - start_time
+            logger.info(
+                "Transcription job completed successfully",
+                extra={
+                    "job_id": job_id,
+                    "duration_seconds": round(duration, 2),
+                    "result_length": len(result),
+                },
+            )
+
         finally:
             await asyncio.to_thread(tmp_path.unlink, missing_ok=True)
 
     except Exception as e:
+        duration = time.time() - start_time
+        logger.exception(
+            "Transcription job failed",
+            extra={
+                "job_id": job_id,
+                "duration_seconds": round(duration, 2),
+                "error": str(e),
+            },
+        )
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = str(e)
 

@@ -1,13 +1,18 @@
 """Audio file management utilities for video transcription."""
 
+import time
 from pathlib import Path
 
 from moviepy.audio.io.AudioFileClip import AudioFileClip
 from moviepy.video.io.VideoFileClip import VideoFileClip
 
+from vtt_transcribe.logging_config import get_logger
+
 # Constants
 AUDIO_EXTENSION = ".mp3"
 AUDIO_CODEC = "libmp3lame"
+
+logger = get_logger(__name__)
 
 
 class AudioFileManager:
@@ -22,17 +27,35 @@ class AudioFileManager:
             audio_path: Path where audio file will be saved.
             force: If True, overwrite existing audio file.
         """
+        logger.info(
+            "Starting audio extraction", extra={"video_path": str(video_path), "audio_path": str(audio_path), "force": force}
+        )
+
         if audio_path.exists() and not force:
+            logger.debug("Audio file already exists, skipping extraction")
             print(f"Audio file already exists: {audio_path}")
             return
 
+        start_time = time.time()
         with VideoFileClip(str(video_path)) as video_clip:
             if video_clip.audio is None:
+                logger.warning("No audio track found in video", extra={"video_path": str(video_path)})
                 print(f"Warning: No audio track found in {video_path}")
                 return
 
             print(f"Extracting audio from {video_path} to {audio_path}...")
             video_clip.audio.write_audiofile(str(audio_path), codec=AUDIO_CODEC, logger=None)
+
+        duration = time.time() - start_time
+        audio_size = audio_path.stat().st_size if audio_path.exists() else 0
+        logger.info(
+            "Audio extraction complete",
+            extra={
+                "duration_seconds": round(duration, 2),
+                "audio_size_mb": round(audio_size / 1024 / 1024, 2),
+                "audio_path": str(audio_path),
+            },
+        )
 
     @staticmethod
     def get_duration(audio_path: Path) -> float:
@@ -44,8 +67,11 @@ class AudioFileManager:
         Returns:
             Duration in seconds.
         """
+        logger.debug("Getting audio duration", extra={"audio_path": str(audio_path)})
         with AudioFileClip(str(audio_path)) as audio_clip:
-            return float(audio_clip.duration)
+            duration = float(audio_clip.duration)
+        logger.debug("Audio duration retrieved", extra={"duration_seconds": duration})
+        return duration
 
     @staticmethod
     def extract_chunk(audio_path: Path, start_time: float, end_time: float, chunk_index: int) -> Path:
@@ -61,10 +87,32 @@ class AudioFileManager:
             Path to the extracted chunk file.
         """
         chunk_path = audio_path.parent / f"{audio_path.stem}_chunk{chunk_index}{AUDIO_EXTENSION}"
+        logger.debug(
+            "Extracting audio chunk",
+            extra={
+                "chunk_index": chunk_index,
+                "start_time": start_time,
+                "end_time": end_time,
+                "duration": end_time - start_time,
+            },
+        )
 
+        extract_start = time.time()
         with AudioFileClip(str(audio_path)) as audio_clip:
             chunk = audio_clip.subclipped(start_time, end_time)
             chunk.write_audiofile(str(chunk_path), codec=AUDIO_CODEC, logger=None)
+
+        extract_duration = time.time() - extract_start
+        chunk_size = chunk_path.stat().st_size if chunk_path.exists() else 0
+        logger.info(
+            "Audio chunk extracted",
+            extra={
+                "chunk_index": chunk_index,
+                "chunk_path": str(chunk_path),
+                "chunk_size_mb": round(chunk_size / 1024 / 1024, 2),
+                "extraction_time_seconds": round(extract_duration, 2),
+            },
+        )
 
         return chunk_path
 
@@ -94,9 +142,13 @@ class AudioFileManager:
         Args:
             audio_path: Path to main audio file.
         """
+        chunks = AudioFileManager.find_chunks(audio_path)
+        logger.info("Starting audio cleanup", extra={"audio_path": str(audio_path), "chunk_count": len(chunks)})
+
         # Delete main audio file
         if audio_path.exists():
             audio_path.unlink()
+            logger.debug("Deleted main audio file", extra={"path": str(audio_path)})
 
         # Delete all chunks
         for chunk in AudioFileManager.find_chunks(audio_path):
