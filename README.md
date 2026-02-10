@@ -161,6 +161,36 @@ docker compose up -d
 
 See [Docker Compose Guide](docs/DOCKER_COMPOSE.md) for complete setup instructions, architecture details, and troubleshooting.
 
+### Web Frontend (Development)
+
+A modern web frontend built with Svelte + Vite + TypeScript is available for local development:
+
+```bash
+# Start all services including frontend
+docker compose --profile frontend up
+
+# Frontend will be available at http://localhost:3000
+# Backend API at http://localhost:8000
+```
+
+**Frontend Features:**
+- Drag-and-drop file upload for video/audio files
+- Real-time transcription progress via WebSocket
+- Interactive transcript viewer with speaker labels
+- Search and filter by speaker
+- Download transcripts in TXT, VTT, or SRT formats
+
+**Frontend Development:**
+```bash
+cd frontend
+npm install
+npm run dev  # Starts dev server on port 3000 with hot reload
+npm test     # Run test suite
+npm run build  # Build for production
+```
+
+See [frontend/README.md](frontend/README.md) for detailed frontend documentation.
+
 ## Upgrading from 0.2.0
 
 **Important:** Version 0.3.0+ introduces optional dependencies for speaker diarization. If you are upgrading from 0.2.0 and want to use diarization features, you need to explicitly install the `[diarization]` extra. See the [CHANGELOG](docs/CHANGELOG.md) for detailed upgrade instructions.

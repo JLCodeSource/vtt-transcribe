@@ -116,24 +116,19 @@ services:
     networks:
       - vtt-network
 
-  # Frontend (Svelte/Vite/TypeScript) - Placeholder for future implementation
+  # Frontend (Svelte + Vite + TypeScript)
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
     container_name: vtt-transcribe-frontend
     restart: unless-stopped
-    environment:
-      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
-      VITE_WS_URL: ${VITE_WS_URL:-ws://localhost:8000}
     ports:
       - "${FRONTEND_PORT:-3000}:80"
     depends_on:
       - api
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
       interval: 30s
       timeout: 10s
       retries: 3
