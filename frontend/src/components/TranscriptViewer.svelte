@@ -44,7 +44,7 @@
 
   async function downloadTranscript(format: 'txt' | 'vtt' | 'srt') {
     try {
-      const response = await fetch(`/api/transcribe/${jobId}/download?format=${format}`);
+      const response = await fetch(`/api/jobs/${jobId}/download?format=${format}`);
       if (!response.ok) {
         throw new Error(`Download failed: ${response.statusText}`);
       }
@@ -68,16 +68,16 @@
   <div class="transcript-header">
     <h2>📄 Transcript</h2>
     <div class="header-actions">
-      <button type="button" class="secondary" onclick={() => downloadTranscript('txt')}>
+      <button type="button" class="secondary" on:click={() => downloadTranscript('txt')}>
         Download TXT
       </button>
-      <button type="button" class="secondary" onclick={() => downloadTranscript('vtt')}>
+      <button type="button" class="secondary" on:click={() => downloadTranscript('vtt')}>
         Download VTT
       </button>
-      <button type="button" class="secondary" onclick={() => downloadTranscript('srt')}>
+      <button type="button" class="secondary" on:click={() => downloadTranscript('srt')}>
         Download SRT
       </button>
-      <button type="button" class="secondary" onclick={onreset}>New Transcription</button>
+      <button type="button" class="secondary" on:click={onreset}>New Transcription</button>
     </div>
   </div>
 
@@ -104,7 +104,7 @@
   </div>
 
   <div class="segments">
-    {#each filteredSegments as segment, i (i)}
+    {#each filteredSegments as segment (segment.start + '-' + segment.end)}
       <div class="segment" class:has-speaker={segment.speaker}>
         <div class="segment-header">
           <span class="timestamp">{formatTimeRange(segment.start, segment.end)}</span>

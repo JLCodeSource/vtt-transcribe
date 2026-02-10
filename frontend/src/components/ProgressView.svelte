@@ -26,7 +26,7 @@
 
   function connectWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/${job.id}`;
+    const wsUrl = `${protocol}//${window.location.host}/ws/jobs/${job.job_id}`;
 
     ws = new WebSocket(wsUrl);
 
@@ -38,18 +38,19 @@
       try {
         const message: WebSocketMessage = JSON.parse(event.data);
 
-        if (message.type === 'progress') {
-          const progress = message.data.progress || 0;
-          const status = message.data.status || 'Processing';
-          statusMessage = status;
+        if (message.status === 'processing') {
+          statusMessage = 'Processing transcription...';
 
           const progressEvent = new CustomEvent('progress', {
-            detail: { progress, status },
+            detail: { status: message.status },
           });
           onprogress(progressEvent);
-        } else if (message.type === 'complete') {
+        } else if (message.status === 'completed') {
           statusMessage = 'Transcription complete!';
-          const segments = message.data.segments || [];
+          
+          // Parse the result to extract segments
+          const result = message.result || '';
+          const segments = parseTranscriptResult(result);
 
           const completeEvent = new CustomEvent('complete', {
             detail: segments,
@@ -59,8 +60,8 @@
           if (ws) {
             ws.close();
           }
-        } else if (message.type === 'error') {
-          const errorMsg = message.data.error || 'Unknown error';
+        } else if (message.status === 'failed') {
+          const errorMsg = message.error || 'Unknown error';
           statusMessage = `Error: ${errorMsg}`;
 
           const errorEvent = new CustomEvent('error', {
@@ -86,6 +87,40 @@
       console.log('WebSocket connection closed');
     };
   }
+
+  function parseTranscriptResult(result: string): Array<{ start: number; end: number; text: string; speaker?: string }> {
+    // Parse the transcript result format: "[MM:SS - MM:SS] text" or "[Speaker] [MM:SS - MM:SS] text"
+    const segments: Array<{ start: number; end: number; text: string; speaker?: string }> = [];
+    const lines = result.split('\n').filter(line => line.trim());
+
+    for (const line of lines) {
+      // Try to match format with speaker: [Speaker] [MM:SS - MM:SS] text
+      const speakerMatch = line.match(/^\[([^\]]+)\]\s*\[(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})\]\s*(.+)$/);
+      if (speakerMatch) {
+        const [, speaker, startMin, startSec, endMin, endSec, text] = speakerMatch;
+        segments.push({
+          speaker,
+          start: parseInt(startMin) * 60 + parseInt(startSec),
+          end: parseInt(endMin) * 60 + parseInt(endSec),
+          text: text.trim(),
+        });
+        continue;
+      }
+
+      // Try to match format without speaker: [MM:SS - MM:SS] text
+      const noSpeakerMatch = line.match(/^\[(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})\]\s*(.+)$/);
+      if (noSpeakerMatch) {
+        const [, startMin, startSec, endMin, endSec, text] = noSpeakerMatch;
+        segments.push({
+          start: parseInt(startMin) * 60 + parseInt(startSec),
+          end: parseInt(endMin) * 60 + parseInt(endSec),
+          text: text.trim(),
+        });
+      }
+    }
+
+    return segments;
+  }
 </script>
 
 <div class="progress-container">
@@ -96,12 +131,7 @@
     </span>
   </div>
 
-  <div class="progress-bar-container">
-    <div class="progress-bar" style="width: {job.progress}%"></div>
-  </div>
-
   <div class="progress-details">
-    <span class="progress-text">{job.progress}% complete</span>
     <span class="status-text">{statusMessage}</span>
   </div>
 

@@ -20,9 +20,32 @@ npm run preview
 
 ## Development
 
-The dev server runs on port 3000 and proxies API requests to the backend:
+The dev server runs on port 3000 and proxies API requests to the backend.
+
+### Backend Proxy Configuration
+
+The proxy target can be configured via the `VITE_API_TARGET` environment variable:
+
+**Local Development (host machine):**
+```bash
+# Default: proxies to localhost:8000
+npm run dev
+
+# Or explicitly set:
+VITE_API_TARGET=http://localhost:8000 npm run dev
+```
+- `/api/*` → `http://localhost:8000`
+- `/ws/*` → `ws://localhost:8000` (WebSocket)
+
+**Docker Compose Network:**
+```bash
+# Set target to Docker service name
+VITE_API_TARGET=http://api:8000 npm run dev
+```
 - `/api/*` → `http://api:8000`
 - `/ws/*` → `ws://api:8000` (WebSocket)
+
+When running via Docker Compose with `--profile frontend`, the proxy is automatically configured to use the `api` service name.
 
 ## Features
 

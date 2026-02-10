@@ -1,9 +1,7 @@
 export interface TranscriptionJob {
-  id: string;
+  job_id: string;
   filename: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
-  progress: number;
-  created_at: string;
 }
 
 export interface TranscriptSegment {
@@ -17,15 +15,14 @@ export interface UploadOptions {
   diarization: boolean;
   language?: string;
   model?: string;
+  apiKey?: string;
+  hfToken?: string;
 }
 
 export interface WebSocketMessage {
-  type: 'progress' | 'complete' | 'error';
   job_id: string;
-  data: {
-    progress?: number;
-    status?: string;
-    segments?: TranscriptSegment[];
-    error?: string;
-  };
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  filename: string;
+  result?: string;
+  error?: string;
 }

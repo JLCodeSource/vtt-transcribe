@@ -6,15 +6,13 @@
 
   let currentJob: TranscriptionJob | null = $state(null);
   let transcript: TranscriptSegment[] = $state([]);
-  let isProcessing = $state(false);
 
   function handleUploadStart(event: CustomEvent<TranscriptionJob>) {
     currentJob = event.detail;
     transcript = [];
-    isProcessing = true;
   }
 
-  function handleProgress(event: CustomEvent<{ progress: number; status: string }>) {
+  function handleProgress(event: CustomEvent<{ status: string }>) {
     if (currentJob) {
       currentJob = { ...currentJob, ...event.detail };
     }
@@ -22,14 +20,12 @@
 
   function handleComplete(event: CustomEvent<TranscriptSegment[]>) {
     transcript = event.detail;
-    isProcessing = false;
     if (currentJob) {
-      currentJob = { ...currentJob, status: 'completed', progress: 100 };
+      currentJob = { ...currentJob, status: 'completed' };
     }
   }
 
   function handleError(event: CustomEvent<string>) {
-    isProcessing = false;
     if (currentJob) {
       currentJob = { ...currentJob, status: 'failed' };
     }
@@ -39,7 +35,6 @@
   function handleReset() {
     currentJob = null;
     transcript = [];
-    isProcessing = false;
   }
 </script>
 
@@ -62,7 +57,7 @@
         />
 
         {#if transcript.length > 0}
-          <TranscriptViewer segments={transcript} jobId={currentJob.id} onreset={handleReset} />
+          <TranscriptViewer segments={transcript} jobId={currentJob.job_id} onreset={handleReset} />
         {/if}
       </div>
     {/if}
