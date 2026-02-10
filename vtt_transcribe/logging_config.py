@@ -6,9 +6,92 @@ supporting both human-readable dev logs and JSON-formatted production logs.
 
 import json
 import logging
+import logging.handlers
 import os
 import sys
+import uuid
+from collections.abc import Generator, MutableMapping
+from contextlib import contextmanager
+from contextvars import ContextVar
+from pathlib import Path
 from typing import Any
+
+# Context variables for tracking operations across async boundaries
+_operation_id: ContextVar[str | None] = ContextVar("operation_id", default=None)
+_context_data: ContextVar[dict[str, Any] | None] = ContextVar("context_data", default=None)
+
+
+@contextmanager
+def operation_context(operation_name: str, *, operation_id: str | None = None, **context: Any) -> Generator[str, None, None]:
+    """Context manager for tracking operations with correlation IDs.
+
+    This provides request/operation tracking across module boundaries.
+    The operation_id and context data are automatically included in all
+    log messages within the context.
+
+    Args:
+        operation_name: Name of the operation being tracked
+        operation_id: Optional correlation ID (generates one if not provided)
+        **context: Additional context data to include in logs
+
+    Yields:
+        The operation ID for this context
+
+    Example:
+        with operation_context("transcribe_audio", filename="test.mp3") as op_id:
+            logger.info("Starting transcription")  # Includes op_id and filename
+    """
+    # Generate operation ID if not provided
+    if operation_id is None:
+        operation_id = str(uuid.uuid4())
+
+    # Merge context data
+    current_context = _context_data.get() or {}
+    merged_context = {**current_context, "operation_name": operation_name, "operation_id": operation_id, **context}
+
+    # Set context variables
+    token_id = _operation_id.set(operation_id)
+    token_context = _context_data.set(merged_context)
+
+    try:
+        yield operation_id
+    finally:
+        _operation_id.reset(token_id)
+        _context_data.reset(token_context)
+
+
+def get_operation_context() -> dict[str, Any]:
+    """Get the current operation context data.
+
+    Returns:
+        Dictionary with current operation context, empty if no context set
+    """
+    context = _context_data.get()
+    return context.copy() if context is not None else {}
+
+
+class ContextualLoggerAdapter(logging.LoggerAdapter[logging.Logger]):
+    """Logger adapter that automatically includes operation context in log records."""
+
+    def process(self, msg: str, kwargs: MutableMapping[str, Any]) -> tuple[str, MutableMapping[str, Any]]:
+        """Process log record to include operation context.
+
+        Args:
+            msg: Log message
+            kwargs: Log kwargs including 'extra'
+
+        Returns:
+            Tuple of (message, updated kwargs)
+        """
+        # Get current context
+        context = get_operation_context()
+
+        if context:
+            # Merge context with any existing extra data
+            extra = kwargs.get("extra", {})
+            kwargs["extra"] = {**context, **extra}
+
+        return msg, kwargs
 
 
 def get_environment() -> str:
@@ -29,7 +112,15 @@ def is_production() -> bool:
     return get_environment() == "production"
 
 
-def setup_logging(*, dev_mode: bool | None = None, use_stderr: bool = False) -> logging.Logger:
+def setup_logging(
+    *,
+    dev_mode: bool | None = None,
+    use_stderr: bool = False,
+    log_file: str | Path | None = None,
+    enable_rotation: bool = True,
+    max_bytes: int = 10 * 1024 * 1024,  # 10MB
+    backup_count: int = 5,
+) -> logging.Logger:
     """Set up and configure logging for vtt-transcribe.
 
     Args:
@@ -38,6 +129,11 @@ def setup_logging(*, dev_mode: bool | None = None, use_stderr: bool = False) -> 
                  If None, auto-detect from environment.
         use_stderr: If True, log to stderr instead of stdout.
                    Use this in stdin mode to avoid polluting stdout.
+        log_file: Optional file path for file logging. If provided, logs
+                 will be written to both console and file.
+        enable_rotation: If True and log_file is set, enable log rotation.
+        max_bytes: Maximum size of log file before rotation (default 10MB).
+        backup_count: Number of rotated log files to keep (default 5).
 
     Returns:
         Configured logger instance
@@ -55,11 +151,6 @@ def setup_logging(*, dev_mode: bool | None = None, use_stderr: bool = False) -> 
     # Set log level based on mode
     logger.setLevel(logging.DEBUG if dev_mode else logging.INFO)
 
-    # Create console handler - use stderr in stdin mode to avoid polluting stdout
-    stream = sys.stderr if use_stderr else sys.stdout
-    handler = logging.StreamHandler(stream)
-    handler.setLevel(logging.DEBUG if dev_mode else logging.INFO)
-
     # Configure formatter based on environment
     if dev_mode:
         # Human-readable format for development
@@ -71,8 +162,32 @@ def setup_logging(*, dev_mode: bool | None = None, use_stderr: bool = False) -> 
         # Proper JSON format for production
         formatter = JsonFormatter()
 
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+    # Create console handler - use stderr in stdin mode to avoid polluting stdout
+    stream = sys.stderr if use_stderr else sys.stdout
+    console_handler = logging.StreamHandler(stream)
+    console_handler.setLevel(logging.DEBUG if dev_mode else logging.INFO)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+
+    # Add file handler if log_file is specified
+    if log_file:
+        log_path = Path(log_file)
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if enable_rotation:
+            # Use rotating file handler
+            file_handler: logging.Handler = logging.handlers.RotatingFileHandler(
+                log_path, maxBytes=max_bytes, backupCount=backup_count, encoding="utf-8"
+            )
+        else:
+            # Use regular file handler
+            file_handler = logging.FileHandler(log_path, encoding="utf-8")
+
+        file_handler.setLevel(logging.DEBUG if dev_mode else logging.INFO)
+
+        # Always use JSON format for file logging
+        file_handler.setFormatter(JsonFormatter())
+        logger.addHandler(file_handler)
 
     # Prevent propagation to root logger
     logger.propagate = False
@@ -80,20 +195,23 @@ def setup_logging(*, dev_mode: bool | None = None, use_stderr: bool = False) -> 
     return logger
 
 
-def get_logger(name: str) -> logging.Logger:
+def get_logger(name: str) -> ContextualLoggerAdapter:
     """Get a logger instance for the specified module.
 
     Args:
         name: Logger name (typically __name__)
 
     Returns:
-        Logger instance
+        ContextualLoggerAdapter instance that includes operation context
     """
     # If the name is already under the vtt_transcribe namespace, use it as-is;
     # otherwise, create a child logger of the main vtt_transcribe logger.
     if name == "vtt_transcribe" or name.startswith("vtt_transcribe."):
-        return logging.getLogger(name)
-    return logging.getLogger(f"vtt_transcribe.{name}")
+        logger = logging.getLogger(name)
+    else:
+        logger = logging.getLogger(f"vtt_transcribe.{name}")
+
+    return ContextualLoggerAdapter(logger, {})
 
 
 class JsonFormatter(logging.Formatter):
