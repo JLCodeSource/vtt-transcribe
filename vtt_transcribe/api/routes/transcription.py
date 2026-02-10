@@ -1,12 +1,14 @@
 """Transcription API endpoints."""
 
 import asyncio
+import re
 import tempfile
 import uuid
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
+from fastapi.responses import PlainTextResponse
 
 from vtt_transcribe.transcriber import VideoTranscriber
 
@@ -199,3 +201,159 @@ async def _process_transcription(
     except Exception as e:
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = str(e)
+
+
+def _parse_transcript_segments(transcript: str) -> list[dict[str, Any]]:
+    """Parse transcript text into segments with timestamps.
+
+    Args:
+        transcript: Formatted transcript text with timestamps
+
+    Returns:
+        List of segment dictionaries with start, end, text, and optional speaker
+    """
+    segments = []
+    lines = transcript.split("\n")
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+
+        # Try to match format with speaker: [Speaker] [HH:MM:SS - HH:MM:SS] text
+        speaker_match = re.match(r"^\[([^\]]+)\]\s*\[(\d{2}):(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2}):(\d{2})\]\s*(.+)$", line)
+        if speaker_match:
+            speaker, start_h, start_m, start_s, end_h, end_m, end_s, text = speaker_match.groups()
+            segments.append(
+                {
+                    "speaker": speaker,
+                    "start": int(start_h) * 3600 + int(start_m) * 60 + int(start_s),
+                    "end": int(end_h) * 3600 + int(end_m) * 60 + int(end_s),
+                    "text": text.strip(),
+                }
+            )
+            continue
+
+        # Try to match format without speaker: [HH:MM:SS - HH:MM:SS] text
+        no_speaker_match = re.match(r"^\[(\d{2}):(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2}):(\d{2})\]\s*(.+)$", line)
+        if no_speaker_match:
+            start_h, start_m, start_s, end_h, end_m, end_s, text = no_speaker_match.groups()
+            segments.append(
+                {
+                    "start": int(start_h) * 3600 + int(start_m) * 60 + int(start_s),
+                    "end": int(end_h) * 3600 + int(end_m) * 60 + int(end_s),
+                    "text": text.strip(),
+                }
+            )
+
+    return segments
+
+
+def _format_as_txt(segments: list[dict[str, Any]]) -> str:
+    """Format segments as plain text."""
+    lines = []
+    for seg in segments:
+        speaker_prefix = f"[{seg['speaker']}] " if seg.get("speaker") else ""
+        lines.append(f"{speaker_prefix}{seg['text']}")
+    return "\n".join(lines)
+
+
+def _format_as_vtt(segments: list[dict[str, Any]]) -> str:
+    """Format segments as WebVTT."""
+    lines = ["WEBVTT", ""]
+
+    for i, seg in enumerate(segments, 1):
+        start_time = _format_vtt_time(seg["start"])
+        end_time = _format_vtt_time(seg["end"])
+        lines.append(str(i))
+        lines.append(f"{start_time} --> {end_time}")
+        if seg.get("speaker"):
+            lines.append(f"<v {seg['speaker']}>{seg['text']}")
+        else:
+            lines.append(seg["text"])
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def _format_as_srt(segments: list[dict[str, Any]]) -> str:
+    """Format segments as SRT."""
+    lines = []
+
+    for i, seg in enumerate(segments, 1):
+        start_time = _format_srt_time(seg["start"])
+        end_time = _format_srt_time(seg["end"])
+        lines.append(str(i))
+        lines.append(f"{start_time} --> {end_time}")
+        speaker_prefix = f"[{seg['speaker']}] " if seg.get("speaker") else ""
+        lines.append(f"{speaker_prefix}{seg['text']}")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def _format_vtt_time(seconds: int) -> str:
+    """Format seconds as VTT timestamp (HH:MM:SS.mmm)."""
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    secs = seconds % 60
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}.000"
+
+
+def _format_srt_time(seconds: int) -> str:
+    """Format seconds as SRT timestamp (HH:MM:SS,mmm)."""
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    secs = seconds % 60
+    return f"{hours:02d}:{minutes:02d}:{secs:02d},000"
+
+
+@router.get("/jobs/{job_id}/download")
+async def download_transcript(
+    job_id: str,
+    format: str = Query("txt", regex="^(txt|vtt|srt)$"),  # noqa: A002
+) -> PlainTextResponse:
+    """Download transcript in specified format.
+
+    Args:
+        job_id: Job ID
+        format: Output format (txt, vtt, or srt)
+
+    Returns:
+        Formatted transcript file
+    """
+    if job_id not in jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    job = jobs[job_id]
+
+    if job["status"] != "completed":
+        raise HTTPException(status_code=400, detail=f"Job not completed. Status: {job['status']}")
+
+    result = job.get("result", "")
+    if not result:
+        raise HTTPException(status_code=404, detail="No transcript available")
+
+    # Parse transcript into segments
+    segments = _parse_transcript_segments(result)
+
+    if not segments:
+        raise HTTPException(status_code=404, detail="No segments found in transcript")
+
+    # Format based on requested type
+    if format == "txt":
+        content = _format_as_txt(segments)
+        media_type = "text/plain"
+    elif format == "vtt":
+        content = _format_as_vtt(segments)
+        media_type = "text/vtt"
+    else:  # srt
+        content = _format_as_srt(segments)
+        media_type = "application/x-subrip"
+
+    filename = f"transcript.{format}"
+    return PlainTextResponse(
+        content=content,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
