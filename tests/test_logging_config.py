@@ -135,10 +135,9 @@ class TestStructuredLogging:
     def test_json_formatter_includes_structured_fields(self) -> None:
         """Test that JSON formatter includes structured fields in output."""
         import json
-        from io import StringIO
 
         # Capture log output
-        log_stream = StringIO()
+        log_stream = io.StringIO()
         handler = logging.StreamHandler(log_stream)
 
         # Use production mode (JSON format)
@@ -335,6 +334,29 @@ class TestOperationContext:
         assert log_data["extra_field"] == "value"
         # Should not have context fields when no context is set
         assert "operation_name" not in log_data
+
+    def test_operation_context_validates_reserved_keys(self) -> None:
+        """Test that reserved keys in context dict cause errors.
+
+        While Python's argument resolution typically prevents direct override of
+        operation_id and operation_name parameters (raising TypeError), we have
+        explicit validation to provide clear error messages in edge cases.
+        """
+        # Attempting to pass reserved keys in **context dict causes an error
+        # (either TypeError from Python or ValueError from our validation)
+        context_with_reserved = {"operation_name": "override", "file": "test.mp3"}
+        with (
+            pytest.raises((ValueError, TypeError)),
+            logging_config.operation_context("test", **context_with_reserved),
+        ):
+            pass
+
+        # Verify normal context works fine
+        with logging_config.operation_context("test", file="test.mp3") as op_id:
+            ctx = logging_config.get_operation_context()
+            assert ctx["operation_name"] == "test"
+            assert ctx["file"] == "test.mp3"
+            assert ctx["operation_id"] == op_id
 
 
 class TestFileLoggingAndRotation:

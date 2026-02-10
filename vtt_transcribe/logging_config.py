@@ -14,10 +14,9 @@ from collections.abc import Generator, MutableMapping
 from contextlib import contextmanager
 from contextvars import ContextVar
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 # Context variables for tracking operations across async boundaries
-_operation_id: ContextVar[str | None] = ContextVar("operation_id", default=None)
 _context_data: ContextVar[dict[str, Any] | None] = ContextVar("context_data", default=None)
 
 
@@ -45,18 +44,28 @@ def operation_context(operation_name: str, *, operation_id: str | None = None, *
     if operation_id is None:
         operation_id = str(uuid.uuid4())
 
-    # Merge context data
-    current_context = _context_data.get() or {}
-    merged_context = {**current_context, "operation_name": operation_name, "operation_id": operation_id, **context}
+    # Prevent overriding reserved keys via **context
+    reserved_keys = {"operation_id", "operation_name"}
+    overridden_keys = reserved_keys.intersection(context.keys())
+    if overridden_keys:
+        msg = f"Reserved context key(s) cannot be overridden: {', '.join(sorted(overridden_keys))}"
+        raise ValueError(msg)
 
-    # Set context variables
-    token_id = _operation_id.set(operation_id)
+    # Merge context data - reserved keys are set last to prevent override
+    current_context = _context_data.get() or {}
+    merged_context = {
+        **current_context,
+        **context,
+        "operation_name": operation_name,
+        "operation_id": operation_id,
+    }
+
+    # Set context variable
     token_context = _context_data.set(merged_context)
 
     try:
         yield operation_id
     finally:
-        _operation_id.reset(token_id)
         _context_data.reset(token_context)
 
 
@@ -70,7 +79,14 @@ def get_operation_context() -> dict[str, Any]:
     return context.copy() if context is not None else {}
 
 
-class ContextualLoggerAdapter(logging.LoggerAdapter[logging.Logger]):
+if TYPE_CHECKING:
+    # For type checking only - Python 3.10 doesn't support subscripting at runtime
+    _LoggerAdapterBase = logging.LoggerAdapter[logging.Logger]
+else:
+    _LoggerAdapterBase = logging.LoggerAdapter
+
+
+class ContextualLoggerAdapter(_LoggerAdapterBase):
     """Logger adapter that automatically includes operation context in log records."""
 
     def process(self, msg: str, kwargs: MutableMapping[str, Any]) -> tuple[str, MutableMapping[str, Any]]:
@@ -145,8 +161,11 @@ def setup_logging(
     # Create or get logger
     logger = logging.getLogger("vtt_transcribe")
 
-    # Remove existing handlers to avoid duplicates
-    logger.handlers.clear()
+    # Close and remove existing handlers to avoid duplicates and resource leaks
+    for handler in logger.handlers[:]:
+        handler.flush()
+        handler.close()
+        logger.removeHandler(handler)
 
     # Set log level based on mode
     logger.setLevel(logging.DEBUG if dev_mode else logging.INFO)
