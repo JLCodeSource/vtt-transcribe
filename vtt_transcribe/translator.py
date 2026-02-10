@@ -210,7 +210,16 @@ class AudioTranslator:
         )
 
         if not preserve_timestamps:
-            return self.translate_text(transcript, target_language)
+            result = self.translate_text(transcript, target_language)
+            total_duration = time.time() - start_time
+            logger.info(
+                "Transcript translation complete",
+                extra={
+                    "duration_seconds": round(total_duration, 2),
+                    "result_length": len(result),
+                },
+            )
+            return result
 
         # Parse lines and extract text for translation
         lines = transcript.strip().split("\n")
