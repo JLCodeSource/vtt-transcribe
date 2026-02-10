@@ -101,7 +101,6 @@ def _validate_stdin_mode(args: Namespace, parser: ArgumentParser, *, stdin_mode:
     if not stdin_mode:
         return
 
-    logger.info("Stdin mode detected")
     incompatible_flags = []
     if args.save_transcript:
         incompatible_flags.append("-s/--save-transcript")

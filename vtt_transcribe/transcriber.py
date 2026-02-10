@@ -1,4 +1,5 @@
 import contextlib
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -165,9 +166,7 @@ class VideoTranscriber:
 
     def transcribe_audio_file(self, audio_path: Path) -> str:
         """Transcribe a single audio file using Whisper API with timestamps."""
-        import time
-
-        start_time = time.time()
+        api_start_time = time.time()
         file_size_mb = audio_path.stat().st_size / (1024 * 1024)
 
         logger.info(
@@ -186,7 +185,7 @@ class VideoTranscriber:
                 response_format="verbose_json",
             )
 
-        api_duration = time.time() - start_time
+        api_duration = time.time() - api_start_time
         has_segments = hasattr(response, "segments") and response.segments and len(response.segments) > 0
         logger.info(
             "Transcription API call complete",
@@ -244,9 +243,7 @@ class VideoTranscriber:
         per-chunk cleanup logic is delegated to `_transcribe_chunk_files` to
         reduce cyclomatic complexity.
         """
-        import time
-
-        function_start_time = time.time()
+        workflow_start_time = time.time()
 
         logger.info(
             "Starting chunked transcription",
@@ -291,7 +288,7 @@ class VideoTranscriber:
         if keep_chunks and chunk_files:
             print(f"Kept {len(chunk_files)} chunk files for reference")
 
-        duration_total = time.time() - function_start_time
+        duration_total = time.time() - workflow_start_time
         logger.info(
             "Chunked transcription complete",
             extra={
@@ -382,9 +379,7 @@ class VideoTranscriber:
         Returns:
             Transcribed text from the video audio
         """
-        import time
-
-        start_time = time.time()
+        workflow_start_time = time.time()
 
         logger.info(
             "Starting transcription workflow",
@@ -454,7 +449,7 @@ class VideoTranscriber:
         if not keep_audio:
             self.cleanup_audio_files(audio_path)
 
-        duration_total = time.time() - start_time
+        duration_total = time.time() - workflow_start_time
         logger.info(
             "Transcription workflow complete",
             extra={
