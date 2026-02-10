@@ -128,6 +128,20 @@ def is_production() -> bool:
     return get_environment() == "production"
 
 
+def _safely_flush_and_close_handler(handler: logging.Handler) -> None:
+    """Safely flush and close a logging handler, avoiding closed stream errors."""
+    try:
+        if hasattr(handler, "stream") and hasattr(handler.stream, "closed"):
+            if not handler.stream.closed:
+                handler.flush()
+        else:
+            handler.flush()
+    except (ValueError, OSError):
+        # Stream is closed or invalid - skip flush
+        pass
+    handler.close()
+
+
 def setup_logging(
     *,
     dev_mode: bool | None = None,
@@ -163,8 +177,7 @@ def setup_logging(
 
     # Close and remove existing handlers to avoid duplicates and resource leaks
     for handler in logger.handlers[:]:
-        handler.flush()
-        handler.close()
+        _safely_flush_and_close_handler(handler)
         logger.removeHandler(handler)
 
     # Set log level based on mode
