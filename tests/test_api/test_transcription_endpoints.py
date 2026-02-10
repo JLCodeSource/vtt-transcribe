@@ -342,3 +342,137 @@ class TestTranscriptionAsyncPaths:
             # Verify lines 168-169 executed (status completed, result set)
             assert jobs[job_id]["status"] == "completed"
             assert jobs[job_id]["result"] == "[00:00 - 00:05] Test transcript"
+
+
+class TestDetectLanguageEndpoint:
+    """Tests for /detect-language endpoint."""
+
+    def test_detect_language_endpoint_exists(self, client):
+        """POST /detect-language endpoint should exist."""
+        response = client.post("/detect-language")
+        assert response.status_code != 404
+
+    def test_detect_language_requires_file(self, client):
+        """POST /detect-language should require a file upload."""
+        response = client.post("/detect-language")
+        assert response.status_code == 422
+
+    def test_detect_language_requires_api_key(self, client, sample_audio_file):
+        """POST /detect-language should require OpenAI API key."""
+        files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
+        response = client.post("/detect-language", files=files)
+        assert response.status_code == 422
+
+    @patch("vtt_transcribe.api.routes.transcription.VideoTranscriber")
+    def test_detect_language_returns_language_code(self, mock_transcriber, client, sample_audio_file):
+        """POST /detect-language should return detected language code."""
+        mock_instance = mock_transcriber.return_value
+        mock_instance.detect_language = MagicMock(return_value="es")
+
+        files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
+        data = {"api_key": "test-api-key"}
+        response = client.post("/detect-language", files=files, data=data)
+
+        assert response.status_code == 200
+        response_data = response.json()
+        assert "language_code" in response_data
+        assert response_data["language_code"] == "es"
+
+
+class TestTranslateEndpoint:
+    """Tests for /translate endpoint."""
+
+    def test_translate_endpoint_exists(self, client):
+        """POST /translate endpoint should exist."""
+        response = client.post("/translate")
+        assert response.status_code != 404
+
+    def test_translate_requires_transcript(self, client):
+        """POST /translate should require transcript text."""
+        response = client.post("/translate", data={})
+        assert response.status_code == 422
+
+    def test_translate_requires_target_language(self, client):
+        """POST /translate should require target_language."""
+        response = client.post("/translate", data={"transcript": "Hello"})
+        assert response.status_code == 422
+
+    def test_translate_requires_api_key(self, client):
+        """POST /translate should require OpenAI API key."""
+        response = client.post("/translate", data={"transcript": "Hello", "target_language": "Spanish"})
+        assert response.status_code == 422
+
+    @patch("vtt_transcribe.api.routes.transcription.AudioTranslator")
+    def test_translate_returns_translated_text(self, mock_translator, client):
+        """POST /translate should return translated transcript."""
+        mock_instance = mock_translator.return_value
+        mock_instance.translate_transcript = MagicMock(return_value="[00:00 - 00:05] Hola, ¿cómo estás?")
+
+        response = client.post(
+            "/translate",
+            data={
+                "transcript": "[00:00 - 00:05] Hello, how are you?",
+                "target_language": "Spanish",
+                "api_key": "test-api-key",
+            },
+        )
+
+        assert response.status_code == 200
+        response_data = response.json()
+        assert "translated" in response_data
+        assert "Hola" in response_data["translated"]
+
+
+class TestTranscribeWithTranslation:
+    """Tests for transcription with translation support."""
+
+    @patch("vtt_transcribe.api.routes.transcription.VideoTranscriber")
+    @patch("vtt_transcribe.api.routes.transcription.AudioTranslator")
+    def test_transcribe_with_translate_to_parameter(self, mock_translator, mock_transcriber, client, sample_audio_file):
+        """POST /transcribe with translate_to should trigger translation."""
+        mock_transcriber_instance = mock_transcriber.return_value
+        mock_transcriber_instance.transcribe_from_buffer = AsyncMock(return_value="[00:00 - 00:05] Hello world")
+
+        mock_translator_instance = mock_translator.return_value
+        mock_translator_instance.translate_transcript = MagicMock(return_value="[00:00 - 00:05] Hola mundo")
+
+        files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
+        data = {"api_key": "test-api-key", "translate_to": "Spanish"}
+        response = client.post("/transcribe", files=files, data=data)
+
+        assert response.status_code in [200, 201, 202]
+        response_data = response.json()
+        assert "job_id" in response_data
+
+    def test_transcription_translation_async_path(self):
+        """Test async translation path in _process_transcription."""
+        from vtt_transcribe.api.routes.transcription import _process_transcription, jobs
+
+        job_id = "translation-job"
+        jobs[job_id] = {"status": "pending", "job_id": job_id}
+
+        with (
+            patch("vtt_transcribe.api.routes.transcription.VideoTranscriber") as mock_vt,
+            patch("vtt_transcribe.api.routes.transcription.AudioTranslator") as mock_at,
+        ):
+            # Mock successful transcription
+            mock_vt_instance = MagicMock()
+            mock_vt_instance.transcribe.return_value = "[00:00 - 00:05] English text"
+            mock_vt.return_value = mock_vt_instance
+
+            # Mock successful translation
+            mock_at_instance = MagicMock()
+            mock_at_instance.translate_transcript.return_value = "[00:00 - 00:05] Texto español"
+            mock_at.return_value = mock_at_instance
+
+            # Run with translation
+            asyncio.run(
+                _process_transcription(
+                    job_id=job_id, content=b"fake audio", filename="test.mp3", api_key="test-key", translate_to="Spanish"
+                )
+            )
+
+            # Verify translation was called and result includes translation
+            assert jobs[job_id]["status"] == "completed"
+            assert "Texto español" in jobs[job_id]["result"]
+            mock_at_instance.translate_transcript.assert_called_once()

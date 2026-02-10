@@ -2,6 +2,9 @@ export interface TranscriptionJob {
   job_id: string;
   filename: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
+  progress?: number;
+  detected_language?: string;
+  translated_to?: string;
 }
 
 export interface TranscriptSegment {
@@ -17,6 +20,7 @@ export interface UploadOptions {
   model?: string;
   apiKey?: string;
   hfToken?: string;
+  translateTo?: string;
 }
 
 export interface WebSocketMessage {
@@ -25,4 +29,7 @@ export interface WebSocketMessage {
   filename: string;
   result?: string;
   error?: string;
+  progress?: number;
+  detected_language?: string;
+  translated_to?: string;
 }

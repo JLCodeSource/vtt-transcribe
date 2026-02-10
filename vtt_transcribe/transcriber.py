@@ -31,6 +31,34 @@ class VideoTranscriber:
         self.api_key: str = api_key
         self.client = OpenAI(api_key=api_key)
 
+    def detect_language(self, audio_path: Path) -> str:
+        """Detect language of audio file using Whisper API.
+
+        Args:
+            audio_path: Path to audio file
+
+        Returns:
+            Detected language code (e.g., 'en', 'es', 'fr')
+
+        Raises:
+            FileNotFoundError: If audio file doesn't exist
+        """
+        if not audio_path.exists():
+            msg = f"Audio file not found: {audio_path}"
+            raise FileNotFoundError(msg)
+
+        with open(audio_path, "rb") as audio_file:
+            response = self.client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file,
+                response_format="verbose_json",
+            )
+
+        # Whisper verbose response includes detected language
+        if hasattr(response, "language"):
+            return response.language
+        return "unknown"
+
     def validate_input_file(self, input_path: Path) -> Path:
         """Validate and return video file path."""
         if not input_path.exists():

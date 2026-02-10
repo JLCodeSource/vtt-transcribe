@@ -62,3 +62,47 @@ class AudioTranslator:
         )
 
         return response.choices[0].message.content or ""
+
+    def translate_transcript(self, transcript: str, target_language: str, *, preserve_timestamps: bool = True) -> str:
+        """Translate a formatted transcript while preserving timestamps.
+
+        Args:
+            transcript: Formatted transcript with timestamps [MM:SS - MM:SS] text
+            target_language: Target language name (e.g., "Spanish", "French")
+            preserve_timestamps: If True, preserve timestamp format in output
+
+        Returns:
+            Translated transcript with timestamps preserved
+        """
+        if not preserve_timestamps:
+            # Simple translation of entire text
+            return self.translate_text(transcript, target_language)
+
+        # Split into lines and translate each segment separately
+        lines = transcript.strip().split("\n")
+        translated_lines = []
+
+        for line in lines:
+            line = line.strip()
+            if not line:
+                translated_lines.append("")
+                continue
+
+            # Check if line has timestamp format: [MM:SS - MM:SS] text
+            if line.startswith("[") and "]" in line:
+                # Extract timestamp and text
+                timestamp_end = line.index("]")
+                timestamp = line[: timestamp_end + 1]
+                text = line[timestamp_end + 1 :].strip()
+
+                if text:
+                    # Translate just the text portion
+                    translated_text = self.translate_text(text, target_language)
+                    translated_lines.append(f"{timestamp} {translated_text}")
+                else:
+                    translated_lines.append(timestamp)
+            else:
+                # No timestamp, translate entire line
+                translated_lines.append(self.translate_text(line, target_language))
+
+        return "\n".join(translated_lines)

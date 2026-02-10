@@ -84,3 +84,68 @@ class TestAudioTranslator:
             result = translator.translate_text("Test text", target_language="Spanish")
 
             assert result == ""
+
+    def test_translate_transcript_with_timestamps(self) -> None:
+        """Test translating formatted transcript while preserving timestamps."""
+        transcript = "[00:00 - 00:05] Hello, how are you?\n[00:05 - 00:10] I am doing well, thanks."
+
+        with patch("vtt_transcribe.translator.OpenAI") as mock_openai:
+            mock_client = MagicMock()
+            mock_openai.return_value = mock_client
+
+            # Mock chat completion responses for each segment
+            mock_resp1 = MagicMock()
+            mock_resp1.choices = [MagicMock(message=MagicMock(content="Hola, ¿cómo estás?"))]
+            mock_resp2 = MagicMock()
+            mock_resp2.choices = [MagicMock(message=MagicMock(content="Estoy bien, gracias."))]
+            mock_client.chat.completions.create.side_effect = [mock_resp1, mock_resp2]
+
+            translator = AudioTranslator("test-api-key")
+            result = translator.translate_transcript(transcript, "Spanish", preserve_timestamps=True)
+
+            assert "[00:00 - 00:05] Hola, ¿cómo estás?" in result
+            assert "[00:05 - 00:10] Estoy bien, gracias." in result
+            assert mock_client.chat.completions.create.call_count == 2
+
+    def test_translate_transcript_without_timestamps(self) -> None:
+        """Test translating entire transcript without preserving format."""
+        transcript = "[00:00 - 00:05] Hello, how are you?\n[00:05 - 00:10] I am doing well."
+
+        with patch("vtt_transcribe.translator.OpenAI") as mock_openai:
+            mock_client = MagicMock()
+            mock_openai.return_value = mock_client
+
+            # Mock chat completion response
+            mock_resp = MagicMock()
+            mock_resp.choices = [MagicMock(message=MagicMock(content="Hola, ¿cómo estás? Estoy bien."))]
+            mock_client.chat.completions.create.return_value = mock_resp
+
+            translator = AudioTranslator("test-api-key")
+            result = translator.translate_transcript(transcript, "Spanish", preserve_timestamps=False)
+
+            assert result == "Hola, ¿cómo estás? Estoy bien."
+            mock_client.chat.completions.create.assert_called_once()
+
+    def test_translate_transcript_empty_lines(self) -> None:
+        """Test translating transcript with empty lines."""
+        transcript = "[00:00 - 00:05] Hello\n\n[00:10 - 00:15] World"
+
+        with patch("vtt_transcribe.translator.OpenAI") as mock_openai:
+            mock_client = MagicMock()
+            mock_openai.return_value = mock_client
+
+            # Mock responses
+            mock_resp1 = MagicMock()
+            mock_resp1.choices = [MagicMock(message=MagicMock(content="Hola"))]
+            mock_resp2 = MagicMock()
+            mock_resp2.choices = [MagicMock(message=MagicMock(content="Mundo"))]
+            mock_client.chat.completions.create.side_effect = [mock_resp1, mock_resp2]
+
+            translator = AudioTranslator("test-api-key")
+            result = translator.translate_transcript(transcript, "Spanish", preserve_timestamps=True)
+
+            lines = result.split("\n")
+            assert "[00:00 - 00:05] Hola" in result
+            assert "[00:10 - 00:15] Mundo" in result
+            # Should preserve empty line
+            assert "" in lines
