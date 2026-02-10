@@ -26,6 +26,8 @@ jobs:
   update-dockerhub-description:
     name: Update Docker Hub Description
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     # Run on release, push to main (docs/DOCKER_HUB.md changes), or manual dispatch
     steps:
       - name: Checkout code
