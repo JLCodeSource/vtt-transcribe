@@ -15,9 +15,17 @@ from vtt_transcribe.api.models import APIKey, User
 
 router = APIRouter(prefix="/api-keys", tags=["api-keys"])
 
-# Encryption key for API keys (should be set via environment variable in production)
+# Encryption key for API keys (must be set via environment variable)
 encryption_key_str = os.getenv("ENCRYPTION_KEY")
-ENCRYPTION_KEY = encryption_key_str.encode() if encryption_key_str else Fernet.generate_key()
+if encryption_key_str is None:
+    msg = (
+        "ENCRYPTION_KEY environment variable is not set. "
+        "It must be configured to enable API key encryption/decryption. "
+        'Generate one with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"'
+    )
+    raise RuntimeError(msg)
+
+ENCRYPTION_KEY = encryption_key_str.encode()
 cipher = Fernet(ENCRYPTION_KEY)
 
 
@@ -141,6 +149,6 @@ async def get_user_api_key(user_id: int, service: str, db: AsyncSession) -> str 
 
     # Update last used timestamp
     key.last_used_at = datetime.now(timezone.utc)
-    await db.commit()
+    await db.flush()
 
     return decrypt_key(key.encrypted_key)

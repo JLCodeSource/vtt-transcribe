@@ -39,7 +39,7 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(auth.router)
 
-# Protected routes (require authentication)
+# API routes (authentication handled per-endpoint via dependencies)
 app.include_router(api_keys.router)
 app.include_router(jobs.router)
 app.include_router(transcription.router)
