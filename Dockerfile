@@ -50,20 +50,6 @@ ENV PATH="/opt/venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
 
 # ============================================================================
-# CLI Target (default) - for standalone transcription
-# ============================================================================
-FROM base AS cli
-
-# Set working directory for user files
-WORKDIR /workspace
-
-# Switch to non-root user
-USER vttuser
-
-# Set entrypoint (no CMD - let stdin detection or user args determine behavior)
-ENTRYPOINT ["vtt"]
-
-# ============================================================================
 # API Target - for FastAPI server
 # ============================================================================
 FROM base AS api
@@ -99,3 +85,17 @@ USER vttuser
 
 # Run worker process (will be implemented in vtt_transcribe/worker.py)
 CMD ["python", "-m", "vtt_transcribe.worker"]
+
+# ============================================================================
+# CLI Target (default) - for standalone transcription
+# ============================================================================
+FROM base AS cli
+
+# Set working directory for user files
+WORKDIR /workspace
+
+# Switch to non-root user
+USER vttuser
+
+# Set entrypoint (no CMD - let stdin detection or user args determine behavior)
+ENTRYPOINT ["vtt"]
