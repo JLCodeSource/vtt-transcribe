@@ -186,7 +186,7 @@ class TestWebSocketProgressUpdates:
             mock_instance.transcribe.return_value = "[00:00 - 00:05] Test transcript"
             mock_instance.detect_language.return_value = "en"
             mock_vt.return_value = mock_instance
-            
+
             response = client.post(
                 "/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
@@ -250,7 +250,7 @@ class TestWebSocketProgressUpdates:
         assert "progress_updates" in jobs[job_id]
         queue = jobs[job_id]["progress_updates"]
         assert not queue.empty()
-        
+
         # Drain and verify events
         events = []
         while not queue.empty():
@@ -258,7 +258,7 @@ class TestWebSocketProgressUpdates:
                 events.append(queue.get_nowait())
             except asyncio.QueueEmpty:
                 break
-        
+
         # Assert we have language detection events
         assert len(events) >= 2, f"Expected at least 2 language events, got {len(events)}"
         language_events = [e for e in events if e.get("type") == "language"]

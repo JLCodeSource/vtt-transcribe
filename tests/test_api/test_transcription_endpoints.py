@@ -742,7 +742,7 @@ class TestProgressEventsInTranscription:
         queue = jobs[job_id]["progress_updates"]
         # Queue should be an asyncio.Queue
         assert isinstance(queue, asyncio.Queue)
-        
+
         # Drain queue and verify events were emitted
         events = []
         while not queue.empty():
@@ -750,7 +750,7 @@ class TestProgressEventsInTranscription:
                 events.append(queue.get_nowait())
             except asyncio.QueueEmpty:
                 break
-        
+
         # Assert that at least one progress event was emitted
         assert len(events) >= 1, f"Expected at least 1 progress event, got {len(events)}"
         # Verify events have required structure
@@ -781,8 +781,9 @@ class TestProgressEventsInTranscription:
         time.sleep(0.3)
 
         # Check for language detection in progress
-        assert job_id in jobs and "progress_updates" in jobs[job_id], "Job or progress queue not found"
-        
+        assert job_id in jobs, "Job not found"
+        assert "progress_updates" in jobs[job_id], "Progress queue not found"
+
         queue = jobs[job_id]["progress_updates"]
         events = []
         while not queue.empty():

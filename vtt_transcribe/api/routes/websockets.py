@@ -36,13 +36,15 @@ def _build_status_message(job_id: str, current_job: dict[str, Any]) -> dict[str,
     return message
 
 
-async def _wait_for_progress_or_timeout(progress_queue: asyncio.Queue, timeout: float = 0.5) -> dict[str, Any] | None:
+async def _wait_for_progress_or_timeout(
+    progress_queue: asyncio.Queue[dict[str, Any]], timeout: float = 0.5
+) -> dict[str, Any] | None:
     """Wait for a progress update from queue with timeout.
-    
+
     Args:
         progress_queue: Queue to wait on
         timeout: Timeout in seconds
-        
+
     Returns:
         Progress update dict or None if timeout
     """
@@ -52,9 +54,9 @@ async def _wait_for_progress_or_timeout(progress_queue: asyncio.Queue, timeout: 
         return None
 
 
-async def _drain_progress_queue(websocket: WebSocket, job_id: str, progress_queue: asyncio.Queue) -> None:
+async def _drain_progress_queue(websocket: WebSocket, job_id: str, progress_queue: asyncio.Queue[dict[str, Any]]) -> None:
     """Drain all pending progress updates from the queue and send to WebSocket.
-    
+
     Args:
         websocket: WebSocket connection
         job_id: Job identifier to add to progress messages
@@ -68,6 +70,45 @@ async def _drain_progress_queue(websocket: WebSocket, job_id: str, progress_queu
             await websocket.send_json(progress_update)
         except asyncio.QueueEmpty:
             break
+
+
+async def _handle_status_change(
+    websocket: WebSocket,
+    job_id: str,
+    current_job: dict[str, Any],
+    current_status: str | None,
+) -> bool:
+    """Handle status change and send update. Returns True if should terminate connection."""
+    message = _build_status_message(job_id, current_job)
+    await websocket.send_json(message)
+
+    # Drain any final progress events before closing
+    if current_status in ["completed", "failed"]:
+        # Give a moment for final progress events to be queued
+        await asyncio.sleep(0.1)
+        # Drain any remaining progress events
+        if "progress_updates" in current_job:
+            await _drain_progress_queue(websocket, job_id, current_job["progress_updates"])
+        await websocket.close()
+        return True
+    return False
+
+
+async def _process_progress_updates(websocket: WebSocket, job_id: str, current_job: dict[str, Any]) -> None:
+    """Process and stream progress updates from job queue."""
+    if "progress_updates" not in current_job:
+        # No progress queue, sleep briefly to avoid busy loop
+        await asyncio.sleep(0.1)
+        return
+
+    # Drain immediately available progress updates
+    await _drain_progress_queue(websocket, job_id, current_job["progress_updates"])
+
+    # Wait for next progress update or timeout
+    progress_update = await _wait_for_progress_or_timeout(current_job["progress_updates"], timeout=0.5)
+    if progress_update:
+        progress_update["job_id"] = job_id
+        await websocket.send_json(progress_update)
 
 
 @router.websocket("/ws/jobs/{job_id}")
@@ -111,30 +152,13 @@ async def websocket_job_updates(websocket: WebSocket, job_id: str) -> None:
 
             # Send status update if changed
             if current_status != last_status:
-                message = _build_status_message(job_id, current_job)
-                await websocket.send_json(message)
+                should_terminate = await _handle_status_change(websocket, job_id, current_job, current_status)
                 last_status = current_status
-
-                # Drain any final progress events before closing
-                if current_status in ["completed", "failed"]:
-                    # Give a moment for final progress events to be queued
-                    await asyncio.sleep(0.1)
-                    # Drain any remaining progress events
-                    if "progress_updates" in current_job:
-                        await _drain_progress_queue(websocket, job_id, current_job["progress_updates"])
-                    await websocket.close()
+                if should_terminate:
                     break
 
-            # Stream any queued progress updates (drain immediately available)
-            if "progress_updates" in current_job:
-                await _drain_progress_queue(websocket, job_id, current_job["progress_updates"])
-
-            # Wait for next progress update or timeout (more efficient than tight polling)
-            if "progress_updates" in current_job:
-                progress_update = await _wait_for_progress_or_timeout(current_job["progress_updates"], timeout=0.5)
-                if progress_update:
-                    progress_update["job_id"] = job_id
-                    await websocket.send_json(progress_update)
+            # Process progress updates
+            await _process_progress_updates(websocket, job_id, current_job)
 
     except WebSocketDisconnect:
         logger.info(
