@@ -14,12 +14,22 @@ def create_parser() -> argparse.ArgumentParser:
         epilog="""
 Examples:
   %(prog)s -v                                  # Show version
-  %(prog)s video.mp4                           # Basic transcription
+  %(prog)s video.mp4                           # Basic transcription (auto-detects language)
+  %(prog)s video.mp4 --language es             # Manual language override (Spanish)
+  %(prog)s audio.mp3 --translate-to French     # Transcribe and translate to French
   %(prog)s audio.mp3 --diarize                 # Audio with speaker identification
   %(prog)s video.mp4 --diarize -s output.txt   # Save diarized transcript
   %(prog)s audio.mp3 --diarize-only            # Only identify speakers
   %(prog)s audio.mp3 --apply-diarization transcript.txt  # Add speakers to existing transcript
   cat audio.mp3 | %(prog)s                     # Transcribe from stdin (outputs to stdout)
+
+Language Detection:
+  By default, %(prog)s automatically detects the source language using Whisper.
+  Use --language to manually specify the language code (e.g., 'en', 'es', 'fr').
+
+Translation:
+  Use --translate-to to translate the transcript to a target language after transcription.
+  Example: %(prog)s video.mp4 --translate-to Spanish
 
 Stdin Mode:
   When input is piped (not a TTY), %(prog)s reads audio from stdin and writes
@@ -98,6 +108,10 @@ Environment Variables:
 
     # Translation options
     translate_group = parser.add_argument_group("Translation Options")
+    translate_group.add_argument(
+        "--language",
+        help="Manually specify source language code (e.g., 'en', 'es', 'fr'). Overrides auto-detection",
+    )
     translate_group.add_argument(
         "--translate",
         action="store_true",

@@ -9,6 +9,9 @@ formatting verbose JSON transcripts into readable timestamped output.
 
 ## Features
  - Extract audio from video files (writes `.mp3` by default) or transcribe audio directly (.mp3, .wav, .ogg, .m4a)
+ - Automatic language detection using Whisper API
+ - Manual language override via `--language` flag for improved transcription accuracy
+ - Translation support: translate transcripts to any language using `--translate-to`
  - Prefer minute-aligned chunk durations for large audio files exceeding 25MB API limit
  - Transcribe audio via OpenAI's Whisper API with `verbose_json` response format
  - Speaker diarization using pyannote.audio to identify and label speakers in transcripts
@@ -262,11 +265,20 @@ The tool will automatically load variables from `.env` if the file exists.
 ### Command Line
 
 ```bash
-# Basic transcription
+# Basic transcription (auto-detects language)
 vtt path/to/input.mp4
+
+# Manual language specification
+vtt path/to/input.mp4 --language es
+
+# Transcribe and translate
+vtt path/to/input.mp4 --translate-to French
 
 # With speaker diarization
 vtt path/to/input.mp4 --diarize
+
+# Diarization with translation
+vtt path/to/input.mp4 --diarize --translate-to Spanish
 
 # Direct audio transcription
 vtt path/to/audio.mp3 --diarize
@@ -320,6 +332,11 @@ cat recording.mp3 | vtt | tee transcript.txt | grep "SPEAKER_00"
  - `-f, --force`: re-extract audio even if it already exists
  - `--delete-audio`: delete audio files after transcription (default: keep them)
  - `--scan-chunks`: when input is a chunk file (e.g., `audio_chunk0.mp3`), detect and process all sibling chunks in order
+
+**Translation Options:**
+ - `--language LANG`: manually specify source language code (e.g., 'en', 'es', 'fr') to override automatic detection
+ - `--translate`: translate audio to English using OpenAI Whisper translations API
+ - `--translate-to LANG`: translate transcript to target language (e.g., 'Spanish', 'French') after transcription
 
 **Diarization Options:**
  - `--diarize`: enable speaker diarization (requires `HF_TOKEN` and model access)

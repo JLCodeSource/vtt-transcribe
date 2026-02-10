@@ -357,6 +357,40 @@ def _lazy_import_diarization() -> tuple:
     return SpeakerDiarizer, format_diarization_output, get_unique_speakers, get_speaker_context_lines
 
 
+def _detect_or_override_language(args: Any, transcriber: Any, input_path: Path) -> tuple[str | None, str | None]:
+    """Detect language or use manual override.
+
+    Returns:
+        Tuple of (detected_language, language_to_use)
+        - detected_language: The detected language code (or None if manually specified)
+        - language_to_use: The language to pass to transcription (or None to let Whisper detect)
+    """
+    if hasattr(args, "language") and args.language:
+        # Manual override
+        print(f"Using manually specified language: {args.language}")
+        return None, args.language
+
+    # Auto-detect language before transcription
+    # First, ensure we have an audio file
+    from vtt_transcribe.transcriber import VideoTranscriber
+
+    is_audio_input = input_path.suffix.lower() in VideoTranscriber.SUPPORTED_AUDIO_FORMATS
+    if is_audio_input:
+        audio_for_detection = input_path
+    else:
+        # Need to extract audio first
+        audio_for_detection = (
+            Path(args.output_audio) if args.output_audio else transcriber.resolve_audio_path(input_path, None)
+        )
+        if not audio_for_detection.exists() or args.force:
+            transcriber.extract_audio(input_path, audio_for_detection, force=args.force)
+
+    print("Detecting language...")
+    detected_language = transcriber.detect_language(audio_for_detection)
+    print(f"Detected language: {detected_language}")
+    return detected_language, None  # Let Whisper detect it during transcription too
+
+
 def handle_standard_transcription(args: Any, api_key: str) -> str:
     """Handle standard transcription workflow with optional diarization and translation.
 
@@ -372,6 +406,7 @@ def handle_standard_transcription(args: Any, api_key: str) -> str:
             "translate": args.translate if hasattr(args, "translate") else False,
             "diarize": args.diarize if hasattr(args, "diarize") else False,
             "translate_to": args.translate_to if hasattr(args, "translate_to") else None,
+            "language": args.language if hasattr(args, "language") else None,
         },
     )
 
@@ -410,8 +445,17 @@ def handle_standard_transcription(args: Any, api_key: str) -> str:
     input_path = Path(args.input_file)
     audio_path = Path(args.output_audio) if args.output_audio else None
     keep_audio = not args.delete_audio
+
+    # Detect or use manual language override
+    _detected_language, language_to_use = _detect_or_override_language(args, transcriber, input_path)
+
     result = transcriber.transcribe(
-        input_path, audio_path, force=args.force, keep_audio=keep_audio, scan_chunks=args.scan_chunks
+        input_path,
+        audio_path,
+        force=args.force,
+        keep_audio=keep_audio,
+        scan_chunks=args.scan_chunks,
+        language=language_to_use,
     )
 
     # Apply diarization if requested

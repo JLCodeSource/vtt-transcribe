@@ -338,6 +338,77 @@ class TestHandleStandardTranscription:
             assert "SPEAKER_00" in result
             mock_diarizer.apply_speakers_to_transcript.assert_called_once()
 
+    def test_handle_standard_transcription_detects_language(self, tmp_path: Path) -> None:
+        """Test that language detection is called and displayed."""
+        audio_file = tmp_path / "test.mp3"
+        audio_file.write_bytes(b"fake audio content")
+
+        args = MagicMock()
+        args.input_file = str(audio_file)
+        args.output_audio = None
+        args.delete_audio = False
+        args.force = False
+        args.scan_chunks = False
+        args.diarize = False
+        args.translate = False
+        args.translate_to = None
+        args.language = None  # No manual override
+
+        mock_transcriber = MagicMock()
+        mock_transcriber.transcribe.return_value = "Test transcript"
+        mock_transcriber.detect_language.return_value = "es"
+        mock_transcriber.SUPPORTED_AUDIO_FORMATS = (".mp3", ".wav")
+
+        with (
+            patch("vtt_transcribe.transcriber.VideoTranscriber", return_value=mock_transcriber) as mock_class,
+            patch("builtins.print") as mock_print,
+        ):
+            mock_class.SUPPORTED_AUDIO_FORMATS = (".mp3", ".wav")
+            result = handle_standard_transcription(args, "test_api_key")
+
+            assert result == "Test transcript"
+            mock_transcriber.detect_language.assert_called_once()
+            # Verify language detection was printed
+            print_calls = [str(call) for call in mock_print.call_args_list]
+            assert any("Detecting language" in str(call) for call in print_calls)
+            assert any("Detected language: es" in str(call) for call in print_calls)
+
+    def test_handle_standard_transcription_with_language_override(self, tmp_path: Path) -> None:
+        """Test that manual language override skips auto-detection."""
+        audio_file = tmp_path / "test.mp3"
+        audio_file.write_bytes(b"fake audio content")
+
+        args = MagicMock()
+        args.input_file = str(audio_file)
+        args.output_audio = None
+        args.delete_audio = False
+        args.force = False
+        args.scan_chunks = False
+        args.diarize = False
+        args.translate = False
+        args.translate_to = None
+        args.language = "fr"  # Manual override
+
+        mock_transcriber = MagicMock()
+        mock_transcriber.transcribe.return_value = "Test transcript"
+        mock_transcriber.SUPPORTED_AUDIO_FORMATS = (".mp3", ".wav")
+
+        with (
+            patch("vtt_transcribe.transcriber.VideoTranscriber", return_value=mock_transcriber) as mock_class,
+            patch("builtins.print") as mock_print,
+        ):
+            mock_class.SUPPORTED_AUDIO_FORMATS = (".mp3", ".wav")
+            result = handle_standard_transcription(args, "test_api_key")
+
+            assert result == "Test transcript"
+            mock_transcriber.detect_language.assert_not_called()
+            # Verify manual language was printed
+            print_calls = [str(call) for call in mock_print.call_args_list]
+            assert any("manually specified language: fr" in str(call) for call in print_calls)
+            # Verify transcribe was called with language parameter
+            call_kwargs = mock_transcriber.transcribe.call_args[1]
+            assert call_kwargs["language"] == "fr"
+
 
 @pytest.mark.diarization
 class TestNoReviewSpeakersFlag:
