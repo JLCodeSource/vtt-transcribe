@@ -39,15 +39,29 @@ def _emit_progress(job_id: str, message: str, progress_type: str = "info") -> No
         try:
             jobs[job_id]["progress_updates"].put_nowait(update)
         except asyncio.QueueFull:
-            # Log but don't fail if queue is full (renamed to avoid LogRecord conflict)
+            # Log but don't fail if queue is full - oldest events will be consumed first
             logger.warning(
-                "Progress queue full for job",
-                extra={"job_id": job_id, "progress_message": message},
+                "Progress queue full for job - dropping event",
+                extra={"job_id": job_id, "progress_message": message, "progress_type": progress_type},
+            )
+        except Exception as exc:
+            # Log but don't fail if progress update cannot be enqueued for other reasons
+            logger.warning(
+                "Failed to enqueue progress update for job",
+                extra={
+                    "job_id": job_id,
+                    "progress_message": message,
+                    "error": repr(exc),
+                },
             )
 
 
 # Maximum file size: 100MB
 MAX_FILE_SIZE = 100 * 1024 * 1024
+
+# Maximum progress queue size (to prevent unbounded memory growth)
+# A typical transcription job emits ~10-20 progress events, so 100 is generous
+MAX_PROGRESS_QUEUE_SIZE = 100
 
 # Supported file extensions
 SUPPORTED_EXTENSIONS = {".mp3", ".mp4", ".wav", ".m4a", ".ogg", ".mpeg", ".mpga", ".webm"}
@@ -149,7 +163,7 @@ async def create_transcription_job(
         "hf_token": hf_token if diarize else None,
         "device": device if diarize else None,
         "translate_to": translate_to,
-        "progress_updates": asyncio.Queue(),  # Queue for real-time progress updates
+        "progress_updates": asyncio.Queue(maxsize=MAX_PROGRESS_QUEUE_SIZE),  # Bounded queue for progress updates
     }
 
     task = asyncio.create_task(
@@ -291,7 +305,7 @@ async def create_diarization_job(
         "diarize_only": True,
         "hf_token": hf_token,
         "device": device,
-        "progress_updates": asyncio.Queue(),  # Queue for real-time progress updates
+        "progress_updates": asyncio.Queue(maxsize=MAX_PROGRESS_QUEUE_SIZE),  # Bounded queue for progress updates
     }
 
     task = asyncio.create_task(_process_diarization(job_id, file, hf_token, device))

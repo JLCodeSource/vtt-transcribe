@@ -180,7 +180,13 @@ class TestWebSocketProgressUpdates:
         """WebSocket should stream detailed progress events."""
         from vtt_transcribe.api.routes.transcription import _emit_progress
 
-        with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber"):
+        with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber") as mock_vt:
+            # Properly configure the mock to avoid MagicMock in job data
+            mock_instance = MagicMock()
+            mock_instance.transcribe.return_value = "[00:00 - 00:05] Test transcript"
+            mock_instance.detect_language.return_value = "en"
+            mock_vt.return_value = mock_instance
+            
             response = client.post(
                 "/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
@@ -199,18 +205,21 @@ class TestWebSocketProgressUpdates:
             msg = websocket.receive_json()
             messages_received.append(msg)
 
-            # Receive progress updates (with reasonable timeout)
+            # Receive progress updates (without timeout - TestClient doesn't support it)
             import time
 
             time.sleep(0.2)  # Give progress queue time to be processed
-            while True:
+            # Try to receive more messages - will stop when no more are immediately available
+            for _ in range(10):  # Try up to 10 times
                 try:
-                    msg = websocket.receive_json(timeout=0.5)
+                    # TestClient's receive_json doesn't support timeout, so use small sleep
+                    time.sleep(0.1)
+                    msg = websocket.receive_json()
                     messages_received.append(msg)
                     if len(messages_received) >= 4:  # Status + 3 progress
                         break
-                except TimeoutError:
-                    # No more messages within timeout
+                except Exception:
+                    # No more messages available
                     break
 
         # Should have received at least the status message
