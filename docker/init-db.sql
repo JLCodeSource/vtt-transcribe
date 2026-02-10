@@ -79,18 +79,10 @@ CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
 CREATE TRIGGER update_jobs_updated_at BEFORE UPDATE ON transcription_jobs
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Insert default admin user (password: admin123 - CHANGE IN PRODUCTION!)
--- Password hash generated with: python -c "from passlib.context import CryptContext; print(CryptContext(schemes=['bcrypt']).hash('admin123'))"
-INSERT INTO users (username, email, hashed_password, is_superuser)
-VALUES (
-    'admin',
-    'admin@vtt-transcribe.local',
-    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5uyilBxK9ExKi',
-    TRUE
-)
-ON CONFLICT (email) DO NOTHING;
+-- NOTE: No default admin user is created for security reasons.
+-- Create users via the API registration endpoint or manually via psql.
 
--- Grant necessary permissions
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO vtt_user;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO vtt_user;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO vtt_user;
+-- Grant necessary permissions to the database owner (POSTGRES_USER / CURRENT_USER)
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO CURRENT_USER;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO CURRENT_USER;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO CURRENT_USER;

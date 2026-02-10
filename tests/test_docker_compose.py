@@ -262,8 +262,10 @@ class TestDatabaseInitScript:
         required_tables = ["users", "transcription_jobs", "api_keys"]
 
         for table in required_tables:
-            assert "CREATE TABLE" in content, f"CREATE TABLE not found for {table}"
-            assert table in content, f"Table '{table}' not created"
+            # Use regex to match CREATE TABLE statements for this specific table
+            # Pattern matches: CREATE TABLE [IF NOT EXISTS] [schema.]table_name
+            pattern = rf"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:\w+\.)?{re.escape(table)}\b"
+            assert re.search(pattern, content, re.IGNORECASE), f"CREATE TABLE statement not found for table '{table}'"
 
     def test_init_script_creates_indices(self) -> None:
         """Verify init script creates database indices."""
@@ -273,11 +275,14 @@ class TestDatabaseInitScript:
 
         assert "CREATE INDEX" in content, "No indices created"
 
-    def test_init_script_has_default_user(self) -> None:
-        """Verify init script creates default admin user."""
+    def test_init_script_has_no_default_user(self) -> None:
+        """Verify init script does NOT create default admin user (security requirement)."""
         init_script = Path(__file__).parent.parent / "docker" / "init-db.sql"
         with open(init_script) as f:
             content = f.read()
 
-        assert "INSERT INTO users" in content, "No default user created"
-        assert "admin" in content.lower(), "Default admin user not found"
+        # Security: No default admin user should be created
+        assert "INSERT INTO users" not in content, "Default user should not be created for security"
+        assert "Create users via the API" in content or "manually via psql" in content, (
+            "Should have user creation instructions"
+        )

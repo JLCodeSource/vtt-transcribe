@@ -12,13 +12,21 @@ This guide explains how to run vtt-transcribe using Docker Compose for local dev
 2. **Edit `.env` and set required variables:**
    ```bash
    # REQUIRED: Get from https://platform.openai.com/api-keys
+   # Step 1: Generate secure values in your shell (DO NOT paste these lines into .env)
+   python -c "import secrets; print(secrets.token_urlsafe(32))"  # for SECRET_KEY
+   python -c "import secrets; print(secrets.token_urlsafe(16))"  # for POSTGRES_PASSWORD
+   ```
+   
+   ```bash
+   # Step 2: Update your .env file with the generated values:
+   # REQUIRED: Get from https://platform.openai.com/api-keys
    OPENAI_API_KEY=sk-your-actual-key-here
    
-   # REQUIRED: Generate secure key (32+ chars)
-   SECRET_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
+   # REQUIRED: Paste the 32+ char value generated above
+   SECRET_KEY=paste-generated-secret-key-here
    
-   # REQUIRED: Set secure database password
-   POSTGRES_PASSWORD=$(python -c "import secrets; print(secrets.token_urlsafe(16))")
+   # REQUIRED: Paste the database password generated above
+   POSTGRES_PASSWORD=paste-generated-db-password-here
    ```
    
    ⚠️ **All three variables above are REQUIRED**. Docker Compose will fail to start if any are missing.

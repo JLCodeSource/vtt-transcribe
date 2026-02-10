@@ -151,7 +151,7 @@ For local development with the complete API, worker, and database stack:
 # 1. Copy environment template
 cp .env.example .env
 
-# 2. Edit .env - set OPENAI_API_KEY and change default passwords
+# 2. Edit .env - set required secrets/variables (OPENAI_API_KEY, SECRET_KEY, POSTGRES_PASSWORD)
 # 3. Start services
 docker compose up -d
 

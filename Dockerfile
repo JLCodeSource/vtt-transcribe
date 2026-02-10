@@ -24,8 +24,12 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Copy source code
 COPY vtt_transcribe ./vtt_transcribe
 
-# Install package with dependencies (cached unless pyproject.toml or source changes)
+# Install base package with dependencies
 RUN uv pip install "."
+
+# Build stage for API - includes API extras
+FROM builder AS builder-api
+RUN uv pip install ".[api]"
 
 # Runtime stage: Minimal image with only runtime dependencies
 FROM python:3.13-slim AS base
@@ -42,8 +46,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Create non-root user
 RUN useradd -m -u "$USER_UID" vttuser
 
-# Copy virtual environment from builder (includes installed package)
-COPY --from=builder /opt/venv /opt/venv
+# Set PATH for virtual environment (targets will copy venv)
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Ensure Python output is unbuffered
@@ -53,6 +56,9 @@ ENV PYTHONUNBUFFERED=1
 # API Target - for FastAPI server
 # ============================================================================
 FROM base AS api
+
+# Copy virtual environment with API extras from builder-api
+COPY --from=builder-api /opt/venv /opt/venv
 
 # Create directories for uploads and logs
 RUN mkdir -p /app/uploads /app/logs && \
@@ -74,6 +80,9 @@ CMD ["uvicorn", "vtt_transcribe.api.app:app", "--host", "0.0.0.0", "--port", "80
 # ============================================================================
 FROM base AS worker
 
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+
 # Create directories for uploads and logs
 RUN mkdir -p /app/uploads /app/logs && \
     chown -R vttuser:vttuser /app
@@ -83,13 +92,19 @@ WORKDIR /app
 # Switch to non-root user
 USER vttuser
 
-# Run worker process (will be implemented in vtt_transcribe/worker.py)
-CMD ["python", "-m", "vtt_transcribe.worker"]
+# Worker runs background tasks
+# TODO: Uncomment when worker module is implemented
+# CMD ["python", "-m", "vtt_transcribe.worker"]
+# Placeholder: long-running no-op to prevent restart loops
+CMD ["sleep", "infinity"]
 
 # ============================================================================
 # CLI Target (default) - for standalone transcription
 # ============================================================================
 FROM base AS cli
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
 
 # Set working directory for user files
 WORKDIR /workspace
