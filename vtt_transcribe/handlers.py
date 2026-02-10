@@ -1,6 +1,7 @@
 """Handler functions for different transcription and diarization workflows."""
 
 import re
+import sys
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -367,14 +368,12 @@ def _detect_or_override_language(args: Any, transcriber: Any, input_path: Path) 
     """
     if hasattr(args, "language") and args.language:
         # Manual override
-        print(f"Using manually specified language: {args.language}")
+        print(f"Using manually specified language: {args.language}", file=sys.stderr)
         return None, args.language
 
     # Auto-detect language before transcription
     # First, ensure we have an audio file
-    from vtt_transcribe.transcriber import VideoTranscriber
-
-    is_audio_input = input_path.suffix.lower() in VideoTranscriber.SUPPORTED_AUDIO_FORMATS
+    is_audio_input = input_path.suffix.lower() in transcriber.SUPPORTED_AUDIO_FORMATS
     if is_audio_input:
         audio_for_detection = input_path
     else:
@@ -385,9 +384,9 @@ def _detect_or_override_language(args: Any, transcriber: Any, input_path: Path) 
         if not audio_for_detection.exists() or args.force:
             transcriber.extract_audio(input_path, audio_for_detection, force=args.force)
 
-    print("Detecting language...")
+    print("Detecting language...", file=sys.stderr)
     detected_language = transcriber.detect_language(audio_for_detection)
-    print(f"Detected language: {detected_language}")
+    print(f"Detected language: {detected_language}", file=sys.stderr)
     return detected_language, None  # Let Whisper detect it during transcription too
 
 

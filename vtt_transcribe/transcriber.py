@@ -376,8 +376,13 @@ class VideoTranscriber:
         adjusted_lines = TranscriptFormatter.adjust_timestamps(lines, offset_seconds)
         return "\n".join(adjusted_lines)
 
-    def _transcribe_sibling_chunks(self, base_audio_path: Path) -> str:
-        """Transcribe all sibling chunks with timestamp shifting."""
+    def _transcribe_sibling_chunks(self, base_audio_path: Path, language: str | None = None) -> str:
+        """Transcribe all sibling chunks with timestamp shifting.
+
+        Args:
+            base_audio_path: Base path for chunk files (without _chunkN suffix)
+            language: Optional language code (e.g., 'en', 'es', 'fr'). If provided, overrides Whisper's language detection
+        """
         all_chunks = self.find_existing_chunks(base_audio_path)
         if not all_chunks:
             return ""
@@ -387,7 +392,7 @@ class VideoTranscriber:
         cumulative_start = 0.0
         for chunk_path in all_chunks:
             print(f"Transcribing {chunk_path.name}...")
-            transcript = self.transcribe_audio_file(chunk_path)
+            transcript = self.transcribe_audio_file(chunk_path, language=language)
             # Shift timestamps by cumulative offset for chunks after the first
             if transcript and cumulative_start > 0:
                 transcript = self._shift_formatted_timestamps(transcript, cumulative_start)
@@ -459,7 +464,7 @@ class VideoTranscriber:
                 base_stem = audio_path.stem.split("_chunk")[0]
                 base_audio_path = audio_path.with_stem(base_stem)
                 # Find and transcribe all sibling chunks
-                result = self._transcribe_sibling_chunks(base_audio_path)
+                result = self._transcribe_sibling_chunks(base_audio_path, language=language)
                 if result:
                     return result
         else:
