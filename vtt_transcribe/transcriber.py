@@ -1,7 +1,7 @@
 import contextlib
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from openai import OpenAI
 
@@ -164,8 +164,17 @@ class VideoTranscriber:
         """Extract audio chunk (delegates to AudioFileManager)."""
         return AudioFileManager.extract_chunk(audio_path, start_time, end_time, chunk_index)
 
-    def transcribe_audio_file(self, audio_path: Path) -> str:
-        """Transcribe a single audio file using Whisper API with timestamps."""
+    def transcribe_audio_file(self, audio_path: Path, *, language: str | None = None) -> str:
+        """Transcribe a single audio file using Whisper API with timestamps.
+
+        Args:
+            audio_path: Path to the audio file to transcribe
+            language: Optional language code (e.g., 'en', 'es', 'fr'). If provided,
+                     overrides Whisper's language detection
+
+        Returns:
+            Formatted transcript with timestamps
+        """
         api_start_time = time.time()
         file_size_mb = audio_path.stat().st_size / (1024 * 1024)
 
@@ -175,15 +184,23 @@ class VideoTranscriber:
                 "audio_path": str(audio_path),
                 "size_mb": round(file_size_mb, 2),
                 "model": "whisper-1",
+                "language": language,
             },
         )
 
         with open(audio_path, "rb") as audio_file:
-            response: TranscriptionVerbose = self.client.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio_file,
-                response_format="verbose_json",
-            )
+            # Build API call parameters
+            api_params: dict[str, Any] = {
+                "model": "whisper-1",
+                "file": audio_file,
+                "response_format": "verbose_json",
+            }
+
+            # Add language parameter if specified
+            if language:
+                api_params["language"] = language
+
+            response: TranscriptionVerbose = self.client.audio.transcriptions.create(**api_params)
 
         api_duration = time.time() - api_start_time
         segments = getattr(response, "segments", None)
@@ -236,6 +253,7 @@ class VideoTranscriber:
         chunk_duration: float,
         *,
         keep_chunks: bool = False,
+        language: str | None = None,
     ) -> str:
         """Transcribe audio by splitting into chunks.
 
@@ -243,6 +261,14 @@ class VideoTranscriber:
         match the expected number of chunks. The actual transcription and
         per-chunk cleanup logic is delegated to `_transcribe_chunk_files` to
         reduce cyclomatic complexity.
+
+        Args:
+            audio_path: Path to audio file to transcribe
+            duration: Total duration of audio in seconds
+            num_chunks: Number of chunks to split into
+            chunk_duration: Duration of each chunk in seconds
+            keep_chunks: If True, keep chunk files after transcription
+            language: Optional language code (e.g., 'en', 'es', 'fr'). If provided, overrides Whisper's language detection
         """
         workflow_start_time = time.time()
 
@@ -254,6 +280,7 @@ class VideoTranscriber:
                 "num_chunks": num_chunks,
                 "chunk_duration": round(chunk_duration, 1),
                 "keep_chunks": keep_chunks,
+                "language": language,
             },
         )
 
@@ -284,7 +311,7 @@ class VideoTranscriber:
                 chunk_path: Path = self.extract_audio_chunk(audio_path, start_time, end_time, i)
                 chunk_files.append(chunk_path)
 
-        transcripts = self._transcribe_chunk_files(chunk_files, chunk_duration, keep_chunks=keep_chunks)
+        transcripts = self._transcribe_chunk_files(chunk_files, chunk_duration, keep_chunks=keep_chunks, language=language)
 
         if keep_chunks and chunk_files:
             print(f"Kept {len(chunk_files)} chunk files for reference")
@@ -301,11 +328,24 @@ class VideoTranscriber:
 
         return " ".join(transcripts)
 
-    def _transcribe_chunk_files(self, chunk_files: list[Path], chunk_duration: float, *, keep_chunks: bool) -> list[str]:
+    def _transcribe_chunk_files(
+        self,
+        chunk_files: list[Path],
+        chunk_duration: float,
+        *,
+        keep_chunks: bool,
+        language: str | None = None,
+    ) -> list[str]:
         """Transcribe provided chunk files and optionally remove them.
 
         Using `contextlib.suppress` to ignore unlink errors and keeping this
         logic isolated reduces complexity in the main method.
+
+        Args:
+            chunk_files: List of audio chunk files to transcribe
+            chunk_duration: Duration of each chunk in seconds
+            keep_chunks: If True, keep chunk files after transcription
+            language: Optional language code (e.g., 'en', 'es', 'fr'). If provided, overrides Whisper's language detection
         """
         transcripts: list[str] = []
         for i, chunk_path in enumerate(chunk_files):
@@ -320,7 +360,7 @@ class VideoTranscriber:
                 },
             )
             print(f"Transcribing chunk {i + 1}/{len(chunk_files)}...")
-            transcript: str = self.transcribe_audio_file(chunk_path)
+            transcript: str = self.transcribe_audio_file(chunk_path, language=language)
             if transcript and start_time > 0:
                 transcript = self._shift_formatted_timestamps(transcript, start_time)
             transcripts.append(transcript)
@@ -336,8 +376,13 @@ class VideoTranscriber:
         adjusted_lines = TranscriptFormatter.adjust_timestamps(lines, offset_seconds)
         return "\n".join(adjusted_lines)
 
-    def _transcribe_sibling_chunks(self, base_audio_path: Path) -> str:
-        """Transcribe all sibling chunks with timestamp shifting."""
+    def _transcribe_sibling_chunks(self, base_audio_path: Path, language: str | None = None) -> str:
+        """Transcribe all sibling chunks with timestamp shifting.
+
+        Args:
+            base_audio_path: Base path for chunk files (without _chunkN suffix)
+            language: Optional language code (e.g., 'en', 'es', 'fr'). If provided, overrides Whisper's language detection
+        """
         all_chunks = self.find_existing_chunks(base_audio_path)
         if not all_chunks:
             return ""
@@ -347,7 +392,7 @@ class VideoTranscriber:
         cumulative_start = 0.0
         for chunk_path in all_chunks:
             print(f"Transcribing {chunk_path.name}...")
-            transcript = self.transcribe_audio_file(chunk_path)
+            transcript = self.transcribe_audio_file(chunk_path, language=language)
             # Shift timestamps by cumulative offset for chunks after the first
             if transcript and cumulative_start > 0:
                 transcript = self._shift_formatted_timestamps(transcript, cumulative_start)
@@ -366,6 +411,7 @@ class VideoTranscriber:
         force: bool = False,
         keep_audio: bool = True,
         scan_chunks: bool = False,
+        language: str | None = None,
     ) -> str:
         """
         Transcribe video audio using OpenAI's Whisper model.
@@ -376,6 +422,7 @@ class VideoTranscriber:
             force: If True, re-extract audio even if it exists
             keep_audio: If True, keep audio files after transcription. If False, delete them.
             scan_chunks: If True and input is a chunk file, find and process all sibling chunks in order
+            language: Optional language code (e.g., 'en', 'es', 'fr'). If provided, overrides Whisper's language detection
 
         Returns:
             Transcribed text from the video audio
@@ -390,6 +437,7 @@ class VideoTranscriber:
                 "force": force,
                 "keep_audio": keep_audio,
                 "scan_chunks": scan_chunks,
+                "language": language,
             },
         )
 
@@ -416,7 +464,7 @@ class VideoTranscriber:
                 base_stem = audio_path.stem.split("_chunk")[0]
                 base_audio_path = audio_path.with_stem(base_stem)
                 # Find and transcribe all sibling chunks
-                result = self._transcribe_sibling_chunks(base_audio_path)
+                result = self._transcribe_sibling_chunks(base_audio_path, language=language)
                 if result:
                     return result
         else:
@@ -441,10 +489,11 @@ class VideoTranscriber:
                 num_chunks,
                 chunk_duration,
                 keep_chunks=keep_audio,
+                language=language,
             )
         else:
             print("Transcribing audio...")
-            result = self.transcribe_audio_file(audio_path)
+            result = self.transcribe_audio_file(audio_path, language=language)
 
         # Clean up audio files if not keeping them
         if not keep_audio:

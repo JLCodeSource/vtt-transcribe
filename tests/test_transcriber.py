@@ -420,6 +420,56 @@ class TestTranscribeAudioFile:
             assert call_kwargs["model"] == "whisper-1"
             assert call_kwargs["response_format"] == "verbose_json"
 
+    def test_transcribe_audio_file_with_language_parameter(self, tmp_path: Path) -> None:
+        """Should pass language parameter to Whisper API when provided."""
+        # Given audio file and mocked OpenAI client
+        with patch("vtt_transcribe.transcriber.OpenAI") as mock_openai:
+            mock_client = MagicMock()
+            mock_openai.return_value = mock_client
+            mock_client.audio.transcriptions.create.return_value = cast(
+                "TranscriptionVerbose",
+                "Hello world",
+            )
+
+            audio_path = tmp_path / "audio.mp3"
+            audio_path.write_text("dummy audio")
+
+            transcriber = VideoTranscriber("key")
+            # When transcribe_audio_file is called with language parameter
+            result = transcriber.transcribe_audio_file(audio_path, language="es")
+
+            # Then Whisper API is called with language parameter
+            assert result == "Hello world"
+            mock_client.audio.transcriptions.create.assert_called_once()
+            call_kwargs = mock_client.audio.transcriptions.create.call_args[1]
+            assert call_kwargs["model"] == "whisper-1"
+            assert call_kwargs["response_format"] == "verbose_json"
+            assert call_kwargs["language"] == "es"
+
+    def test_transcribe_audio_file_without_language_parameter(self, tmp_path: Path) -> None:
+        """Should not include language parameter when not provided."""
+        # Given audio file and mocked OpenAI client
+        with patch("vtt_transcribe.transcriber.OpenAI") as mock_openai:
+            mock_client = MagicMock()
+            mock_openai.return_value = mock_client
+            mock_client.audio.transcriptions.create.return_value = cast(
+                "TranscriptionVerbose",
+                "Hello world",
+            )
+
+            audio_path = tmp_path / "audio.mp3"
+            audio_path.write_text("dummy audio")
+
+            transcriber = VideoTranscriber("key")
+            # When transcribe_audio_file is called without language parameter
+            result = transcriber.transcribe_audio_file(audio_path)
+
+            # Then Whisper API is called without language parameter
+            assert result == "Hello world"
+            mock_client.audio.transcriptions.create.assert_called_once()
+            call_kwargs = mock_client.audio.transcriptions.create.call_args[1]
+            assert "language" not in call_kwargs
+
 
 class TestDirectAudioTranscription:
     """When a user provides an audio file as the primary input."""
@@ -588,6 +638,42 @@ class TestDirectAudioTranscription:
             assert result == ""
             # And no transcription API calls were made
             assert mock_client.audio.transcriptions.create.call_count == 0
+
+    def test_scan_chunks_with_language_parameter(self, tmp_path: Path) -> None:
+        """Should pass language parameter to transcribe_audio_file when using scan_chunks."""
+        # Given multiple chunk files exist and a language is specified
+        with patch("vtt_transcribe.transcriber.OpenAI") as mock_openai:
+            mock_client = MagicMock()
+            mock_openai.return_value = mock_client
+            mock_client.audio.transcriptions.create.side_effect = [
+                {"segments": [{"start": 0.0, "end": 1.0, "text": "First chunk"}]},
+                {"segments": [{"start": 0.0, "end": 1.0, "text": "Second chunk"}]},
+            ]
+
+            chunk0 = tmp_path / "audio_chunk0.mp3"
+            chunk1 = tmp_path / "audio_chunk1.mp3"
+            chunk0.write_text("x" * 1024)
+            chunk1.write_text("x" * 1024)
+
+            with patch("builtins.print"), patch.object(VideoTranscriber, "get_audio_duration", return_value=60.0):
+                transcriber = VideoTranscriber("key")
+
+                # When transcribe is called with scan_chunks=True and language='es'
+                result = transcriber.transcribe(
+                    chunk0,
+                    audio_path=None,
+                    scan_chunks=True,
+                    language="es",
+                )
+
+                # Then all API calls should include the language parameter
+                assert mock_client.audio.transcriptions.create.call_count == 2
+                for call in mock_client.audio.transcriptions.create.call_args_list:
+                    call_kwargs = call[1]
+                    assert call_kwargs.get("language") == "es", "Language parameter should be passed to each chunk"
+                # And result contains both chunks
+                assert "First chunk" in result
+                assert "Second chunk" in result
 
 
 class TestTranscribeChunkedAudio:
@@ -1120,6 +1206,8 @@ class TestIntegrationFullWorkflow:
                     ],
                 ),
                 patch.object(VideoTranscriber, "transcribe", return_value="New transcript") as mock_transcribe,
+                patch.object(VideoTranscriber, "detect_language", return_value="en"),
+                patch.object(VideoTranscriber, "extract_audio"),
                 patch("builtins.print"),
             ):
                 # When main() is called with force flag (-f)

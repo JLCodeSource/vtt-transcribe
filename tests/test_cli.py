@@ -269,6 +269,7 @@ class TestMainCliArgumentParsing:
             with (
                 patch("sys.argv", ["main.py", str(chunk_file), "--scan-chunks"]),
                 patch.object(VideoTranscriber, "transcribe", return_value="test") as mock_transcribe,
+                patch.object(VideoTranscriber, "detect_language", return_value="en") as mock_detect,
                 patch("builtins.print"),
             ):
                 import contextlib
@@ -277,6 +278,7 @@ class TestMainCliArgumentParsing:
                     main()
 
                 mock_transcribe.assert_called_once()
+                mock_detect.assert_called_once()
                 call_kwargs = mock_transcribe.call_args.kwargs
                 assert call_kwargs.get("scan_chunks") is True
 
@@ -291,6 +293,8 @@ class TestMainCliArgumentParsing:
             with (
                 patch("sys.argv", ["main.py", str(video_path), "--diarize", "--no-review-speakers"]),
                 patch.object(VideoTranscriber, "transcribe", return_value="[00:00:00 - 00:00:05] Hello"),
+                patch.object(VideoTranscriber, "detect_language", return_value="en"),
+                patch.object(VideoTranscriber, "extract_audio"),
                 patch("vtt_transcribe.handlers._lazy_import_diarization") as mock_lazy_import,
                 # Mock dependency check
                 patch("vtt_transcribe.main.check_diarization_dependencies"),
@@ -325,6 +329,8 @@ class TestMainCliArgumentParsing:
             with (
                 patch("sys.argv", ["main.py", str(video_path), "--diarize", "--device", "cuda", "--no-review-speakers"]),
                 patch.object(VideoTranscriber, "transcribe", return_value="[00:00:00 - 00:00:05] Hello"),
+                patch.object(VideoTranscriber, "detect_language", return_value="en"),
+                patch.object(VideoTranscriber, "extract_audio"),
                 patch("vtt_transcribe.handlers._lazy_import_diarization") as mock_lazy_import,
                 # Mock dependency check
                 patch("vtt_transcribe.main.check_diarization_dependencies"),
@@ -529,3 +535,16 @@ class TestTranslationFlags:
         args = parser.parse_args(["video.mp4", "--translate-to", "French"])
         assert args.translate_to == "French"
         assert args.translate is False  # Default value
+
+    def test_parser_accepts_language_flag(self) -> None:
+        """Should accept --language flag for manual language override."""
+        parser = create_parser()
+        args = parser.parse_args(["video.mp4", "--language", "es"])
+        assert args.language == "es"
+
+    def test_parser_language_flag_with_translate(self) -> None:
+        """Should accept --language flag together with --translate."""
+        parser = create_parser()
+        args = parser.parse_args(["video.mp4", "--language", "fr", "--translate"])
+        assert args.language == "fr"
+        assert args.translate is True
