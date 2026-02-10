@@ -24,8 +24,12 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Copy source code
 COPY vtt_transcribe ./vtt_transcribe
 
-# Install package with dependencies (cached unless pyproject.toml or source changes)
+# Install base package with dependencies
 RUN uv pip install "."
+
+# Build stage for API - includes API extras
+FROM builder AS builder-api
+RUN uv pip install ".[api]"
 
 # Runtime stage: Minimal image with only runtime dependencies
 FROM python:3.13-slim AS base
@@ -53,6 +57,9 @@ ENV PYTHONUNBUFFERED=1
 # API Target - for FastAPI server
 # ============================================================================
 FROM base AS api
+
+# Copy virtual environment with API extras from builder-api
+COPY --from=builder-api /opt/venv /opt/venv
 
 # Create directories for uploads and logs
 RUN mkdir -p /app/uploads /app/logs && \
@@ -83,8 +90,10 @@ WORKDIR /app
 # Switch to non-root user
 USER vttuser
 
-# Run worker process (will be implemented in vtt_transcribe/worker.py)
-CMD ["python", "-m", "vtt_transcribe.worker"]
+# Worker runs background tasks
+# TODO: Uncomment when worker module is implemented
+# CMD ["python", "-m", "vtt_transcribe.worker"]
+CMD ["echo", "Worker module not yet implemented. Use profiles to skip this service."]
 
 # ============================================================================
 # CLI Target (default) - for standalone transcription
