@@ -222,11 +222,15 @@ class AudioTranslator:
             logger.info("No text to translate in transcript")
             return transcript
 
+        batch_text = "\n".join(
+            f"LINE_{i}: {text}" for i, text in enumerate(texts_to_translate)
+        )
+
         logger.info(
             "Sending batch translation request",
             extra={
                 "num_lines": len(texts_to_translate),
-                "batch_size": len(batch_text := "\n".join(f"LINE_{i}: {text}" for i, text in enumerate(texts_to_translate))),
+                "batch_size": len(batch_text),
             },
         )
 
