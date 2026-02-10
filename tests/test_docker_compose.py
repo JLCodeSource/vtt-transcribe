@@ -275,8 +275,8 @@ class TestDatabaseInitScript:
 
         assert "CREATE INDEX" in content, "No indices created"
 
-    def test_init_script_has_default_user(self) -> None:
-        """Verify init script creates default admin user."""
+    def test_init_script_has_no_default_user(self) -> None:
+        """Verify init script does NOT create default admin user (security requirement)."""
         init_script = Path(__file__).parent.parent / "docker" / "init-db.sql"
         with open(init_script) as f:
             content = f.read()
