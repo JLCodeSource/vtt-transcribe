@@ -1,8 +1,8 @@
 /**
- * Vitest setup file for Svelte 5 + jsdom environment
+ * Vitest setup file for Svelte 5 + jsdom environment.
  *
- * Ensures that Svelte components are rendered in client mode (not SSR)
- * by setting the appropriate conditions for module resolution.
+ * Ensures tests run in a browser-like (client) environment by asserting that
+ * the global `window` object is available before any tests execute.
  */
 
 // Set up jsdom environment globals
