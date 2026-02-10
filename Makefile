@@ -35,7 +35,7 @@ install-diarization:
 	@set -e; \
 	curl -LsSf https://astral.sh/uv/install.sh | sh; \
 	uv venv --clear && \
-	uv sync --extra diarization && \
+	uv sync --extra diarization --extra api && \
 	uv run pre-commit install
 
 # Install build dependencies (includes diarization for developers)
