@@ -10,6 +10,30 @@ from vtt_transcribe.api.routes.transcription import jobs
 router = APIRouter(tags=["websockets"])
 
 
+def _build_status_message(job_id: str, current_job: dict[str, Any]) -> dict[str, Any]:
+    """Build status update message from job data."""
+    current_status = current_job.get("status")
+    message: dict[str, Any] = {
+        "job_id": job_id,
+        "status": current_status,
+        "filename": current_job.get("filename"),
+    }
+
+    # Include optional fields if available
+    if "detected_language" in current_job:
+        message["detected_language"] = current_job["detected_language"]
+    if "translated_to" in current_job:
+        message["translated_to"] = current_job["translated_to"]
+
+    # Include result/error based on status
+    if current_status == "completed":
+        message["result"] = current_job.get("result")
+    elif current_status == "failed":
+        message["error"] = current_job.get("error")
+
+    return message
+
+
 @router.websocket("/ws/jobs/{job_id}")
 async def websocket_job_updates(websocket: WebSocket, job_id: str) -> None:
     """WebSocket endpoint for real-time job status updates."""
@@ -32,17 +56,7 @@ async def websocket_job_updates(websocket: WebSocket, job_id: str) -> None:
 
             # Send update if status changed
             if current_status != last_status:
-                message: dict[str, Any] = {
-                    "job_id": job_id,
-                    "status": current_status,
-                    "filename": current_job.get("filename"),
-                }
-
-                if current_status == "completed":
-                    message["result"] = current_job.get("result")
-                elif current_status == "failed":
-                    message["error"] = current_job.get("error")
-
+                message = _build_status_message(job_id, current_job)
                 await websocket.send_json(message)
                 last_status = current_status
 

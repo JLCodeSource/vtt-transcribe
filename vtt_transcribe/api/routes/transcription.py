@@ -11,6 +11,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import PlainTextResponse
 
 from vtt_transcribe.transcriber import VideoTranscriber
+from vtt_transcribe.translator import AudioTranslator
 
 router = APIRouter(tags=["transcription"])
 
@@ -30,6 +31,7 @@ async def create_transcription_job(
     diarize: bool = Form(False),  # noqa: FBT001, FBT003
     hf_token: str | None = Form(None),
     device: str | None = Form(None),
+    translate_to: str | None = Form(None),
 ) -> dict[str, str]:
     """Create a new transcription job.
 
@@ -39,6 +41,7 @@ async def create_transcription_job(
         diarize: Enable speaker diarization
         hf_token: HuggingFace token (required if diarize=True)
         device: Device for diarization (auto/cpu/cuda)
+        translate_to: Optional target language for translation (e.g., "Spanish", "French")
 
     Returns:
         Job ID and status
@@ -79,10 +82,11 @@ async def create_transcription_job(
         "diarize": diarize,
         "hf_token": hf_token if diarize else None,
         "device": device if diarize else None,
+        "translate_to": translate_to,
     }
 
     task = asyncio.create_task(
-        _process_transcription(job_id, content, file.filename or "audio.mp3", api_key, diarize, hf_token, device)
+        _process_transcription(job_id, content, file.filename or "audio.mp3", api_key, diarize, hf_token, device, translate_to)
     )
     _ = task
 
@@ -100,6 +104,95 @@ async def get_job_status(job_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail="Job not found")
 
     return jobs[job_id]
+
+
+@router.post("/detect-language")
+async def detect_language(
+    file: UploadFile = File(...),  # noqa: B008
+    api_key: str = Form(...),
+) -> dict[str, str]:
+    """Detect language of audio file.
+
+    Args:
+        file: Audio or video file
+        api_key: OpenAI API key
+
+    Returns:
+        Detected language code and original filename
+    """
+    if not file.filename:
+        raise HTTPException(status_code=422, detail="File must have a filename")
+
+    # Validate file extension
+    file_ext = Path(file.filename).suffix.lower()
+    if file_ext not in SUPPORTED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type: {file_ext}. Supported types: {', '.join(sorted(SUPPORTED_EXTENSIONS))}",
+        )
+
+    # Read and validate file size
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        max_mb = MAX_FILE_SIZE // (1024 * 1024)
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large: {len(content)} bytes. Maximum size: {MAX_FILE_SIZE} bytes ({max_mb}MB)",
+        )
+
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix) as tmp:
+            tmp.write(content)
+            tmp_path = Path(tmp.name)
+
+        try:
+            transcriber = VideoTranscriber(api_key)
+            language_code = await asyncio.to_thread(transcriber.detect_language, tmp_path)
+
+            return {
+                "language_code": language_code,
+                "filename": file.filename,
+            }
+
+        finally:
+            await asyncio.to_thread(tmp_path.unlink, missing_ok=True)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Language detection failed: {e!s}") from e
+
+
+@router.post("/translate")
+async def translate_transcript(
+    transcript: str = Form(...),
+    target_language: str = Form(...),
+    api_key: str = Form(...),
+    preserve_timestamps: bool = Form(True),  # noqa: FBT001, FBT003
+) -> dict[str, str]:
+    """Translate a transcript to target language.
+
+    Args:
+        transcript: Original transcript text
+        target_language: Target language name (e.g., "Spanish", "French")
+        api_key: OpenAI API key
+        preserve_timestamps: If True, preserve timestamp format in output
+
+    Returns:
+        Translated transcript
+    """
+    try:
+        translator = AudioTranslator(api_key)
+        translated = await asyncio.to_thread(
+            translator.translate_transcript, transcript, target_language, preserve_timestamps=preserve_timestamps
+        )
+
+        return {
+            "original": transcript,
+            "translated": translated,
+            "target_language": target_language,
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Translation failed: {e!s}") from e
 
 
 @router.post("/diarize")
@@ -178,6 +271,7 @@ async def _process_transcription(
     _diarize: bool = False,  # noqa: FBT001, FBT002
     _hf_token: str | None = None,
     _device: str | None = None,
+    translate_to: str | None = None,
 ) -> None:
     """Process transcription job asynchronously."""
     # Note: diarize, hf_token, device will be used when integrating diarization
@@ -190,7 +284,20 @@ async def _process_transcription(
 
         try:
             transcriber = VideoTranscriber(api_key)
+
+            # Detect language before transcription
+            detected_language = await asyncio.to_thread(transcriber.detect_language, tmp_path)
+            jobs[job_id]["detected_language"] = detected_language
+
             result = await asyncio.to_thread(transcriber.transcribe, tmp_path)
+
+            # If translation requested, translate the transcript
+            if translate_to:
+                translator = AudioTranslator(api_key)
+                result = await asyncio.to_thread(
+                    translator.translate_transcript, result, translate_to, preserve_timestamps=True
+                )
+                jobs[job_id]["translated_to"] = translate_to
 
             jobs[job_id]["status"] = "completed"
             jobs[job_id]["result"] = result
@@ -311,7 +418,7 @@ def _format_srt_time(seconds: int) -> str:
 @router.get("/jobs/{job_id}/download")
 async def download_transcript(
     job_id: str,
-    format: str = Query("txt", regex="^(txt|vtt|srt)$"),  # noqa: A002
+    format: str = Query("txt", pattern="^(txt|vtt|srt)$"),  # noqa: A002
 ) -> PlainTextResponse:
     """Download transcript in specified format.
 
