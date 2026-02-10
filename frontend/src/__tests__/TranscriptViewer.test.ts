@@ -63,8 +63,11 @@ describe('TranscriptViewer', () => {
         onreset: () => {},
       },
     });
-    expect(screen.getByText('SPEAKER_00')).toBeTruthy();
-    expect(screen.getByText('SPEAKER_01')).toBeTruthy();
+    // Speaker names appear in both the filter dropdown and badges
+    const speaker00Elements = screen.getAllByText('SPEAKER_00');
+    const speaker01Elements = screen.getAllByText('SPEAKER_01');
+    expect(speaker00Elements.length).toBeGreaterThanOrEqual(2);
+    expect(speaker01Elements.length).toBeGreaterThanOrEqual(2);
   });
 
   it('displays segment count', () => {
