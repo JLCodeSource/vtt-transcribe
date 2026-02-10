@@ -12,7 +12,7 @@ help:
 	@echo "  make clean      - Remove build artifacts"
 
 install:
-	npm ci
+	npm install
 
 dev:
 	npm run dev

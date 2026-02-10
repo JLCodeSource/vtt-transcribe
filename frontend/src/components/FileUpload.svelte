@@ -13,8 +13,30 @@
     diarization: true,
     language: 'auto',
     model: 'whisper-1',
+    apiKey: '',
+    hfToken: '',
   });
   let isUploading = $state(false);
+  let validationError = $state('');
+
+  const SUPPORTED_VIDEO_TYPES = ['.mp4', '.avi', '.mov', '.webm', '.mpeg'];
+  const SUPPORTED_AUDIO_TYPES = ['.mp3', '.wav', '.ogg', '.m4a', '.mpga'];
+  const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+
+  function validateFile(file: File): string | null {
+    const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+    const allSupported = [...SUPPORTED_VIDEO_TYPES, ...SUPPORTED_AUDIO_TYPES];
+    
+    if (!allSupported.includes(ext)) {
+      return `Unsupported file type: ${ext}. Supported types: ${allSupported.join(', ')}`;
+    }
+    
+    if (file.size > MAX_FILE_SIZE) {
+      return `File too large: ${(file.size / 1024 / 1024).toFixed(2)}MB. Maximum: 100MB`;
+    }
+    
+    return null;
+  }
 
   function handleDragOver(event: DragEvent) {
     event.preventDefault();
@@ -31,30 +53,62 @@
 
     const files = event.dataTransfer?.files;
     if (files && files.length > 0) {
-      selectedFile = files[0];
+      const file = files[0];
+      const error = validateFile(file);
+      if (error) {
+        validationError = error;
+        selectedFile = null;
+      } else {
+        validationError = '';
+        selectedFile = file;
+      }
     }
   }
 
   function handleFileSelect(event: Event) {
     const target = event.target as HTMLInputElement;
     if (target.files && target.files.length > 0) {
-      selectedFile = target.files[0];
+      const file = target.files[0];
+      const error = validateFile(file);
+      if (error) {
+        validationError = error;
+        selectedFile = null;
+      } else {
+        validationError = '';
+        selectedFile = file;
+      }
     }
   }
 
   async function handleUpload() {
     if (!selectedFile) return;
 
+    // Validate required fields
+    if (!options.apiKey) {
+      alert('OpenAI API key is required');
+      return;
+    }
+
+    if (options.diarization && !options.hfToken) {
+      alert('HuggingFace token is required for speaker diarization');
+      return;
+    }
+
     isUploading = true;
 
     try {
       const formData = new FormData();
       formData.append('file', selectedFile);
-      formData.append('diarization', String(options.diarization));
-      if (options.language !== 'auto') {
+      formData.append('api_key', options.apiKey);
+      formData.append('diarize', String(options.diarization));
+      
+      if (options.diarization && options.hfToken) {
+        formData.append('hf_token', options.hfToken);
+      }
+      
+      if (options.language && options.language !== 'auto') {
         formData.append('language', options.language);
       }
-      formData.append('model', options.model);
 
       const response = await fetch('/api/transcribe', {
         method: 'POST',
@@ -62,7 +116,8 @@
       });
 
       if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+        throw new Error(errorData.detail || `Upload failed: ${response.statusText}`);
       }
 
       const job = await response.json();
@@ -86,9 +141,11 @@
     class="dropzone"
     class:dragging={isDragging}
     class:has-file={selectedFile}
-    ondragover={handleDragOver}
-    ondragleave={handleDragLeave}
-    ondrop={handleDrop}
+    on:dragover={handleDragOver}
+    on:dragleave={handleDragLeave}
+    on:drop={handleDrop}
+    role="button"
+    tabindex="0"
   >
     {#if !selectedFile}
       <div class="dropzone-content">
@@ -103,7 +160,11 @@
         <h3>Drop your video file here</h3>
         <p>or</p>
         <label for="file-input" class="file-label">
-          <button type="button" class="primary" onclick={() => document.getElementById('file-input')?.click()}>
+          <button
+            type="button"
+            class="primary"
+            on:click={() => document.getElementById('file-input')?.click()}
+          >
             Choose File
           </button>
         </label>
@@ -111,7 +172,7 @@
           id="file-input"
           type="file"
           accept="video/*,audio/*"
-          onchange={handleFileSelect}
+          on:change={handleFileSelect}
           style="display: none;"
         />
         <p class="hint">Supports MP4, AVI, MOV, MP3, WAV, and more</p>
@@ -130,7 +191,7 @@
           <h4>{selectedFile.name}</h4>
           <p>{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
         </div>
-        <button type="button" class="clear-btn" onclick={clearFile} disabled={isUploading}>
+        <button type="button" class="clear-btn" on:click={clearFile} disabled={isUploading}>
           ✕
         </button>
       </div>
@@ -141,11 +202,37 @@
     <div class="options">
       <h3>Transcription Options</h3>
 
+      <label class="input-label">
+        <span>OpenAI API Key <span class="required">*</span></span>
+        <input
+          type="password"
+          bind:value={options.apiKey}
+          placeholder="sk-..."
+          disabled={isUploading}
+          required
+        />
+        <span class="hint-text">Required for transcription</span>
+      </label>
+
       <label class="checkbox-label">
         <input type="checkbox" bind:checked={options.diarization} disabled={isUploading} />
         <span>Enable Speaker Diarization</span>
         <span class="hint-text">Identify different speakers in the audio</span>
       </label>
+
+      {#if options.diarization}
+        <label class="input-label">
+          <span>HuggingFace Token <span class="required">*</span></span>
+          <input
+            type="password"
+            bind:value={options.hfToken}
+            placeholder="hf_..."
+            disabled={isUploading}
+            required={options.diarization}
+          />
+          <span class="hint-text">Required for speaker diarization</span>
+        </label>
+      {/if}
 
       <label class="input-label">
         <span>Language</span>
@@ -172,9 +259,15 @@
         </select>
       </label>
 
-      <button type="button" class="primary upload-btn" onclick={handleUpload} disabled={isUploading}>
+      <button type="button" class="primary upload-btn" on:click={handleUpload} disabled={isUploading}>
         {isUploading ? 'Uploading...' : 'Start Transcription'}
       </button>
+    </div>
+  {/if}
+
+  {#if validationError}
+    <div class="error-message">
+      {validationError}
     </div>
   {/if}
 </div>
@@ -336,5 +429,33 @@
     width: 100%;
     padding: 1rem;
     font-size: 1.125rem;
+  }
+
+  .error-message {
+    padding: 1rem;
+    background: #fee;
+    border: 2px solid var(--error-color);
+    border-radius: 8px;
+    color: var(--error-color);
+    font-weight: 500;
+  }
+
+  .required {
+    color: var(--error-color);
+  }
+
+  .input-label input[type='password'],
+  .input-label input[type='text'] {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+  }
+
+  .input-label input[type='password']:focus,
+  .input-label input[type='text']:focus {
+    outline: none;
+    border-color: var(--primary-color);
   }
 </style>
