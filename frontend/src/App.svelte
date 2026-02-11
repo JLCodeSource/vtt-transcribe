@@ -12,7 +12,7 @@
     transcript = [];
   }
 
-  function handleProgress(event: CustomEvent<{ status: string }>) {
+  function handleProgress(event: CustomEvent<Partial<TranscriptionJob>>) {
     if (currentJob) {
       currentJob = { ...currentJob, ...event.detail };
     }

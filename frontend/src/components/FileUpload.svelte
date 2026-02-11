@@ -141,9 +141,9 @@
     class="dropzone"
     class:dragging={isDragging}
     class:has-file={selectedFile}
-    on:dragover={handleDragOver}
-    on:dragleave={handleDragLeave}
-    on:drop={handleDrop}
+    ondragover={handleDragOver}
+    ondragleave={handleDragLeave}
+    ondrop={handleDrop}
     role="region"
     aria-label="File upload dropzone"
   >
@@ -163,7 +163,7 @@
           <button
             type="button"
             class="primary"
-            on:click={() => document.getElementById('file-input')?.click()}
+            onclick={() => document.getElementById('file-input')?.click()}
           >
             Choose File
           </button>
@@ -172,7 +172,7 @@
           id="file-input"
           type="file"
           accept="video/*,audio/*"
-          on:change={handleFileSelect}
+          onchange={handleFileSelect}
           style="display: none;"
         />
         <p class="hint">Supports MP4, AVI, MOV, MP3, WAV, and more</p>
@@ -191,7 +191,7 @@
           <h4>{selectedFile.name}</h4>
           <p>{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
         </div>
-        <button type="button" class="clear-btn" on:click={clearFile} disabled={isUploading}>
+        <button type="button" class="clear-btn" onclick={clearFile} disabled={isUploading}>
           ✕
         </button>
       </div>
@@ -259,7 +259,7 @@
         </select>
       </label>
 
-      <button type="button" class="primary upload-btn" on:click={handleUpload} disabled={isUploading}>
+      <button type="button" class="primary upload-btn" onclick={handleUpload} disabled={isUploading}>
         {isUploading ? 'Uploading...' : 'Start Transcription'}
       </button>
     </div>

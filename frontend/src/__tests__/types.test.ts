@@ -4,13 +4,12 @@ describe('Types', () => {
   it('should export TranscriptionJob type', () => {
     type TranscriptionJob = import('../types').TranscriptionJob;
     const job: TranscriptionJob = {
-      id: 'test-123',
+      job_id: 'test-123',
       filename: 'test.mp4',
       status: 'pending',
       progress: 0,
-      created_at: new Date().toISOString(),
     };
-    expect(job.id).toBe('test-123');
+    expect(job.job_id).toBe('test-123');
   });
 
   it('should export TranscriptSegment type', () => {
