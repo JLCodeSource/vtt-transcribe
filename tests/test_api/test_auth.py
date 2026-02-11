@@ -725,3 +725,30 @@ class TestAuthRoutes:
 
             # Should be around 15 minutes (allow 1 second tolerance)
             assert timedelta(minutes=14, seconds=59) < time_diff < timedelta(minutes=15, seconds=1)
+
+    def test_create_access_token_with_datetime_value(self) -> None:
+        """Should convert datetime values to isoformat (line 54)."""
+        from datetime import datetime, timedelta, timezone
+        from unittest.mock import patch
+
+        from vtt_transcribe.api.auth import create_access_token
+
+        # Mock SECRET_KEY for test environment
+        with patch("vtt_transcribe.api.auth.SECRET_KEY", "test-secret-key-for-testing"):
+            now = datetime.now(timezone.utc)
+            data: dict[str, str | datetime] = {"sub": "testuser", "created_at": now}
+
+            # Call with datetime value to trigger isoformat conversion (line 54)
+            token = create_access_token(data, expires_delta=timedelta(minutes=30))
+
+            # Decode to verify datetime was converted
+            from jose import jwt
+
+            from vtt_transcribe.api.auth import ALGORITHM
+
+            decoded = jwt.decode(token, "test-secret-key-for-testing", algorithms=[ALGORITHM])
+
+            # Should have isoformat string, not datetime object
+            assert "created_at" in decoded
+            assert isinstance(decoded["created_at"], str)
+            assert decoded["created_at"] == now.isoformat()
