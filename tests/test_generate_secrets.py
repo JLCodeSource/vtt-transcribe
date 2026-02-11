@@ -171,7 +171,6 @@ class TestCLIIntegration:
             [sys.executable, "scripts/generate_secrets.py"],
             capture_output=True,
             text=True,
-            cwd="/home/runner/work/vtt-transcribe/vtt-transcribe",
         )
 
         assert result.returncode == 0
@@ -184,7 +183,6 @@ class TestCLIIntegration:
             [sys.executable, "scripts/generate_secrets.py", "--format", "shell"],
             capture_output=True,
             text=True,
-            cwd="/home/runner/work/vtt-transcribe/vtt-transcribe",
         )
 
         assert result.returncode == 0
@@ -197,7 +195,6 @@ class TestCLIIntegration:
             [sys.executable, "scripts/generate_secrets.py", "--help"],
             capture_output=True,
             text=True,
-            cwd="/home/runner/work/vtt-transcribe/vtt-transcribe",
         )
 
         assert result.returncode == 0
@@ -212,7 +209,6 @@ class TestCLIIntegration:
             [sys.executable, "scripts/generate_secrets.py", "--format", "invalid"],
             capture_output=True,
             text=True,
-            cwd="/home/runner/work/vtt-transcribe/vtt-transcribe",
         )
 
         assert result.returncode != 0
@@ -228,7 +224,6 @@ class TestOutputFormat:
             [sys.executable, "scripts/generate_secrets.py"],
             capture_output=True,
             text=True,
-            cwd="/home/runner/work/vtt-transcribe/vtt-transcribe",
         )
 
         # Extract SECRET_KEY value
@@ -250,7 +245,6 @@ class TestOutputFormat:
             [sys.executable, "scripts/generate_secrets.py"],
             capture_output=True,
             text=True,
-            cwd="/home/runner/work/vtt-transcribe/vtt-transcribe",
         )
 
         # Extract ENCRYPTION_KEY value
@@ -273,7 +267,6 @@ class TestOutputFormat:
             [sys.executable, "scripts/generate_secrets.py", "--format", "shell"],
             capture_output=True,
             text=True,
-            cwd="/home/runner/work/vtt-transcribe/vtt-transcribe",
         )
 
         lines = result.stdout.strip().split("\n")
