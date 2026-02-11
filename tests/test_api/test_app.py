@@ -447,8 +447,8 @@ class TestDatabaseFunctions:
                 await generator.__anext__()
 
                 # Simulate exception
+                msg = "Test error"
                 try:
-                    msg = "Test error"
                     raise ValueError(msg)
                 except ValueError:
                     with contextlib.suppress(ValueError, StopAsyncIteration):

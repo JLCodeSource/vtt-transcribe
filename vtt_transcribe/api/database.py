@@ -43,6 +43,7 @@ except ImportError:
     Base = None  # type: ignore[assignment,misc]
     engine = None  # type: ignore[assignment]
     AsyncSessionLocal = None  # type: ignore[assignment]
+    AsyncSession = None  # type: ignore[assignment,misc]
     database_available = False
 
 
@@ -62,7 +63,7 @@ async def init_db() -> None:
         pass
 
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
+async def get_db() -> AsyncGenerator[AsyncSession, None]:  # pyright: ignore[reportInvalidTypeForm]
     """Dependency for getting async database sessions."""
     if not database_available or AsyncSessionLocal is None:
         msg = "Database dependencies not available"
