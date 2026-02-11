@@ -108,18 +108,18 @@ def test_speaker_diarizer_initialization_with_token() -> None:
     """Test SpeakerDiarizer can be initialized with a token."""
     from vtt_transcribe.diarization import SpeakerDiarizer
 
-    diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
-    assert diarizer.hf_token == "test_token"  # noqa: S105
+    diarizer = SpeakerDiarizer(hf_token="test_token")
+    assert diarizer.hf_token == "test_token"
 
 
 def test_speaker_diarizer_initialization_from_env() -> None:
     """Test SpeakerDiarizer can be initialized from HF_TOKEN env var."""
     from vtt_transcribe.diarization import SpeakerDiarizer
 
-    os.environ["HF_TOKEN"] = "env_token"  # noqa: S105
+    os.environ["HF_TOKEN"] = "env_token"
     try:
         diarizer = SpeakerDiarizer()
-        assert diarizer.hf_token == "env_token"  # noqa: S105
+        assert diarizer.hf_token == "env_token"
     finally:
         del os.environ["HF_TOKEN"]
 
@@ -139,7 +139,7 @@ def test_speaker_diarizer_initialization_with_device() -> None:
     """Test SpeakerDiarizer can be initialized with a device."""
     from vtt_transcribe.diarization import SpeakerDiarizer
 
-    diarizer = SpeakerDiarizer(hf_token="test_token", device="cuda")  # noqa: S106
+    diarizer = SpeakerDiarizer(hf_token="test_token", device="cuda")
     assert diarizer.device == "cuda"
 
 
@@ -147,7 +147,7 @@ def test_speaker_diarizer_default_device_is_auto() -> None:
     """Test SpeakerDiarizer defaults to auto device."""
     from vtt_transcribe.diarization import SpeakerDiarizer
 
-    diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
+    diarizer = SpeakerDiarizer(hf_token="test_token")
     assert diarizer.device == "auto"
 
 
@@ -155,7 +155,7 @@ def test_diarize_audio_returns_speaker_segments() -> None:
     """Test diarize_audio returns list of speaker segments."""
     from vtt_transcribe.diarization import SpeakerDiarizer
 
-    diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
+    diarizer = SpeakerDiarizer(hf_token="test_token")
 
     # Mock the pipeline and its return value structure
     mock_turn = MagicMock()
@@ -182,7 +182,7 @@ def test_apply_speakers_to_transcript_adds_labels() -> None:
     """Test apply_speakers_to_transcript adds speaker labels to transcript."""
     from vtt_transcribe.diarization import SpeakerDiarizer
 
-    diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
+    diarizer = SpeakerDiarizer(hf_token="test_token")
 
     transcript = "[00:00 - 00:05] Hello world"
     speaker_segments = [(0.0, 5.0, "SPEAKER_00")]
@@ -196,7 +196,7 @@ def test_apply_speakers_to_transcript_empty_segments() -> None:
     """Test apply_speakers_to_transcript returns transcript unchanged when no segments."""
     from vtt_transcribe.diarization import SpeakerDiarizer
 
-    diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
+    diarizer = SpeakerDiarizer(hf_token="test_token")
 
     transcript = "[00:00 - 00:05] Hello world"
     speaker_segments: list[tuple[float, float, str]] = []
@@ -210,7 +210,7 @@ def test_apply_speakers_to_transcript_no_match() -> None:
     """Test apply_speakers_to_transcript handles lines without timestamp match."""
     from vtt_transcribe.diarization import SpeakerDiarizer
 
-    diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
+    diarizer = SpeakerDiarizer(hf_token="test_token")
 
     transcript = "Plain text without timestamps\n[00:00 - 00:05] Hello"
     speaker_segments = [(0.0, 5.0, "SPEAKER_00")]
@@ -225,7 +225,7 @@ def test_apply_speakers_to_transcript_no_speaker_found() -> None:
     """Test apply_speakers_to_transcript when no speaker matches timestamp."""
     from vtt_transcribe.diarization import SpeakerDiarizer
 
-    diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
+    diarizer = SpeakerDiarizer(hf_token="test_token")
 
     transcript = "[00:10 - 00:15] Hello"
     # Doesn't overlap with timestamp
@@ -240,7 +240,7 @@ def test_find_speaker_at_time_no_match() -> None:
     """Test _find_speaker_at_time returns None when no speaker found."""
     from vtt_transcribe.diarization import SpeakerDiarizer
 
-    diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
+    diarizer = SpeakerDiarizer(hf_token="test_token")
 
     speaker_segments = [(0.0, 5.0, "SPEAKER_00"), (10.0, 15.0, "SPEAKER_01")]
 
@@ -265,7 +265,7 @@ def test_diarize_audio_short_file_raises_error() -> None:
     """Test that diarizing a short audio file raises a helpful error."""
     from vtt_transcribe.diarization import SpeakerDiarizer
 
-    diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
+    diarizer = SpeakerDiarizer(hf_token="test_token")
 
     # Mock the pipeline to raise the short audio error
     mock_pipeline = MagicMock()
@@ -285,7 +285,7 @@ def test_diarize_audio_other_error_is_reraised() -> None:
     """Test that non-short-audio errors are re-raised as-is."""
     from vtt_transcribe.diarization import SpeakerDiarizer
 
-    diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
+    diarizer = SpeakerDiarizer(hf_token="test_token")
 
     # Mock the pipeline to raise a different error
     mock_pipeline = MagicMock()
@@ -455,7 +455,7 @@ def test_diarize_audio_sample_mismatch_error() -> None:
     """Test that sample mismatch errors trigger WAV conversion fallback."""
     from vtt_transcribe.diarization import SpeakerDiarizer
 
-    diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
+    diarizer = SpeakerDiarizer(hf_token="test_token")
 
     # Mock the pipeline to raise a sample mismatch error for a file > 10s
     # Simulating a 15-second file with wrong sample count
@@ -480,7 +480,7 @@ def test_diarize_audio_other_value_error() -> None:
     """Test that non-sample-mismatch ValueError is re-raised as-is."""
     from vtt_transcribe.diarization import SpeakerDiarizer
 
-    diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
+    diarizer = SpeakerDiarizer(hf_token="test_token")
 
     # Mock the pipeline to raise a ValueError that doesn't match the pattern
     mock_pipeline = MagicMock()
@@ -527,7 +527,7 @@ def test_diarizer_device_move_failure_fallback() -> None:
     """Test that diarizer handles device move failures gracefully."""
     from vtt_transcribe.diarization import SpeakerDiarizer
 
-    diarizer = SpeakerDiarizer(hf_token="test_token", device="cuda")  # noqa: S106
+    diarizer = SpeakerDiarizer(hf_token="test_token", device="cuda")
 
     mock_pipeline = MagicMock()
     mock_pipeline.to.side_effect = RuntimeError("CUDA not available")
@@ -624,7 +624,7 @@ def test_load_pipeline_logs_device_info() -> None:
 
     from vtt_transcribe.diarization import SpeakerDiarizer
 
-    diarizer = SpeakerDiarizer(hf_token="test_token", device="cuda")  # noqa: S106
+    diarizer = SpeakerDiarizer(hf_token="test_token", device="cuda")
 
     mock_pipeline = MagicMock()
 
@@ -675,7 +675,7 @@ def test_add_speaker_label_with_hh_mm_ss_format() -> None:
     """Test adding speaker label to transcript line with HH:MM:SS timestamp format."""
     from vtt_transcribe.diarization import SpeakerDiarizer
 
-    diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
+    diarizer = SpeakerDiarizer(hf_token="test_token")
 
     # Test with HH:MM:SS format (hour:minute:second)
     line = "[01:30:45 - 01:30:50] Hello world"
@@ -696,7 +696,7 @@ class TestWAVConversionFallback:
 
         from vtt_transcribe.diarization import SpeakerDiarizer
 
-        diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
+        diarizer = SpeakerDiarizer(hf_token="test_token")
 
         with tempfile.NamedTemporaryFile(mode="wb", suffix=".mp3", delete=False) as f:
             audio_path = Path(f.name)
@@ -751,7 +751,7 @@ class TestWAVConversionFallback:
 
         from vtt_transcribe.diarization import SpeakerDiarizer
 
-        diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
+        diarizer = SpeakerDiarizer(hf_token="test_token")
 
         with tempfile.NamedTemporaryFile(mode="wb", suffix=".mp3", delete=False) as f:
             audio_path = Path(f.name)
@@ -796,7 +796,7 @@ class TestWAVConversionFallback:
 
         from vtt_transcribe.diarization import SpeakerDiarizer
 
-        diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
+        diarizer = SpeakerDiarizer(hf_token="test_token")
 
         with tempfile.NamedTemporaryFile(mode="wb", suffix=".mp3", delete=False) as f:
             audio_path = Path(f.name)
@@ -825,7 +825,7 @@ class TestWAVConversionFallback:
 
         from vtt_transcribe.diarization import SpeakerDiarizer
 
-        diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
+        diarizer = SpeakerDiarizer(hf_token="test_token")
 
         with (
             tempfile.NamedTemporaryFile(mode="wb", suffix=".mp3", delete=False) as f1,
@@ -857,7 +857,7 @@ class TestWAVConversionFallback:
 
         from vtt_transcribe.diarization import SpeakerDiarizer
 
-        diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
+        diarizer = SpeakerDiarizer(hf_token="test_token")
 
         with (
             tempfile.NamedTemporaryFile(mode="wb", suffix=".mp3", delete=False) as f1,

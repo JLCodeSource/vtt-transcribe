@@ -48,6 +48,10 @@ def get_password_hash(password: str) -> str:
 def create_access_token(data: dict[str, str | datetime], expires_delta: timedelta | None = None) -> str:
     """Create a JWT access token."""
     to_encode = data.copy()
+    # Convert datetime objects to ISO format strings for JSON serialization
+    for key, value in to_encode.items():
+        if isinstance(value, datetime):
+            to_encode[key] = value.isoformat()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:

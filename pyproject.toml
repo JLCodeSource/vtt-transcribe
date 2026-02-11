@@ -49,6 +49,7 @@ api = [
     "aiosqlite>=0.19.0",  # SQLite async driver
     "python-jose[cryptography]>=3.3.0",  # JWT token handling
     "passlib[bcrypt]>=1.7.4",  # Password hashing
+    "bcrypt>=4.0.0,<5.0.0",  # Pin bcrypt <5.0 for passlib compatibility
     "cryptography>=41.0.0",  # API key encryption
     "email-validator>=2.0.0",  # Pydantic email validation
 ]
@@ -61,6 +62,7 @@ diarization = [
 dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",  # For async test support
     "mypy>=1.5.0",
     "ruff>=0.1.0",
     "pre-commit>=3.4.0",
@@ -84,6 +86,7 @@ dev = [
     "nox[pbs]>=2024.4.15",
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
+    "pytest-asyncio>=0.21.0",
     "ruff>=0.14.14",
     "pre-commit>=3.4.0",
     "fastapi>=0.115.0",
@@ -94,6 +97,8 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
     "ignore::UserWarning:pyannote.audio.core.io",
     "ignore::UserWarning:pyannote.audio.models.blocks.pooling",

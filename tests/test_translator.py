@@ -296,3 +296,65 @@ class TestAudioTranslator:
             # Invalid format line should be preserved as-is
             assert "[INVALID TIMESTAMP FORMAT]" in result
             assert "[00:00 - 00:05] Hola" in result
+
+    def test_reconstruct_line_empty_translated_text_fallback(self) -> None:
+        """Should fall back to original text when translation missing (line 173)."""
+        translator = AudioTranslator(api_key="test-key")
+
+        # Line with timestamp and text to translate
+        info = ("[00:00 - 00:05]", "[00:00 - 00:05]", "Hello world")
+        # Empty translation dict - no translation available
+        translated_texts: dict[int, str] = {}
+
+        result, new_idx = translator._reconstruct_line(info, translated_texts, 0)
+
+        # Should use fallback to original text via .get(text_idx, info[2])
+        assert "Hello world" in result
+        assert "[00:00 - 00:05]" in result
+        assert new_idx == 1
+
+    def test_reconstruct_line_with_translated_text_in_dict(self) -> None:
+        """Should use translated text when available in dict (line 173 success path)."""
+        translator = AudioTranslator(api_key="test-key")
+
+        # Line with timestamp and text to translate
+        info = ("[00:00 - 00:05]", "[00:00 - 00:05]", "Hello world")
+        # Translation available in dict
+        translated_texts = {0: "Translated text"}
+
+        result, new_idx = translator._reconstruct_line(info, translated_texts, 0)
+
+        # Should use the translation from dict
+        assert "Translated text" in result
+        assert "[00:00 - 00:05]" in result
+        assert new_idx == 1
+
+    def test_reconstruct_line_plain_text_with_translation(self) -> None:
+        """Should translate plain text line (no timestamp) - line 172-173 success."""
+        translator = AudioTranslator(api_key="test-key")
+
+        # Plain text line (no timestamp, but has text)
+        info = ("Plain text here", "", "Plain text here")
+        # Translation available
+        translated_texts = {0: "Translated plain text"}
+
+        result, new_idx = translator._reconstruct_line(info, translated_texts, 0)
+
+        # Should use translated text
+        assert result == "Translated plain text"
+        assert new_idx == 1
+
+    def test_reconstruct_line_plain_text_fallback(self) -> None:
+        """Should fallback to original for plain text with no translation."""
+        translator = AudioTranslator(api_key="test-key")
+
+        # Plain text line (no timestamp, but has text)
+        info = ("Plain text here", "", "Plain text here")
+        # No translation
+        translated_texts: dict[int, str] = {}
+
+        result, new_idx = translator._reconstruct_line(info, translated_texts, 0)
+
+        # Should use original text as fallback
+        assert result == "Plain text here"
+        assert new_idx == 1

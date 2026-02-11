@@ -37,5 +37,5 @@ def test_speaker_diarizer_checks_ffmpeg() -> None:
         # SpeakerDiarizer should no longer check for ffmpeg - that's done at CLI startup
         with patch.dict("os.environ", {"HF_TOKEN": "test_token"}):
             # This should NOT raise since the check was moved to main.py
-            diarizer = SpeakerDiarizer(hf_token="test_token")  # noqa: S106
+            diarizer = SpeakerDiarizer(hf_token="test_token")
             assert diarizer is not None

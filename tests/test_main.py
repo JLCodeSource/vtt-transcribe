@@ -869,3 +869,37 @@ class TestTranslationWorkflow:
 
             mock_openai.assert_called_once_with(api_key="test-key")
             mock_client.chat.completions.create.assert_called_once()
+
+
+class TestEmptyDataHandling:
+    """Test handling of empty data scenarios."""
+
+    def test_output_result_empty_string_still_writes_newline(self) -> None:
+        """Should handle empty result string (line 138)."""
+        from io import StringIO
+        from unittest.mock import patch
+
+        from vtt_transcribe.main import _output_result
+
+        # Test with empty string result
+        output = StringIO()
+        with patch("sys.stdout", output):
+            _output_result("", stdin_mode=True, save_path=None)
+
+        # Should write a newline even for empty result
+        assert output.getvalue() == "\n"
+
+    def test_output_result_whitespace_only_adds_newline(self) -> None:
+        """Should add newline to whitespace-only result."""
+        from io import StringIO
+        from unittest.mock import patch
+
+        from vtt_transcribe.main import _output_result
+
+        # Test with whitespace-only result (no trailing newline)
+        output = StringIO()
+        with patch("sys.stdout", output):
+            _output_result("   ", stdin_mode=True, save_path=None)
+
+        # Should add newline
+        assert output.getvalue().endswith("\n")
