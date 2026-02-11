@@ -11,10 +11,15 @@ This guide explains how to run vtt-transcribe using Docker Compose for local dev
 
 2. **Generate secure secrets:**
    ```bash
-   # Use the built-in secret generator (requires cryptography package)
+   # Install API extras (includes cryptography package)
+   uv sync --extra api
+   # OR use the make command
+   # make install-api
+   
+   # Use the built-in secret generator
    uv run python scripts/generate_secrets.py
    
-   # Or if you prefer using venv:
+   # Or if you prefer using venv (ensure cryptography is installed in that env):
    # source .venv/bin/activate
    # python scripts/generate_secrets.py
    ```

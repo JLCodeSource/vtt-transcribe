@@ -21,8 +21,7 @@ Examples:
 
 import argparse
 import secrets
-
-from cryptography.fernet import Fernet
+import sys
 
 
 def generate_secret_key(length: int = 32) -> str:
@@ -43,6 +42,19 @@ def generate_encryption_key() -> str:
     Returns:
         Base64-encoded Fernet key suitable for cryptography.fernet
     """
+    try:
+        from cryptography.fernet import Fernet
+    except ImportError:
+        print(
+            "Error: 'cryptography' package is required to generate encryption keys.",
+            file=sys.stderr,
+        )
+        print("\nInstall it with one of the following commands:", file=sys.stderr)
+        print("  uv sync --extra api", file=sys.stderr)
+        print("  make install-api", file=sys.stderr)
+        print("  pip install cryptography", file=sys.stderr)
+        sys.exit(1)
+    
     return Fernet.generate_key().decode()
 
 
