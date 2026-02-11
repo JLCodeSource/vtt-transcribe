@@ -67,16 +67,16 @@
   <div class="transcript-header">
     <h2>📄 Transcript</h2>
     <div class="header-actions">
-      <button type="button" class="secondary" on:click={() => downloadTranscript('txt')}>
+      <button type="button" class="secondary" onclick={() => downloadTranscript('txt')}>
         Download TXT
       </button>
-      <button type="button" class="secondary" on:click={() => downloadTranscript('vtt')}>
+      <button type="button" class="secondary" onclick={() => downloadTranscript('vtt')}>
         Download VTT
       </button>
-      <button type="button" class="secondary" on:click={() => downloadTranscript('srt')}>
+      <button type="button" class="secondary" onclick={() => downloadTranscript('srt')}>
         Download SRT
       </button>
-      <button type="button" class="secondary" on:click={onreset}>New Transcription</button>
+      <button type="button" class="secondary" onclick={onreset}>New Transcription</button>
     </div>
   </div>
 
