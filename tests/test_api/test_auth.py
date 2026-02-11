@@ -557,3 +557,142 @@ class TestSecretKeyConfiguration:
                 importlib.reload(vtt_transcribe.api.auth)
 
             assert "SECRET_KEY environment variable must be set" in str(exc_info.value)
+
+
+class TestAuthRoutes:
+    """Tests for authentication route endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_register_user_success(self) -> None:
+        """Should register a new user successfully."""
+        from vtt_transcribe.api.routes.auth import UserCreate, register
+
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute = AsyncMock(return_value=mock_result)
+        mock_db.add = MagicMock()
+        mock_db.commit = AsyncMock()
+        mock_db.refresh = AsyncMock()
+
+        user_data = UserCreate(username="newuser", email="new@example.com", password="password123")
+
+        with patch("vtt_transcribe.api.routes.auth.get_password_hash") as mock_hash:
+            mock_hash.return_value = "hashed_password"
+
+            await register(user_data, mock_db)
+
+            assert mock_db.add.called
+            assert mock_db.commit.called
+
+    @pytest.mark.asyncio
+    async def test_register_duplicate_username(self) -> None:
+        """Should reject duplicate username."""
+        from vtt_transcribe.api.models import User
+        from vtt_transcribe.api.routes.auth import UserCreate, register
+
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        existing_user = User(id=1, username="existing", email="other@example.com", hashed_password="hash")
+        mock_result.scalar_one_or_none.return_value = existing_user
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        user_data = UserCreate(username="existing", email="new@example.com", password="password123")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await register(user_data, mock_db)
+
+        assert exc_info.value.status_code == 400
+        assert "Username already registered" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_register_duplicate_email(self) -> None:
+        """Should reject duplicate email."""
+        from vtt_transcribe.api.models import User
+        from vtt_transcribe.api.routes.auth import UserCreate, register
+
+        mock_db = AsyncMock()
+
+        # First call (username check) returns None, second call (email check) returns user
+        mock_result_username = MagicMock()
+        mock_result_username.scalar_one_or_none.return_value = None
+
+        mock_result_email = MagicMock()
+        existing_user = User(id=1, username="other", email="existing@example.com", hashed_password="hash")
+        mock_result_email.scalar_one_or_none.return_value = existing_user
+
+        mock_db.execute = AsyncMock(side_effect=[mock_result_username, mock_result_email])
+
+        user_data = UserCreate(username="newuser", email="existing@example.com", password="password123")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await register(user_data, mock_db)
+
+        assert exc_info.value.status_code == 400
+        assert "Email already registered" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_login_route_success(self) -> None:
+        """Should return token on successful login via route."""
+        from vtt_transcribe.api.models import User
+        from vtt_transcribe.api.routes.auth import login
+
+        mock_db = AsyncMock()
+        mock_form = MagicMock()
+        mock_form.username = "testuser"
+        mock_form.password = "password123"
+
+        mock_user = User(id=1, username="testuser", email="test@example.com", hashed_password="hash", is_active=True)
+
+        with patch("vtt_transcribe.api.routes.auth.authenticate_user") as mock_auth:
+            with patch("vtt_transcribe.api.routes.auth.create_access_token") as mock_token:
+                mock_auth.return_value = mock_user
+                mock_token.return_value = "fake-jwt-token"
+
+                token = await login(mock_form, mock_db)
+
+                assert token.access_token == "fake-jwt-token"
+                assert token.token_type == "bearer"
+
+    @pytest.mark.asyncio
+    async def test_login_route_invalid_credentials(self) -> None:
+        """Should reject invalid credentials via route."""
+        from vtt_transcribe.api.routes.auth import login
+
+        mock_db = AsyncMock()
+        mock_form = MagicMock()
+        mock_form.username = "testuser"
+        mock_form.password = "wrongpassword"
+
+        with patch("vtt_transcribe.api.routes.auth.authenticate_user") as mock_auth:
+            mock_auth.return_value = None
+
+            with pytest.raises(HTTPException) as exc_info:
+                await login(mock_form, mock_db)
+
+            assert exc_info.value.status_code == 401
+            assert "Incorrect username or password" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_read_users_me_route(self) -> None:
+        """Should return current user information via route."""
+        from vtt_transcribe.api.models import User
+        from vtt_transcribe.api.routes.auth import read_users_me
+
+        mock_user = User(id=1, username="testuser", email="test@example.com", hashed_password="hash", is_active=True)
+
+        user = await read_users_me(mock_user)
+
+        assert user.username == "testuser"
+        assert user.email == "test@example.com"
+
+    def test_create_access_token_with_none_expires_delta(self) -> None:
+        """Should use default expiration when expires_delta is None."""
+        from vtt_transcribe.api.auth import create_access_token
+
+        # Mock jwt.encode to avoid SECRET_KEY requirement
+        with patch("vtt_transcribe.api.auth.jwt.encode", return_value="mocked_token"):
+            token = create_access_token(data={"sub": "testuser"}, expires_delta=None)
+
+        assert isinstance(token, str)
+        assert token == "mocked_token"

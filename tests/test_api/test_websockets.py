@@ -832,3 +832,57 @@ def test_websocket_generic_exception() -> None:
     # Clean up
     if job_id in jobs:
         del jobs[job_id]
+
+
+class TestWebSocketHelperFunctions:
+    """Tests for WebSocket helper functions."""
+
+    def test_build_status_message_with_detected_language(self) -> None:
+        """Should include detected_language when present."""
+        from vtt_transcribe.api.routes.websockets import _build_status_message
+
+        current_job = {
+            "job_id": "test-123",
+            "status": "completed",
+            "filename": "test.mp3",
+            "detected_language": "en",
+        }
+
+        message = _build_status_message("test-123", current_job)
+
+        assert message["detected_language"] == "en"
+
+    @pytest.mark.asyncio
+    async def test_wait_for_progress_timeout(self) -> None:
+        """Should return None on timeout."""
+        from vtt_transcribe.api.routes.websockets import _wait_for_progress_or_timeout
+
+        queue: asyncio.Queue = asyncio.Queue()
+
+        # Should timeout and return None
+        result = await _wait_for_progress_or_timeout(queue, timeout=0.01)
+
+        assert result is None
+
+
+class TestTranscriptionProgressEmit:
+    """Tests for transcription progress emission."""
+
+    def test_emit_progress_queue_full_logs_warning(self) -> None:
+        """Should log warning when progress queue is full."""
+        from vtt_transcribe.api.routes.transcription import _emit_progress, jobs
+
+        # Create a job with a full queue
+        job_id = "test-job-123"
+        jobs[job_id] = {
+            "progress_updates": asyncio.Queue(maxsize=1),
+            "status": "processing",
+        }
+        jobs[job_id]["progress_updates"].put_nowait({"dummy": "message"})
+
+        # Try to emit when full - should log warning but not raise
+        _emit_progress(job_id, "test message", "info")
+        # If no exception raised, test passes
+
+        # Cleanup
+        del jobs[job_id]

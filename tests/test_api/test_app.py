@@ -1,6 +1,7 @@
 """Tests for FastAPI application endpoints."""
 
-from unittest.mock import patch
+import contextlib
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -203,3 +204,157 @@ def test_server_main_block_coverage() -> None:
 
         # Verify main() was called (which calls uvicorn.run)
         assert mock_run.called
+
+
+class TestAPIAppLifespan:
+    """Test vtt_transcribe/api/app.py lifespan management."""
+
+    @pytest.mark.asyncio
+    async def test_lifespan_init_db_error_suppressed(self) -> None:
+        """Should suppress database initialization errors."""
+        from vtt_transcribe.api.app import lifespan
+
+        # Mock app object
+        mock_app = MagicMock()
+
+        # Mock init_db to raise an error
+        with patch("vtt_transcribe.api.app.init_db", side_effect=Exception("DB error")):
+            # lifespan uses contextlib.suppress, so errors should be suppressed
+            async with lifespan(mock_app):
+                # Should not raise error even though init_db failed
+                pass
+
+            # Success if no exception was raised
+
+
+class TestAPIModels:
+    """Test vtt_transcribe/api/models.py __repr__ methods."""
+
+    def test_user_repr(self) -> None:
+        """Should generate readable repr for User."""
+        from vtt_transcribe.api.models import User
+
+        user = User(id=1, username="test", email="test@example.com", hashed_password="hash")
+        repr_str = repr(user)
+
+        assert "<User(" in repr_str
+        assert "test" in repr_str
+
+    def test_api_key_repr(self) -> None:
+        """Should generate readable repr for APIKey."""
+        from vtt_transcribe.api.models import APIKey
+
+        key = APIKey(id=1, user_id=1, service="openai", encrypted_key="encrypted", key_name="test")
+        repr_str = repr(key)
+
+        assert "<APIKey(" in repr_str
+
+    def test_transcription_job_repr(self) -> None:
+        """Should generate readable repr for TranscriptionJob."""
+        from vtt_transcribe.api.models import TranscriptionJob
+
+        job = TranscriptionJob(id=1, user_id=1, job_id="test-123", filename="test.mp3", status="completed")
+        repr_str = repr(job)
+
+        assert "<TranscriptionJob(" in repr_str
+        assert "test-123" in repr_str
+
+
+class TestDatabaseFunctions:
+    """Tests for database utility functions."""
+
+    @pytest.mark.asyncio
+    async def test_init_db_success(self) -> None:
+        """Should initialize database tables successfully."""
+        from vtt_transcribe.api.database import init_db
+
+        with patch("vtt_transcribe.api.database.database_available", True):
+            with patch("vtt_transcribe.api.database.engine") as mock_engine:
+                mock_conn = AsyncMock()
+                mock_conn.run_sync = AsyncMock()
+                # Create proper async context manager
+                mock_context = AsyncMock()
+                mock_context.__aenter__ = AsyncMock(return_value=mock_conn)
+                mock_context.__aexit__ = AsyncMock(return_value=None)
+                mock_engine.begin.return_value = mock_context
+
+                await init_db()
+
+                assert mock_conn.run_sync.called
+
+    @pytest.mark.asyncio
+    async def test_init_db_when_unavailable(self) -> None:
+        """Should return early if database_available is False."""
+        from vtt_transcribe.api.database import init_db
+
+        with patch("vtt_transcribe.api.database.database_available", False):
+            # Should not raise error, just return
+            await init_db()
+
+    @pytest.mark.asyncio
+    async def test_get_db_not_available(self) -> None:
+        """Should raise error when database not available."""
+        from vtt_transcribe.api.database import get_db
+
+        with patch("vtt_transcribe.api.database.database_available", False):
+            with pytest.raises(RuntimeError) as exc_info:
+                async for _ in get_db():
+                    pass
+
+            assert "Database dependencies not available" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_get_db_rollback_on_error(self) -> None:
+        """Should rollback session on exception."""
+        from vtt_transcribe.api.database import get_db
+
+        with patch("vtt_transcribe.api.database.database_available", True):
+            with patch("vtt_transcribe.api.database.AsyncSessionLocal") as mock_session_maker:
+                mock_session = AsyncMock()
+                mock_session.commit = AsyncMock()
+                mock_session.rollback = AsyncMock()
+                mock_context = AsyncMock()
+                mock_context.__aenter__ = AsyncMock(return_value=mock_session)
+                mock_context.__aexit__ = AsyncMock()
+                mock_session_maker.return_value = mock_context
+
+                # Test exception handling
+                generator = get_db()
+                _session = await generator.__anext__()
+
+                # Simulate exception by calling athrow
+                msg = "Test error"
+                with contextlib.suppress(ValueError, StopAsyncIteration):
+                    await generator.athrow(ValueError(msg))
+
+                # Rollback should be called
+                assert mock_session.rollback.called
+
+    @pytest.mark.asyncio
+    async def test_get_db_with_exception(self) -> None:
+        """Should handle exceptions in database session."""
+        from vtt_transcribe.api.database import get_db
+
+        with patch("vtt_transcribe.api.database.database_available", True):
+            with patch("vtt_transcribe.api.database.AsyncSessionLocal") as mock_session_maker:
+                mock_session = AsyncMock()
+                mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+                mock_session.__aexit__ = AsyncMock()
+                mock_session.commit = AsyncMock()
+                mock_session.rollback = AsyncMock()
+                mock_session_maker.return_value = mock_session
+
+                # Test exception handling
+                generator = get_db()
+                await generator.__anext__()
+
+                # Simulate exception
+                try:
+                    msg = "Test error"
+                    raise ValueError(msg)
+                except ValueError:
+                    with contextlib.suppress(ValueError, StopAsyncIteration):
+                        await generator.athrow(ValueError(msg))
+
+                # Rollback should be called
+                assert mock_session.rollback.called
