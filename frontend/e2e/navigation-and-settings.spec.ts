@@ -62,7 +62,9 @@ test.describe('VTT Transcribe - User Menu', () => {
     
     // Dropdown should appear
     await expect(page.getByText('Configure your API keys in Settings')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Settings' })).toBeVisible();
+    // Check for settings button within the dropdown menu
+    const dropdownMenu = page.locator('.dropdown-menu');
+    await expect(dropdownMenu.getByRole('button', { name: 'Settings' })).toBeVisible();
   });
 
   test('should open settings from user menu', async ({ page }) => {
@@ -89,7 +91,7 @@ test.describe('VTT Transcribe - Settings Modal', () => {
     
     // Check sections exist
     await expect(page.getByText('API Configuration')).toBeVisible();
-    await expect(page.getByText('Translation')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Translation' })).toBeVisible();
     
     // Check OpenAI API key field
     await expect(page.getByLabel('OpenAI API Key')).toBeVisible();
@@ -142,10 +144,13 @@ test.describe('VTT Transcribe - Settings Modal', () => {
     // Check default value
     await expect(langSelect).toHaveValue('none');
     
-    // Check some language options exist
-    await expect(langSelect.locator('option[value="es"]')).toBeVisible();
-    await expect(langSelect.locator('option[value="fr"]')).toBeVisible();
-    await expect(langSelect.locator('option[value="de"]')).toBeVisible();
+    // Check some language options exist (using count instead of visibility)
+    const esOption = langSelect.locator('option[value="es"]');
+    await expect(esOption).toHaveCount(1);
+    const frOption = langSelect.locator('option[value="fr"]');
+    await expect(frOption).toHaveCount(1);
+    const deOption = langSelect.locator('option[value="de"]');
+    await expect(deOption).toHaveCount(1);
     
     // Select a language
     await langSelect.selectOption('es');

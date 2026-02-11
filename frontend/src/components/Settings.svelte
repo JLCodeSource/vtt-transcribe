@@ -90,9 +90,11 @@
   <div 
     class="modal-backdrop" 
     onclick={handleBackdropClick}
+    onkeydown={(e) => e.key === 'Enter' && handleBackdropClick(e)}
     role="dialog"
     aria-modal="true"
     aria-labelledby="settings-title"
+    tabindex="-1"
   >
     <div class="modal">
       <div class="modal-header">
