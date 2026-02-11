@@ -148,7 +148,7 @@ ruff-fix:
 	@uv run ruff format .
 
 mypy:
-	@uv run mypy . --ignore-missing-imports --disallow-untyped-defs --disallow-incomplete-defs --check-untyped-defs --warn-unused-ignores --warn-redundant-casts
+	@uv run mypy vtt_transcribe --ignore-missing-imports --disallow-untyped-defs --disallow-incomplete-defs --check-untyped-defs --warn-unused-ignores --warn-redundant-casts
 
 # Pylance type checking via pyright (what VS Code uses)
 pylance:

@@ -83,7 +83,7 @@ def test_vtt_transcribe_package_import() -> None:
 
 def test_vtt_cli_entry_point_exists() -> None:
     """Test that vtt CLI command is available."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, "-m", "vtt_transcribe.main", "--help"],
         capture_output=True,
         text=True,
@@ -103,7 +103,7 @@ def test_vtt_command_via_entry_point() -> None:
         "eps = entry_points(); "
         "print([ep for ep in eps.select(group='console_scripts') if ep.name == 'vtt'])"
     )
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, "-c", import_code],
         capture_output=True,
         text=True,

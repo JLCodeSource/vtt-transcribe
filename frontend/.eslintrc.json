@@ -3,6 +3,7 @@
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
+    "plugin:@typescript-eslint/recommended-requiring-type-checking",
     "plugin:svelte/recommended"
   ],
   "parser": "@typescript-eslint/parser",
@@ -10,12 +11,23 @@
   "parserOptions": {
     "sourceType": "module",
     "ecmaVersion": 2020,
-    "extraFileExtensions": [".svelte"]
+    "extraFileExtensions": [".svelte"],
+    "project": ["./tsconfig.json", "./tsconfig.node.json"]
   },
   "env": {
     "browser": true,
     "es2017": true,
     "node": true
+  },
+  "rules": {
+    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/explicit-function-return-type": ["warn", { "allowExpressions": true }],
+    "@typescript-eslint/no-floating-promises": "error",
+    "@typescript-eslint/no-misused-promises": "error",
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "eqeqeq": ["error", "always"],
+    "prefer-const": "error"
   },
   "overrides": [
     {
@@ -23,6 +35,9 @@
       "parser": "svelte-eslint-parser",
       "parserOptions": {
         "parser": "@typescript-eslint/parser"
+      },
+      "rules": {
+        "@typescript-eslint/explicit-function-return-type": "off"
       }
     }
   ]

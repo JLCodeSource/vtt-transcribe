@@ -31,7 +31,7 @@ def test_version_when_package_not_found() -> None:
 
 def test_version_flag_long() -> None:
     """Should display version with --version flag."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, "-m", "vtt_transcribe.main", "--version"],
         capture_output=True,
         text=True,
@@ -48,7 +48,7 @@ def test_version_flag_long() -> None:
 
 def test_version_flag_short() -> None:
     """Should display version with -v flag."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, "-m", "vtt_transcribe.main", "-v"],
         capture_output=True,
         text=True,

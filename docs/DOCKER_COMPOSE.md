@@ -9,38 +9,55 @@ This guide explains how to run vtt-transcribe using Docker Compose for local dev
    cp .env.example .env
    ```
 
-2. **Edit `.env` and set required variables:**
+2. **Generate secure secrets:**
    ```bash
-   # REQUIRED: Get from https://platform.openai.com/api-keys
-   # Step 1: Generate secure values in your shell (DO NOT paste these lines into .env)
-   python -c "import secrets; print(secrets.token_urlsafe(32))"  # for SECRET_KEY
-   python -c "import secrets; print(secrets.token_urlsafe(16))"  # for POSTGRES_PASSWORD
+   # Install API extras (includes cryptography package)
+   uv sync --extra api
+   # OR use the make command
+   # make install-api
+   
+   # Use the built-in secret generator
+   uv run python scripts/generate_secrets.py
+   
+   # Or if you prefer using venv (ensure cryptography is installed in that env):
+   # source .venv/bin/activate
+   # python scripts/generate_secrets.py
    ```
    
+   This will output:
+   ```
+   # Generated secrets - Add these to your .env file
+   SECRET_KEY=<random-hex-string>
+   ENCRYPTION_KEY=<base64-fernet-key>
+   ```
+
+3. **Edit `.env` and set required variables:**
    ```bash
-   # Step 2: Update your .env file with the generated values:
    # REQUIRED: Get from https://platform.openai.com/api-keys
    OPENAI_API_KEY=sk-your-actual-key-here
    
-   # REQUIRED: Paste the 32+ char value generated above
+   # REQUIRED: Paste the SECRET_KEY from generator output
    SECRET_KEY=paste-generated-secret-key-here
    
-   # REQUIRED: Paste the database password generated above
-   POSTGRES_PASSWORD=paste-generated-db-password-here
+   # REQUIRED: Paste the ENCRYPTION_KEY from generator output
+   ENCRYPTION_KEY=paste-generated-encryption-key-here
+   
+   # REQUIRED: Generate a secure password for the database
+   POSTGRES_PASSWORD=choose-a-secure-password
    ```
    
-   ⚠️ **All three variables above are REQUIRED**. Docker Compose will fail to start if any are missing.
+   ⚠️ **All variables above are REQUIRED**. Docker Compose will fail to start if any are missing.
 
-3. **Start services:**
+4. **Start services:**
    ```bash
    # Start core services (DB, API, worker)
    docker compose up -d
    
-   # Or include frontend (when implemented)
+   # Or include frontend
    docker compose --profile frontend up -d
    ```
 
-4. **Verify services are running:**
+5. **Verify services are running:**
    ```bash
    docker compose ps
    ```
@@ -49,8 +66,10 @@ This guide explains how to run vtt-transcribe using Docker Compose for local dev
    - `vtt-transcribe-db` (healthy)
    - `vtt-transcribe-api` (healthy)
    - `vtt-transcribe-worker` (running)
+   - `vtt-transcribe-frontend` (if using --profile frontend)
 
-5. **Access the API:**
+6. **Access the services:**
+   - Frontend: http://localhost:3000 (if frontend profile enabled)
    - API docs: http://localhost:8000/docs
    - Health check: http://localhost:8000/health
 

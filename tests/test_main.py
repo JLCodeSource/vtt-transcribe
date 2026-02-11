@@ -43,7 +43,7 @@ class TestMainGuard:
         import sys
 
         # Execute the module as __main__ using python -m
-        result = subprocess.run(  # noqa: S603
+        result = subprocess.run(
             [sys.executable, "-m", "vtt_transcribe.main", "--version"],
             capture_output=True,
             text=True,
@@ -60,7 +60,7 @@ class TestMainGuard:
         from pathlib import Path
 
         main_file = Path(__file__).parent.parent / "vtt_transcribe" / "main.py"
-        result = subprocess.run(  # noqa: S603
+        result = subprocess.run(
             [sys.executable, str(main_file), "--version"],
             capture_output=True,
             text=True,
