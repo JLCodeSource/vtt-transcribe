@@ -131,8 +131,9 @@ def is_production() -> bool:
 def _safely_flush_and_close_handler(handler: logging.Handler) -> None:
     """Safely flush and close a logging handler, avoiding closed stream errors."""
     try:
-        if hasattr(handler, "stream") and hasattr(handler.stream, "closed"):
-            if not handler.stream.closed:
+        if hasattr(handler, "stream"):
+            stream = getattr(handler, "stream", None)
+            if stream and hasattr(stream, "closed") and not stream.closed:
                 handler.flush()
         else:
             handler.flush()

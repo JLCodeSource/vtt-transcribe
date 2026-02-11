@@ -48,7 +48,7 @@ except ImportError:
 
 async def init_db() -> None:
     """Initialize database tables."""
-    if not database_available:
+    if not database_available or engine is None:
         return  # Skip if database dependencies not available
 
     try:
@@ -64,7 +64,7 @@ async def init_db() -> None:
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Dependency for getting async database sessions."""
-    if not database_available:
+    if not database_available or AsyncSessionLocal is None:
         msg = "Database dependencies not available"
         raise RuntimeError(msg)
 

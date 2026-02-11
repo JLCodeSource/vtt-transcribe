@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Use the project’s make target to install uv, create venv, and sync deps
-make install-diarization
+make install-all
 
 # Quick sanity output
 uv run python -V
