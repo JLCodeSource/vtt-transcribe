@@ -95,15 +95,26 @@ Add to your `.env` file:
 DATABASE_URL=sqlite+aiosqlite:///./vtt_transcribe.db  # Development
 # DATABASE_URL=postgresql+asyncpg://user:pass@localhost/vtt_transcribe  # Production
 
-# Generate secrets using the built-in tool:
-# uv run python scripts/generate_secrets.py
-# Then copy the output below:
+# Generate secrets using the built-in tool (requires cryptography package):
+# First, install API extras: uv sync --extra api
+# Then run: uv run python scripts/generate_secrets.py
+# Copy the output below:
 SECRET_KEY=your-secret-key-here
 ENCRYPTION_KEY=your-encryption-key-here
 
 # JWT Configuration
 JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
+```
+
+### Install Dependencies
+
+```bash
+# Install with API and database support
+uv sync --extra api
+
+# Or update existing environment
+uv pip install sqlalchemy[asyncio] asyncpg aiosqlite python-jose[cryptography] passlib[bcrypt] cryptography
 ```
 
 ### Database Initialization
@@ -117,16 +128,6 @@ uv run uvicorn vtt_transcribe.api.app:app
 **Option 2: Manual (using script)**
 ```bash
 uv run python scripts/init_db.py
-```
-
-### Install Dependencies
-
-```bash
-# Install with API and database support
-uv sync --extra api
-
-# Or update existing environment
-uv pip install sqlalchemy[asyncio] asyncpg aiosqlite python-jose[cryptography] passlib[bcrypt] cryptography
 ```
 
 ## Usage Examples
