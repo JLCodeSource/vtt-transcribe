@@ -1,7 +1,18 @@
 """Database configuration and session management."""
 
+from __future__ import annotations
+
 import os
-from collections.abc import AsyncGenerator
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
+    # For type checkers, always import the real type
+    from sqlalchemy.ext.asyncio import AsyncSession as AsyncSessionType
+else:
+    # At runtime, will be imported or set to Any
+    AsyncSessionType = Any  # type: ignore[misc]
 
 try:
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -43,7 +54,6 @@ except ImportError:
     Base = None  # type: ignore[assignment,misc]
     engine = None  # type: ignore[assignment]
     AsyncSessionLocal = None  # type: ignore[assignment]
-    AsyncSession = None  # type: ignore[assignment,misc]
     database_available = False
 
 
@@ -63,7 +73,7 @@ async def init_db() -> None:
         pass
 
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:  # pyright: ignore[reportInvalidTypeForm]
+async def get_db() -> AsyncGenerator[AsyncSessionType, None]:
     """Dependency for getting async database sessions."""
     if not database_available or AsyncSessionLocal is None:
         msg = "Database dependencies not available"
