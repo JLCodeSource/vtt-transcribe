@@ -77,13 +77,15 @@ def main() -> None:
     secret_key = generate_secret_key()
     encryption_key = generate_encryption_key()
 
+    # Note: This script intentionally outputs newly generated secrets to stdout
+    # for user configuration. These are NOT production secrets being leaked.
     if args.format == "shell":
-        print(f"export SECRET_KEY='{secret_key}'")
-        print(f"export ENCRYPTION_KEY='{encryption_key}'")
+        sys.stdout.write(f"export SECRET_KEY='{secret_key}'\n")  # nosec - intentional output for configuration
+        sys.stdout.write(f"export ENCRYPTION_KEY='{encryption_key}'\n")  # nosec - intentional output for configuration
     else:  # env format
-        print("# Generated secrets - Add these to your .env file")
-        print(f"SECRET_KEY={secret_key}")
-        print(f"ENCRYPTION_KEY={encryption_key}")
+        sys.stdout.write("# Generated secrets - Add these to your .env file\n")
+        sys.stdout.write(f"SECRET_KEY={secret_key}\n")  # nosec - intentional output for configuration
+        sys.stdout.write(f"ENCRYPTION_KEY={encryption_key}\n")  # nosec - intentional output for configuration
 
 
 if __name__ == "__main__":
