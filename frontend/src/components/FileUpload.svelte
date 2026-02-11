@@ -137,8 +137,7 @@
 </script>
 
 <div class="upload-container">
-  <div
-    class="dropzone"
+  <div class="dropzone"
     class:dragging={isDragging}
     class:has-file={selectedFile}
     ondragover={handleDragOver}
@@ -444,8 +443,7 @@
     color: var(--error-color);
   }
 
-  .input-label input[type='password'],
-  .input-label input[type='text'] {
+  .input-label input[type='password'] {
     width: 100%;
     padding: 0.75rem;
     border: 2px solid var(--border-color);
@@ -453,8 +451,7 @@
     font-size: 1rem;
   }
 
-  .input-label input[type='password']:focus,
-  .input-label input[type='text']:focus {
+  .input-label input[type='password']:focus {
     outline: none;
     border-color: var(--primary-color);
   }
