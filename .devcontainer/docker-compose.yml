@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  devcontainer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    
+    volumes:
+      # Mount the workspace
+      - ..:/workspaces/vtt-transcribe:cached
+      
+      # Mount docker socket for docker-outside-of-docker
+      - /var/run/docker.sock:/var/run/docker.sock
+    
+    # Keep container running
+    command: sleep infinity
+    
+    # GPU support (optional - controlled by devcontainer.json hostRequirements)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    
+    # Environment variables for accessing docker-compose services
+    environment:
+      DATABASE_URL: postgresql://vtt_user:${POSTGRES_PASSWORD}@db:5432/vtt_transcribe
+      API_URL: http://api:8000
+    
+    # Connect to the vtt-network so we can access db, api, worker, frontend
+    networks:
+      - vtt-network
+
+networks:
+  vtt-network:
+    # Use the existing network created by docker-compose.yml
+    name: vtt-transcribe_vtt-network
+    external: true
