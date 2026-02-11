@@ -96,9 +96,12 @@ async def get_current_user(
     if not token:
         raise credentials_exception
 
+    if SECRET_KEY is None:
+        raise credentials_exception
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
+        username: str | None = payload.get("sub")
         if username is None:
             raise credentials_exception
     except JWTError as e:
@@ -125,10 +128,12 @@ async def get_current_user_optional(
     """Get current user if authenticated, otherwise None."""
     if not token:
         return None
+    if SECRET_KEY is None:
+        return None
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
+        username: str | None = payload.get("sub")
         if username is None:
             return None
     except JWTError:

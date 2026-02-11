@@ -150,7 +150,12 @@ ruff-fix:
 mypy:
 	@uv run mypy . --ignore-missing-imports --disallow-untyped-defs --disallow-incomplete-defs --check-untyped-defs --warn-unused-ignores --warn-redundant-casts
 
-lint: ruff-check mypy
+# Pylance type checking via pyright (what VS Code uses)
+pylance:
+	@echo "Running Pylance (pyright) type checking..."
+	@uv run pyright
+
+lint: ruff-check mypy pylance
 
 format: ruff-fix
 

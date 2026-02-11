@@ -16,9 +16,9 @@ tools: ["terminal"]
 ```
 [ ] 1. git status              (check what changed)
 [ ] 2. git add <files>         (stage code changes)
-[ ] 3. bd sync                 (commit beads changes)
+[ ] 3. bd sync --full          (export + commit + push beads changes)
 [ ] 4. git commit -m "..."     (commit code)
-[ ] 5. bd sync                 (commit any new beads changes)
+[ ] 5. bd sync --full          (export + commit + push any new beads changes)
 [ ] 6. git push                (push to remote)
 ```
 
@@ -29,7 +29,7 @@ tools: ["terminal"]
 - **Prohibited**: Do NOT use TodoWrite, TaskCreate, or markdown files for task tracking
 - **Workflow**: Create beads issue BEFORE writing code, mark in_progress when starting
 - Persistence you don't need beats lost context
-- Git workflow: hooks auto-sync, run `bd sync` at session end
+- Git workflow: hooks auto-sync, run `bd sync --full` at session end
 - Session management: check `bd ready` for available work
 
 ## Essential Commands
@@ -58,7 +58,8 @@ tools: ["terminal"]
 - `bd show <id>` - See what's blocking/blocked by this issue
 
 ### Sync & Collaboration
-- `bd sync` - Sync with git remote (run at session end)
+- `bd sync --full` - Full sync: pull → merge → export → commit → push (use at session end)
+- `bd sync` - Export to JSONL only (doesn't commit/push)
 - `bd sync --status` - Check sync status without syncing
 
 ### Project Health
@@ -77,7 +78,7 @@ bd update <id> --status=in_progress  # Claim it
 **Completing work:**
 ```bash
 bd close <id1> <id2> ...    # Close all completed issues at once
-bd sync                     # Push to remote
+bd sync --full              # Push to remote (full sync)
 ```
 
 **Creating dependent work:**

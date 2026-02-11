@@ -221,6 +221,7 @@ def main() -> None:
     setup_logging(use_stderr=stdin_mode)
     logger.info("Starting vtt-transcribe CLI")
     start_time = time.time()
+    temp_file_path: Path | None = None
 
     logger.debug(
         "Arguments parsed",

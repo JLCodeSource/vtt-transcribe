@@ -94,6 +94,7 @@ dev = [
     "python-multipart>=0.0.20",
     "httpx>=0.27.0",
     "types-PyYAML>=6.0.0",
+    "pyright>=1.1.408",
 ]
 
 [tool.pytest.ini_options]
