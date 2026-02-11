@@ -187,7 +187,7 @@ class TestAPITranscriptionCoverage:
         with pytest.raises(Exception) as exc_info:  # noqa: PT011, PT012
             import asyncio
 
-            asyncio.run(create_diarization_job(mock_file, hf_token="test"))  # noqa: S106
+            asyncio.run(create_diarization_job(mock_file, hf_token="test"))
 
         assert "422" in str(exc_info.value) or "filename" in str(exc_info.value).lower()
 

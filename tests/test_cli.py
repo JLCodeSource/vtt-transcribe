@@ -147,7 +147,7 @@ class TestCreateParser:
         """Should accept --hf-token flag."""
         parser = create_parser()
         args = parser.parse_args(["audio.mp3", "--hf-token", "test-token"])
-        assert args.hf_token == "test-token"  # noqa: S105
+        assert args.hf_token == "test-token"
 
     def test_parser_accepts_version_flag(self) -> None:
         """Should accept --version flag and exit."""

@@ -8,6 +8,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 from dotenv import load_dotenv
 
+# Configure pytest-asyncio
+pytest_plugins = ("pytest_asyncio",)
+
 # Set required environment variables for API tests BEFORE any imports
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-jwt-signing-only")
 os.environ.setdefault("ENCRYPTION_KEY", "eZG7WcaEfouAvUvzsF8dpS1Arw-lfhjCs5LU4gzuXVE=")
