@@ -7,7 +7,7 @@
     onreset: () => void;
   }
 
-  let { segments, jobId, onreset }: Props = $props();
+  const { segments, jobId, onreset }: Props = $props();
 
   let searchQuery = $state('');
   let selectedSpeaker = $state('all');

@@ -139,7 +139,7 @@ with patch("vtt_transcribe.api.server.uvicorn"):
 """
 
         # Run the script
-        result = subprocess.run(  # noqa: S603
+        result = subprocess.run(
             [sys.executable, "-c", test_script],
             capture_output=True,
             text=True,
@@ -174,7 +174,7 @@ with patch('uvicorn.run', mock_run):
     print("MAIN_BLOCK_EXECUTED")
 """
 
-        result = subprocess.run(  # noqa: S603
+        result = subprocess.run(
             [sys.executable, "-c", code],
             capture_output=True,
             text=True,

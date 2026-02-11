@@ -1,15 +1,15 @@
 <script lang="ts">
-  import type { UploadOptions } from '../types';
+  import type { UploadOptions, TranscriptionJob } from '../types';
 
   interface Props {
-    onuploadstart: (event: CustomEvent) => void;
+    onuploadstart: (event: CustomEvent<TranscriptionJob>) => void;
   }
 
-  let { onuploadstart }: Props = $props();
+  const { onuploadstart }: Props = $props();
 
   let isDragging = $state(false);
   let selectedFile: File | null = $state(null);
-  let options: UploadOptions = $state({
+  const options: UploadOptions = $state({
     diarization: true,
     language: 'auto',
     model: 'whisper-1',
@@ -116,14 +116,14 @@
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+        const errorData = (await response.json().catch(() => ({ detail: response.statusText }))) as { detail?: string };
         throw new Error(errorData.detail || `Upload failed: ${response.statusText}`);
       }
 
-      const job = await response.json();
+      const job = (await response.json()) as TranscriptionJob;
 
       // Dispatch custom event with job details
-      const event = new CustomEvent('uploadstart', { detail: job });
+      const event = new CustomEvent<TranscriptionJob>('uploadstart', { detail: job });
       onuploadstart(event);
     } catch (error) {
       alert(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);

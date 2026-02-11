@@ -1,6 +1,6 @@
 <script lang="ts">
   // Minimal working Svelte 5 app with proper TypeScript and styling
-  let message = $state("VTT Transcribe Frontend Working! ✅");
+  const message = $state("VTT Transcribe Frontend Working! ✅");
   let count = $state(0);
   
   function increment() {
