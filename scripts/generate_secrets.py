@@ -54,7 +54,7 @@ def generate_encryption_key() -> str:
         print("  make install-api", file=sys.stderr)
         print("  pip install cryptography", file=sys.stderr)
         sys.exit(1)
-    
+
     return Fernet.generate_key().decode()
 
 

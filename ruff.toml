@@ -94,8 +94,8 @@ ignore = [
 
 # Per-file ignores for tests only
 [lint.per-file-ignores]
-"test_*.py" = ["SLF001", "S105", "S106", "FBT003", "SIM117"]
-"tests/**/*.py" = ["S105", "S106", "FBT003", "SIM117"]
+"test_*.py" = ["SLF001", "S105", "S106", "S603", "FBT003", "SIM117"]
+"tests/**/*.py" = ["S105", "S106", "S603", "FBT003", "SIM117"]
 "tests/test_stdin_mode.py" = ["PT019", "ARG002"]
 # FastAPI Depends() pattern is standard, ignore B008 in API routes
 "vtt_transcribe/api/**/*.py" = ["B008"]
