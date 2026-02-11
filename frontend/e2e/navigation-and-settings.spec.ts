@@ -62,7 +62,9 @@ test.describe('VTT Transcribe - User Menu', () => {
     
     // Dropdown should appear
     await expect(page.getByText('Configure your API keys in Settings')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Settings' })).toBeVisible();
+    // Check for settings button within the dropdown menu
+    const dropdownMenu = page.locator('.dropdown-menu');
+    await expect(dropdownMenu.getByRole('button', { name: 'Settings' })).toBeVisible();
   });
 
   test('should open settings from user menu', async ({ page }) => {
@@ -71,8 +73,9 @@ test.describe('VTT Transcribe - User Menu', () => {
     // Open user menu
     await page.getByRole('button', { name: 'User menu' }).click();
     
-    // Click settings in dropdown
-    await page.getByRole('button', { name: 'Settings' }).nth(1).click();
+    // Click settings in dropdown (scoped to user menu to avoid brittle indexing)
+    const userMenu = page.locator('.user-menu');
+    await userMenu.getByRole('button', { name: 'Settings' }).click();
     
     // Settings modal should open
     await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
@@ -88,7 +91,7 @@ test.describe('VTT Transcribe - Settings Modal', () => {
     
     // Check sections exist
     await expect(page.getByText('API Configuration')).toBeVisible();
-    await expect(page.getByText('Translation')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Translation' })).toBeVisible();
     
     // Check OpenAI API key field
     await expect(page.getByLabel('OpenAI API Key')).toBeVisible();
@@ -141,10 +144,13 @@ test.describe('VTT Transcribe - Settings Modal', () => {
     // Check default value
     await expect(langSelect).toHaveValue('none');
     
-    // Check some language options exist
-    await expect(langSelect.locator('option[value="es"]')).toBeVisible();
-    await expect(langSelect.locator('option[value="fr"]')).toBeVisible();
-    await expect(langSelect.locator('option[value="de"]')).toBeVisible();
+    // Check some language options exist (using count instead of visibility)
+    const esOption = langSelect.locator('option[value="es"]');
+    await expect(esOption).toHaveCount(1);
+    const frOption = langSelect.locator('option[value="fr"]');
+    await expect(frOption).toHaveCount(1);
+    const deOption = langSelect.locator('option[value="de"]');
+    await expect(deOption).toHaveCount(1);
     
     // Select a language
     await langSelect.selectOption('es');
@@ -165,7 +171,7 @@ test.describe('VTT Transcribe - Settings Modal', () => {
     await expect(page.getByRole('dialog', { name: 'Settings' })).not.toBeVisible();
   });
 
-  test('should save settings to localStorage', async ({ page }) => {
+  test('should save settings to sessionStorage', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Settings' }).first().click();
     
@@ -177,10 +183,10 @@ test.describe('VTT Transcribe - Settings Modal', () => {
     // Save
     await page.getByRole('button', { name: 'Save Settings' }).click();
     
-    // Check localStorage
-    const openaiKey = await page.evaluate(() => localStorage.getItem('openai_api_key'));
-    const hfToken = await page.evaluate(() => localStorage.getItem('hf_token'));
-    const lang = await page.evaluate(() => localStorage.getItem('translation_language'));
+    // Check sessionStorage
+    const openaiKey = await page.evaluate(() => sessionStorage.getItem('openai_api_key'));
+    const hfToken = await page.evaluate(() => sessionStorage.getItem('hf_token'));
+    const lang = await page.evaluate(() => sessionStorage.getItem('translation_language'));
     
     expect(openaiKey).toBe('sk-test-key');
     expect(hfToken).toBe('hf_test');

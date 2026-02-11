@@ -28,30 +28,45 @@
     { value: 'zh', label: 'Chinese (中文)' }
   ];
 
-  // Load settings from localStorage on mount
+  // Load settings from sessionStorage on mount
   $effect(() => {
     if (typeof window !== 'undefined') {
-      openaiKey = localStorage.getItem('openai_api_key') || '';
-      hfToken = localStorage.getItem('hf_token') || '';
-      translationLanguage = localStorage.getItem('translation_language') || 'none';
+      openaiKey = sessionStorage.getItem('openai_api_key') || '';
+      hfToken = sessionStorage.getItem('hf_token') || '';
+      translationLanguage = sessionStorage.getItem('translation_language') || 'none';
     }
   });
 
+  // Handle Escape key to close modal
+  $effect(() => {
+    if (!isOpen || typeof window === 'undefined') return;
+
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        handleClose();
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  });
+
   function handleSave() {
-    // Save to localStorage
+    // Save to sessionStorage (more secure than localStorage for API keys)
+    // Keys are kept in memory for the current session only
     if (openaiKey) {
-      localStorage.setItem('openai_api_key', openaiKey);
+      sessionStorage.setItem('openai_api_key', openaiKey);
     } else {
-      localStorage.removeItem('openai_api_key');
+      sessionStorage.removeItem('openai_api_key');
     }
 
     if (hfToken) {
-      localStorage.setItem('hf_token', hfToken);
+      sessionStorage.setItem('hf_token', hfToken);
     } else {
-      localStorage.removeItem('hf_token');
+      sessionStorage.removeItem('hf_token');
     }
 
-    localStorage.setItem('translation_language', translationLanguage);
+    sessionStorage.setItem('translation_language', translationLanguage);
 
     if (onclose) {
       onclose();
@@ -72,16 +87,19 @@
 </script>
 
 {#if isOpen}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div 
     class="modal-backdrop" 
     onclick={handleBackdropClick}
-    onkeydown={(e) => e.key === 'Escape' && handleClose()}
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="settings-title"
-    tabindex="0"
   >
-    <div class="modal">
+    <div 
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="settings-title"
+      tabindex="-1"
+    >
       <div class="modal-header">
         <h2 id="settings-title">⚙️ Settings</h2>
         <button class="close-button" onclick={handleClose} aria-label="Close">✕</button>
@@ -93,6 +111,10 @@
           <p class="section-description">
             Configure your API keys for transcription and diarization features.
           </p>
+          <div class="security-notice">
+            <span class="notice-icon">🔒</span>
+            <p>API keys are stored in your browser session only and are cleared when you close this tab.</p>
+          </div>
 
           <div class="form-group">
             <label for="openai-key">
@@ -276,6 +298,29 @@
     margin: 0 0 1.5rem 0;
     font-size: 0.875rem;
     color: #6b7280;
+    line-height: 1.5;
+  }
+
+  .security-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.875rem;
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+  }
+
+  .notice-icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+  }
+
+  .security-notice p {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: #166534;
     line-height: 1.5;
   }
 
