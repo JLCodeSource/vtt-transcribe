@@ -133,7 +133,7 @@ def _safely_flush_and_close_handler(handler: logging.Handler) -> None:
     try:
         if hasattr(handler, "stream"):
             stream = getattr(handler, "stream", None)
-            if stream and hasattr(stream, "closed") and not stream.closed:
+            if stream and (not hasattr(stream, "closed") or not stream.closed):
                 handler.flush()
         else:
             handler.flush()
