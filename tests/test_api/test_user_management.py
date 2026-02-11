@@ -280,6 +280,36 @@ class TestEncryptionFunctions:
         assert encrypted != original_key
         assert decrypted == original_key
 
+    def test_encryption_key_validation(self) -> None:
+        """Should raise RuntimeError when ENCRYPTION_KEY not set (lines 21-26)."""
+        import os
+        import sys
+
+        original_key = os.getenv("ENCRYPTION_KEY")
+
+        try:
+            # Remove ENCRYPTION_KEY
+            if "ENCRYPTION_KEY" in os.environ:
+                del os.environ["ENCRYPTION_KEY"]
+
+            # Remove api_keys module if already loaded
+            if "vtt_transcribe.api.routes.api_keys" in sys.modules:
+                del sys.modules["vtt_transcribe.api.routes.api_keys"]
+
+            # Try to import - should raise RuntimeError during import
+            # The import itself triggers the error, not the reload
+            with pytest.raises(RuntimeError, match="ENCRYPTION_KEY environment variable is not set"):
+                # Import triggers validation in module init
+                import vtt_transcribe.api.routes.api_keys  # noqa: F401
+        finally:
+            # Restore original key
+            if original_key:
+                os.environ["ENCRYPTION_KEY"] = original_key
+
+            # Reload module with correct key
+            if "vtt_transcribe.api.routes.api_keys" in sys.modules:
+                del sys.modules["vtt_transcribe.api.routes.api_keys"]
+
 
 class TestJobHistoryEndpoints:
     """Tests for job history endpoint availability."""

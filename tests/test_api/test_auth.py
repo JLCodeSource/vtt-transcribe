@@ -696,3 +696,32 @@ class TestAuthRoutes:
 
         assert isinstance(token, str)
         assert token == "mocked_token"
+
+    def test_create_access_token_else_branch_default_expiry(self) -> None:
+        """Should use 15-minute default when expires_delta is None (line 54)."""
+        from datetime import datetime, timedelta, timezone
+        from unittest.mock import patch
+
+        from vtt_transcribe.api.auth import create_access_token
+
+        # Mock SECRET_KEY for test environment
+        with patch("vtt_transcribe.api.auth.SECRET_KEY", "test-secret-key-for-testing"):
+            data: dict[str, str | datetime] = {"sub": "testuser"}
+
+            # Call with None to trigger else branch on line 54
+            token = create_access_token(data, expires_delta=None)
+
+            # Decode to verify default expiration was used
+            from jose import jwt
+
+            from vtt_transcribe.api.auth import ALGORITHM
+
+            decoded = jwt.decode(token, "test-secret-key-for-testing", algorithms=[ALGORITHM])
+
+            # Check that exp is approximately 15 minutes from now
+            exp_time = datetime.fromtimestamp(decoded["exp"], tz=timezone.utc)
+            now = datetime.now(timezone.utc)
+            time_diff = exp_time - now
+
+            # Should be around 15 minutes (allow 1 second tolerance)
+            assert timedelta(minutes=14, seconds=59) < time_diff < timedelta(minutes=15, seconds=1)

@@ -260,6 +260,104 @@ class TestAPIModels:
         assert "test-123" in repr_str
 
 
+class TestDatabaseConfiguration:
+    """Test database URL configuration and conversion."""
+
+    def test_postgresql_url_conversion(self) -> None:
+        """Should convert postgresql:// to postgresql+asyncpg:// (lines 15-16)."""
+        import os
+
+        original_url = os.getenv("DATABASE_URL")
+
+        try:
+            # Set PostgreSQL URL
+            os.environ["DATABASE_URL"] = "postgresql://user:pass@localhost/db"
+
+            # Reload database module to trigger URL conversion
+            import importlib
+
+            import vtt_transcribe.api.database
+
+            importlib.reload(vtt_transcribe.api.database)
+
+            # Check conversion happened
+            assert vtt_transcribe.api.database.DATABASE_URL == "postgresql+asyncpg://user:pass@localhost/db"
+        finally:
+            # Restore original
+            if original_url:
+                os.environ["DATABASE_URL"] = original_url
+            elif "DATABASE_URL" in os.environ:
+                del os.environ["DATABASE_URL"]
+
+            # Reload again to restore state
+            import importlib
+
+            import vtt_transcribe.api.database
+
+            importlib.reload(vtt_transcribe.api.database)
+
+    def test_sqlite_url_conversion(self) -> None:
+        """Should convert sqlite:// to sqlite+aiosqlite:// (line 17)."""
+        import os
+
+        original_url = os.getenv("DATABASE_URL")
+
+        try:
+            # Set SQLite URL
+            os.environ["DATABASE_URL"] = "sqlite:///./test.db"
+
+            # Reload database module to trigger URL conversion
+            import importlib
+
+            import vtt_transcribe.api.database
+
+            importlib.reload(vtt_transcribe.api.database)
+
+            # Check conversion happened
+            assert vtt_transcribe.api.database.DATABASE_URL == "sqlite+aiosqlite:///./test.db"
+        finally:
+            # Restore original
+            if original_url:
+                os.environ["DATABASE_URL"] = original_url
+            elif "DATABASE_URL" in os.environ:
+                del os.environ["DATABASE_URL"]
+
+            # Reload again to restore state
+            import importlib
+
+            import vtt_transcribe.api.database
+
+            importlib.reload(vtt_transcribe.api.database)
+
+    @pytest.mark.asyncio
+    async def test_get_db_finally_closes_session(self) -> None:
+        """Should close session in finally block (line 74)."""
+        from vtt_transcribe.api.database import get_db
+
+        with patch("vtt_transcribe.api.database.database_available", True):
+            with patch("vtt_transcribe.api.database.AsyncSessionLocal") as mock_session_maker:
+                mock_session = AsyncMock()
+                mock_session.commit = AsyncMock()
+                mock_session.close = AsyncMock()
+                mock_context = AsyncMock()
+                mock_context.__aenter__ = AsyncMock(return_value=mock_session)
+                mock_context.__aexit__ = AsyncMock()
+                mock_session_maker.return_value = mock_context
+
+                # Use the generator
+                generator = get_db()
+                await generator.__anext__()
+
+                # Manually close the generator to trigger finally block
+                import contextlib
+
+                with contextlib.suppress(StopAsyncIteration):
+                    await generator.aclose()
+
+                # Close should have been called
+                assert mock_session.close.called
+
+
 class TestDatabaseFunctions:
     """Tests for database utility functions."""
 

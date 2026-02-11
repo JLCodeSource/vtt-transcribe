@@ -526,3 +526,72 @@ class TestFileLoggingAndRotation:
 
         finally:
             Path(log_file).unlink(missing_ok=True)
+
+
+class TestLoggingHandlerEdgeCases:
+    """Test edge cases for logging handler management."""
+
+    def test_setup_logging_with_closed_stream(self) -> None:
+        """Should handle closed stream gracefully (lines 207-210)."""
+        import sys
+        from io import StringIO
+
+        # Create a closed stream
+        closed_stream = StringIO()
+        closed_stream.close()
+
+        original_stdout = sys.stdout
+        try:
+            # Replace stdout with closed stream
+            sys.stdout = closed_stream
+
+            # Should not raise error
+            logger = logging_config.setup_logging(dev_mode=True, use_stderr=False)
+
+            # Logger should still be created
+            assert logger is not None
+        finally:
+            sys.stdout = original_stdout
+
+    def test_safely_flush_closed_handler(self) -> None:
+        """Should handle closed handler stream gracefully (lines 138-141)."""
+        import io
+
+        # Create a handler with a closed stream
+        closed_stream = io.StringIO()
+        closed_stream.close()
+
+        handler = logging.StreamHandler(closed_stream)
+
+        # Should not raise error
+        logging_config._safely_flush_and_close_handler(handler)
+
+    def test_safely_flush_handler_without_stream_attribute(self) -> None:
+        """Should handle handler without stream attribute (line 138-139)."""
+        # Create a handler without stream attribute (base Handler class)
+        handler = logging.Handler()
+
+        # Should not raise error
+        logging_config._safely_flush_and_close_handler(handler)
+
+    def test_safely_flush_handler_with_valueerror(self) -> None:
+        """Should handle ValueError during flush (line 140)."""
+        from unittest.mock import MagicMock
+
+        # Create a handler that raises ValueError on flush
+        handler = logging.Handler()
+        handler.flush = MagicMock(side_effect=ValueError("Stream closed"))  # type: ignore[method-assign]
+
+        # Should not raise error
+        logging_config._safely_flush_and_close_handler(handler)
+
+    def test_safely_flush_handler_with_oserror(self) -> None:
+        """Should handle OSError during flush (line 140)."""
+        from unittest.mock import MagicMock
+
+        # Create a handler that raises OSError on flush
+        handler = logging.Handler()
+        handler.flush = MagicMock(side_effect=OSError("Stream error"))  # type: ignore[method-assign]
+
+        # Should not raise error
+        logging_config._safely_flush_and_close_handler(handler)
