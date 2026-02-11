@@ -95,17 +95,15 @@ Add to your `.env` file:
 DATABASE_URL=sqlite+aiosqlite:///./vtt_transcribe.db  # Development
 # DATABASE_URL=postgresql+asyncpg://user:pass@localhost/vtt_transcribe  # Production
 
-# Generate SECRET_KEY with:
-# python -c "import secrets; print(secrets.token_urlsafe(32))"
+# Generate secrets using the built-in tool:
+# uv run python scripts/generate_secrets.py
+# Then copy the output below:
 SECRET_KEY=your-secret-key-here
+ENCRYPTION_KEY=your-encryption-key-here
 
 # JWT Configuration
 JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
-
-# Generate ENCRYPTION_KEY with:
-# python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-ENCRYPTION_KEY=your-encryption-key-here
 ```
 
 ### Database Initialization
