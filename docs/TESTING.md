@@ -10,8 +10,7 @@ make test-integration  # Integration tests only
 
 ### Frontend Tests (E2E)
 ```bash
-make test-frontend         # E2E tests with dev server (default)
-make test-frontend-docker  # E2E tests against Docker container
+make test-frontend  # E2E tests with dev server
 ```
 
 ### All Tests
@@ -45,22 +44,13 @@ git push --no-verify
 1. Node.js and npm installed
 2. Playwright browsers: `cd frontend && npx playwright install chromium --with-deps`
 
-### Test Modes
-
-#### Dev Server Mode (Default)
+### Running Tests
 - Automatically starts Vite dev server on port 5173
 - Fast hot-reload during development
 - Run with: `make test-frontend`
 
-#### Docker Mode
-- Tests against production build in Docker container
-- Requires: `docker-compose --profile frontend up -d`
-- Run with: `make test-frontend-docker`
-
 ### Configuration
-Tests configured in `frontend/playwright.config.ts`:
-- Set `DOCKER_FRONTEND=true` to test against Docker (port 3000)
-- Default is dev server mode (port 5173)
+Tests configured in `frontend/playwright.config.ts` to use dev server on port 5173.
 
 ## Coverage Requirements
 - Backend: 97%+ coverage required

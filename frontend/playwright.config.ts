@@ -1,9 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// Test against Docker container on :3000 if DOCKER_FRONTEND=true, otherwise use dev server on :5173
-const useDocker = process.env.DOCKER_FRONTEND === 'true';
-const baseURL = useDocker ? 'http://localhost:3000' : 'http://localhost:5173';
-
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -12,7 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL,
+    baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -32,8 +28,7 @@ export default defineConfig({
     },
   ],
 
-  // Only start dev server if not testing against Docker
-  webServer: useDocker ? undefined : {
+  webServer: {
     command: 'npm run dev -- --port 5173',
     url: 'http://localhost:5173',
     reuseExistingServer: true,
