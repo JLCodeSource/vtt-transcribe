@@ -26,7 +26,10 @@ help:
 	@echo "  For everything:           make install-all"
 	@echo ""
 	@echo "Available development targets:"
-	@echo "  test                   - Run all tests with coverage"
+	@echo "  test                   - Run backend tests with coverage"
+	@echo "  test-frontend          - Run frontend E2E tests with dev server"
+	@echo "  test-frontend-docker   - Run frontend E2E tests against Docker"
+	@echo "  test-all               - Run all tests (backend + frontend)"
 	@echo "  test-integration       - Run only integration tests"
 	@echo "  lint                   - Run ruff and mypy checks"
 	@echo "  ruff-check             - Run ruff linter"
@@ -140,6 +143,40 @@ test:
 
 test-integration:
 	@uv run pytest -v -k integration
+
+# Frontend testing (requires Node.js and npm)
+# Default: Tests with dev server (no Docker needed)
+test-frontend:
+	@echo "Running frontend E2E tests with dev server..."
+	@if [ ! -d "frontend/node_modules" ]; then \
+		echo "Installing frontend dependencies..."; \
+		cd frontend && npm install; \
+	fi
+	@if [ ! -d "$(HOME)/.cache/ms-playwright/chromium-"* ]; then \
+		echo "Installing Playwright browsers..."; \
+		cd frontend && npx playwright install chromium --with-deps || npx playwright install chromium; \
+	fi
+	@cd frontend && npm run test:e2e -- --project=chromium
+
+# Frontend testing against Docker container (for production-like testing)
+test-frontend-docker:
+	@echo "Running frontend E2E tests against Docker container..."
+	@if ! docker ps | grep -q vtt-transcribe-frontend; then \
+		echo "Error: Frontend container not running. Start with: docker-compose --profile frontend up -d"; \
+		exit 1; \
+	fi
+	@if [ ! -d "frontend/node_modules" ]; then \
+		echo "Installing frontend dependencies..."; \
+		cd frontend && npm install; \
+	fi
+	@if [ ! -d "$(HOME)/.cache/ms-playwright/chromium-"* ]; then \
+		echo "Installing Playwright browsers..."; \
+		cd frontend && npx playwright install chromium --with-deps || npx playwright install chromium; \
+	fi
+	@cd frontend && DOCKER_FRONTEND=true npm run test:e2e -- --project=chromium
+
+# Run all tests (backend + frontend)
+test-all: test test-frontend
 
 ruff-check:
 	@uv run ruff check .
