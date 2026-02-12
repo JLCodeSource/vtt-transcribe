@@ -1,9 +1,7 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 test.describe('VTT Transcribe - Navigation', () => {
   test('should display left navigation menu', async ({ page }) => {
-    await page.goto('/');
-
     // Check navigation exists
     const nav = page.locator('nav.navigation');
     await expect(nav).toBeVisible();
@@ -16,8 +14,6 @@ test.describe('VTT Transcribe - Navigation', () => {
   });
 
   test('should navigate between pages', async ({ page }) => {
-    await page.goto('/');
-
     // Navigate to About page
     await page.getByRole('button', { name: 'About' }).click();
     await expect(page.getByText('About VTT Transcribe')).toBeVisible();
@@ -32,8 +28,6 @@ test.describe('VTT Transcribe - Navigation', () => {
   });
 
   test('should open settings from navigation', async ({ page }) => {
-    await page.goto('/');
-
     // Click settings in nav
     await page.getByRole('button', { name: 'Settings' }).click();
 
@@ -46,27 +40,21 @@ test.describe('VTT Transcribe - Navigation', () => {
 
 test.describe('VTT Transcribe - User Menu', () => {
   test('should display user menu in top right', async ({ page }) => {
-    await page.goto('/');
-
     // Check user menu exists
     const userMenu = page.locator('.user-menu');
     await expect(userMenu).toBeVisible();
-    await expect(page.getByText('Guest')).toBeVisible();
+    await expect(page.getByText('testuser')).toBeVisible();
   });
 
   test('should open user menu dropdown', async ({ page }) => {
-    await page.goto('/');
-
     // Click user menu button
     await page.getByRole('button', { name: 'User menu' }).click();
 
-    // Dropdown should appear - check Settings button in the dropdown menu (in header/banner, not navigation)
-    await expect(page.getByRole('banner').getByRole('button', { name: 'Settings' })).toBeVisible();
+    // Dropdown should appear - check Logout button in the dropdown menu
+    await expect(page.getByRole('banner').getByRole('button', { name: 'Logout' })).toBeVisible();
   });
 
   test('should open settings from user menu', async ({ page }) => {
-    await page.goto('/');
-
     // Open user menu
     await page.getByRole('button', { name: 'User menu' }).click();
 
@@ -80,8 +68,6 @@ test.describe('VTT Transcribe - User Menu', () => {
 
 test.describe('VTT Transcribe - Settings Modal', () => {
   test('should display translation section', async ({ page }) => {
-    await page.goto('/');
-
     // Open settings (from navigation list, not dropdown)
     await page.getByRole('list').getByRole('button', { name: 'Settings' }).click();
 
@@ -97,7 +83,6 @@ test.describe('VTT Transcribe - Settings Modal', () => {
   });
 
   test('should have language dropdown with options', async ({ page }) => {
-    await page.goto('/');
     await page.getByRole('list').getByRole('button', { name: 'Settings' }).click();
 
     const langSelect = page.getByLabel('Target Language');
@@ -116,7 +101,6 @@ test.describe('VTT Transcribe - Settings Modal', () => {
   });
 
   test('should close settings modal', async ({ page }) => {
-    await page.goto('/');
     await page.getByRole('button', { name: 'Settings' }).first().click();
 
     // Modal should be visible
@@ -130,7 +114,6 @@ test.describe('VTT Transcribe - Settings Modal', () => {
   });
 
   test('should save translation settings to sessionStorage', async ({ page }) => {
-    await page.goto('/');
     await page.getByRole('button', { name: 'Settings' }).first().click();
 
     // Fill in translation language
@@ -142,7 +125,7 @@ test.describe('VTT Transcribe - Settings Modal', () => {
     // Check sessionStorage for translation language only
     const lang = await page.evaluate(() => sessionStorage.getItem('translation_language'));
     expect(lang).toBe('es');
-    
+
     // API key should NOT be in sessionStorage
     const openaiKey = await page.evaluate(() => sessionStorage.getItem('openai_api_key'));
     expect(openaiKey).toBeNull();
