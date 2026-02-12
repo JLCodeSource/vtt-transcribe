@@ -46,7 +46,7 @@
 
 <div class="user-menu">
   <button class="user-button" onclick={toggleMenu} aria-label="User menu">
-    <span class="user-avatar">{isLoggedIn ? username[0].toUpperCase() : '👤'}</span>
+    <span class="user-avatar">{isLoggedIn && username.trim() ? username[0].toUpperCase() : '👤'}</span>
     <span class="user-name">{username}</span>
     <span class="chevron" class:open={menuOpen}>▼</span>
   </button>

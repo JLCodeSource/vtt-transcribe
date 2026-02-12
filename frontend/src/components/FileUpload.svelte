@@ -19,6 +19,21 @@
   let isUploading = $state(false);
   let validationError = $state('');
 
+  // Load API keys from sessionStorage on mount
+  $effect(() => {
+    if (typeof window !== 'undefined') {
+      const savedApiKey = sessionStorage.getItem('openai_api_key');
+      const savedHfToken = sessionStorage.getItem('hf_token');
+      
+      if (savedApiKey) {
+        options.apiKey = savedApiKey;
+      }
+      if (savedHfToken) {
+        options.hfToken = savedHfToken;
+      }
+    }
+  });
+
   const SUPPORTED_VIDEO_TYPES = ['.mp4', '.avi', '.mov', '.webm', '.mpeg'];
   const SUPPORTED_AUDIO_TYPES = ['.mp3', '.wav', '.ogg', '.m4a', '.mpga'];
   const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
