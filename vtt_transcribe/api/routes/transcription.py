@@ -15,7 +15,7 @@ from vtt_transcribe.logging_config import get_logger
 from vtt_transcribe.transcriber import VideoTranscriber
 from vtt_transcribe.translator import AudioTranslator
 
-router = APIRouter(tags=["transcription"])
+router = APIRouter(prefix="/api", tags=["transcription"])
 logger = get_logger(__name__)
 
 # Jobs dictionary now includes progress_updates queue for each job
@@ -42,7 +42,8 @@ def _emit_progress(job_id: str, message: str, progress_type: str = "info") -> No
             # Log but don't fail if queue is full - oldest events will be consumed first
             logger.warning(
                 "Progress queue full for job - dropping event",
-                extra={"job_id": job_id, "progress_message": message, "progress_type": progress_type},
+                extra={"job_id": job_id, "progress_message": message,
+                       "progress_type": progress_type},
             )
         except Exception as exc:
             # Log but don't fail if progress update cannot be enqueued for other reasons
@@ -64,7 +65,8 @@ MAX_FILE_SIZE = 100 * 1024 * 1024
 MAX_PROGRESS_QUEUE_SIZE = 100
 
 # Supported file extensions
-SUPPORTED_EXTENSIONS = {".mp3", ".mp4", ".wav", ".m4a", ".ogg", ".mpeg", ".mpga", ".webm"}
+SUPPORTED_EXTENSIONS = {".mp3", ".mp4", ".wav",
+                        ".m4a", ".ogg", ".mpeg", ".mpga", ".webm"}
 
 
 @router.post("/transcribe")
@@ -102,7 +104,8 @@ async def create_transcription_job(
 
     if not file.filename:
         logger.warning("Job creation failed: missing filename")
-        raise HTTPException(status_code=422, detail="File must have a filename")
+        raise HTTPException(
+            status_code=422, detail="File must have a filename")
 
     if diarize and not hf_token:
         logger.warning(
@@ -163,11 +166,13 @@ async def create_transcription_job(
         "hf_token": hf_token if diarize else None,
         "device": device if diarize else None,
         "translate_to": translate_to,
-        "progress_updates": asyncio.Queue(maxsize=MAX_PROGRESS_QUEUE_SIZE),  # Bounded queue for progress updates
+        # Bounded queue for progress updates
+        "progress_updates": asyncio.Queue(maxsize=MAX_PROGRESS_QUEUE_SIZE),
     }
 
     task = asyncio.create_task(
-        _process_transcription(job_id, content, file.filename or "audio.mp3", api_key, diarize, hf_token, device, translate_to)
+        _process_transcription(job_id, content, file.filename or "audio.mp3",
+                               api_key, diarize, hf_token, device, translate_to)
     )
     _ = task
 
@@ -203,7 +208,8 @@ async def detect_language(
         Detected language code and original filename
     """
     if not file.filename:
-        raise HTTPException(status_code=422, detail="File must have a filename")
+        raise HTTPException(
+            status_code=422, detail="File must have a filename")
 
     # Validate file extension
     file_ext = Path(file.filename).suffix.lower()
@@ -240,7 +246,8 @@ async def detect_language(
             await asyncio.to_thread(tmp_path.unlink, missing_ok=True)
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Language detection failed: {e!s}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Language detection failed: {e!s}") from e
 
 
 @router.post("/translate")
@@ -274,7 +281,8 @@ async def translate_transcript(
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Translation failed: {e!s}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Translation failed: {e!s}") from e
 
 
 @router.post("/diarize")
@@ -294,7 +302,8 @@ async def create_diarization_job(
         Job ID and status
     """
     if not file.filename:
-        raise HTTPException(status_code=422, detail="File must have a filename")
+        raise HTTPException(
+            status_code=422, detail="File must have a filename")
 
     job_id = str(uuid.uuid4())
 
@@ -305,10 +314,12 @@ async def create_diarization_job(
         "diarize_only": True,
         "hf_token": hf_token,
         "device": device,
-        "progress_updates": asyncio.Queue(maxsize=MAX_PROGRESS_QUEUE_SIZE),  # Bounded queue for progress updates
+        # Bounded queue for progress updates
+        "progress_updates": asyncio.Queue(maxsize=MAX_PROGRESS_QUEUE_SIZE),
     }
 
-    task = asyncio.create_task(_process_diarization(job_id, file, hf_token, device))
+    task = asyncio.create_task(
+        _process_diarization(job_id, file, hf_token, device))
     _ = task
 
     return {
@@ -334,7 +345,8 @@ async def _process_diarization(job_id: str, file: UploadFile, _hf_token: str, _d
         try:
             # Note: Actual diarization logic would go here
             # For now, placeholder result
-            _emit_progress(job_id, "Processing audio for speaker segments", "diarization")
+            _emit_progress(
+                job_id, "Processing audio for speaker segments", "diarization")
             result = f"Diarization result for {filename}"
 
             jobs[job_id]["status"] = "completed"
@@ -388,7 +400,8 @@ async def _process_transcription(
             _emit_progress(job_id, "Detecting language", "language")
             detected_language = await asyncio.to_thread(transcriber.detect_language, tmp_path)
             jobs[job_id]["detected_language"] = detected_language
-            _emit_progress(job_id, f"Detected language: {detected_language}", "language")
+            _emit_progress(
+                job_id, f"Detected language: {detected_language}", "language")
 
             # Transcribe audio
             _emit_progress(job_id, "Transcribing audio", "info")
@@ -397,13 +410,15 @@ async def _process_transcription(
 
             # If translation requested, translate the transcript
             if translate_to:
-                _emit_progress(job_id, f"Translating to {translate_to}", "translation")
+                _emit_progress(
+                    job_id, f"Translating to {translate_to}", "translation")
                 translator = AudioTranslator(api_key)
                 result = await asyncio.to_thread(
                     translator.translate_transcript, result, translate_to, preserve_timestamps=True
                 )
                 jobs[job_id]["translated_to"] = translate_to
-                _emit_progress(job_id, f"Translation to {translate_to} complete", "translation")
+                _emit_progress(
+                    job_id, f"Translation to {translate_to} complete", "translation")
 
             jobs[job_id]["status"] = "completed"
             jobs[job_id]["result"] = result
@@ -455,7 +470,8 @@ def _parse_transcript_segments(transcript: str) -> list[dict[str, Any]]:
             continue
 
         # Try to match format with speaker: [Speaker] [HH:MM:SS - HH:MM:SS] text
-        speaker_match = re.match(r"^\[([^\]]+)\]\s*\[(\d{2}):(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2}):(\d{2})\]\s*(.+)$", line)
+        speaker_match = re.match(
+            r"^\[([^\]]+)\]\s*\[(\d{2}):(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2}):(\d{2})\]\s*(.+)$", line)
         if speaker_match:
             speaker, start_h, start_m, start_s, end_h, end_m, end_s, text = speaker_match.groups()
             segments.append(
@@ -469,7 +485,8 @@ def _parse_transcript_segments(transcript: str) -> list[dict[str, Any]]:
             continue
 
         # Try to match format without speaker: [HH:MM:SS - HH:MM:SS] text
-        no_speaker_match = re.match(r"^\[(\d{2}):(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2}):(\d{2})\]\s*(.+)$", line)
+        no_speaker_match = re.match(
+            r"^\[(\d{2}):(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2}):(\d{2})\]\s*(.+)$", line)
         if no_speaker_match:
             start_h, start_m, start_s, end_h, end_m, end_s, text = no_speaker_match.groups()
             segments.append(
@@ -562,7 +579,8 @@ async def download_transcript(
     job = jobs[job_id]
 
     if job["status"] != "completed":
-        raise HTTPException(status_code=400, detail=f"Job not completed. Status: {job['status']}")
+        raise HTTPException(
+            status_code=400, detail=f"Job not completed. Status: {job['status']}")
 
     result = job.get("result", "")
     if not result:
@@ -572,7 +590,8 @@ async def download_transcript(
     segments = _parse_transcript_segments(result)
 
     if not segments:
-        raise HTTPException(status_code=404, detail="No segments found in transcript")
+        raise HTTPException(
+            status_code=404, detail="No segments found in transcript")
 
     # Format based on requested type
     if format == "txt":
