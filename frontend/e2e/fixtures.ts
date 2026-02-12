@@ -2,6 +2,7 @@ import { test as base, expect } from '@playwright/test';
 
 /**
  * Extended test fixture that provides authenticated session
+ * Registers a test user and logs in before each test
  */
 export const test = base.extend({
   // Automatically login before each test
@@ -14,9 +15,9 @@ export const test = base.extend({
     const isLoginVisible = await loginHeading.isVisible().catch(() => false);
 
     if (isLoginVisible) {
-      // Register test user (will fail if already exists, which is fine)
+      // Try to register test user (will fail if already exists, which is fine)
       try {
-        const registerResponse = await page.request.post('/auth/register', {
+        const registerResponse = await page.request.post('http://localhost:8000/auth/register', {
           data: {
             username: 'testuser',
             email: 'test@example.com',
@@ -29,7 +30,7 @@ export const test = base.extend({
         }
       } catch (error) {
         // Registration might fail if user exists, continue to login
-        console.log('Registration skipped, user may already exist');
+        console.log('Registration skipped, continuing to login');
       }
 
       // Login with test credentials
