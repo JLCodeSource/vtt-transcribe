@@ -113,7 +113,7 @@ describe('UserMenu', () => {
 
   describe('Dropdown Menu Content - Logged Out', () => {
     beforeEach(async () => {
-      const { container } = render(UserMenu);
+      render(UserMenu);
       const button = screen.getByLabelText('User menu');
       await fireEvent.click(button);
     });
@@ -143,7 +143,7 @@ describe('UserMenu', () => {
 
   describe('Dropdown Menu Content - Logged In', () => {
     it('shows Settings menu item when logged in', async () => {
-      const { container } = render(UserMenu, { props: { isLoggedIn: true, username: 'Alice' } });
+      render(UserMenu, { props: { isLoggedIn: true, username: 'Alice' } });
       const button = screen.getByLabelText('User menu');
       await fireEvent.click(button);
 
@@ -151,7 +151,7 @@ describe('UserMenu', () => {
     });
 
     it('shows Logout menu item when logged in', async () => {
-      const { container } = render(UserMenu, { props: { isLoggedIn: true, username: 'Alice' } });
+      render(UserMenu, { props: { isLoggedIn: true, username: 'Alice' } });
       const button = screen.getByLabelText('User menu');
       await fireEvent.click(button);
 
@@ -159,7 +159,7 @@ describe('UserMenu', () => {
     });
 
     it('shows logout icon when logged in', async () => {
-      const { container } = render(UserMenu, { props: { isLoggedIn: true, username: 'Alice' } });
+      render(UserMenu, { props: { isLoggedIn: true, username: 'Alice' } });
       const button = screen.getByLabelText('User menu');
       await fireEvent.click(button);
 
@@ -167,7 +167,7 @@ describe('UserMenu', () => {
     });
 
     it('does not show API key message when logged in', async () => {
-      const { container } = render(UserMenu, { props: { isLoggedIn: true, username: 'Alice' } });
+      render(UserMenu, { props: { isLoggedIn: true, username: 'Alice' } });
       const button = screen.getByLabelText('User menu');
       await fireEvent.click(button);
 
@@ -219,9 +219,8 @@ describe('UserMenu', () => {
 
       const settingsButton = screen.getByText('Settings').closest('button');
 
-      expect(async () => {
-        await fireEvent.click(settingsButton!);
-      }).not.toThrow();
+      // Should not throw or reject
+      await fireEvent.click(settingsButton!);
     });
   });
 
@@ -260,9 +259,8 @@ describe('UserMenu', () => {
 
       const logoutButton = screen.getByText('Logout').closest('button');
 
-      expect(async () => {
-        await fireEvent.click(logoutButton!);
-      }).not.toThrow();
+      // Should not throw or reject
+      await fireEvent.click(logoutButton!);
     });
   });
 

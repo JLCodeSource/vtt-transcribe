@@ -205,12 +205,11 @@ describe('Settings', () => {
     });
 
     it('works without onclose callback', async () => {
-      const { container } = render(Settings, { props: { isOpen: true } });
+      render(Settings, { props: { isOpen: true } });
       const closeButton = screen.getByLabelText('Close');
 
-      expect(async () => {
-        await fireEvent.click(closeButton);
-      }).not.toThrow();
+      // Should not throw or reject
+      await fireEvent.click(closeButton);
     });
   });
 
@@ -261,7 +260,7 @@ describe('Settings', () => {
       expect(sessionStorageMock.getItem('translation_language')).toBe('es');
     });
 
-    it('removes OpenAI key from localStorage if empty', async () => {
+    it('removes OpenAI key from sessionStorage if empty', async () => {
       sessionStorageMock.setItem('openai_api_key', 'existing-key');
       render(Settings, { props: { isOpen: true } });
 
@@ -274,7 +273,7 @@ describe('Settings', () => {
       expect(sessionStorageMock.getItem('openai_api_key')).toBe(null);
     });
 
-    it('removes HuggingFace token from localStorage if empty', async () => {
+    it('removes HuggingFace token from sessionStorage if empty', async () => {
       sessionStorageMock.setItem('hf_token', 'existing-token');
       render(Settings, { props: { isOpen: true } });
 
@@ -288,8 +287,8 @@ describe('Settings', () => {
     });
   });
 
-  describe('localStorage Loading', () => {
-    it('loads OpenAI key from localStorage on mount', async () => {
+  describe('sessionStorage Loading', () => {
+    it('loads OpenAI key from sessionStorage on mount', async () => {
       sessionStorageMock.setItem('openai_api_key', 'stored-key');
       render(Settings, { props: { isOpen: true } });
 
@@ -300,7 +299,7 @@ describe('Settings', () => {
       });
     });
 
-    it('loads HuggingFace token from localStorage on mount', async () => {
+    it('loads HuggingFace token from sessionStorage on mount', async () => {
       sessionStorageMock.setItem('hf_token', 'stored-token');
       render(Settings, { props: { isOpen: true } });
 
@@ -310,7 +309,7 @@ describe('Settings', () => {
       });
     });
 
-    it('loads translation language from localStorage on mount', async () => {
+    it('loads translation language from sessionStorage on mount', async () => {
       sessionStorageMock.setItem('translation_language', 'fr');
       render(Settings, { props: { isOpen: true } });
 
@@ -320,7 +319,7 @@ describe('Settings', () => {
       });
     });
 
-    it('uses default values when localStorage is empty', async () => {
+    it('uses default values when sessionStorage is empty', async () => {
       render(Settings, { props: { isOpen: true } });
 
       const openaiInput = screen.getByLabelText(/OpenAI API Key/i) as HTMLInputElement;
