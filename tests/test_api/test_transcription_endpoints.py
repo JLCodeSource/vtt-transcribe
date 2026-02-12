@@ -389,17 +389,17 @@ class TestTranslateEndpoint:
 
     def test_translate_requires_transcript(self, client):
         """POST /translate should require transcript text."""
-        response = client.post("/translate", data={})
+        response = client.post("/api/translate", data={})
         assert response.status_code == 422
 
     def test_translate_requires_target_language(self, client):
         """POST /translate should require target_language."""
-        response = client.post("/translate", data={"transcript": "Hello"})
+        response = client.post("/api/translate", data={"transcript": "Hello"})
         assert response.status_code == 422
 
     def test_translate_requires_api_key(self, client):
         """POST /translate should require OpenAI API key."""
-        response = client.post("/translate", data={"transcript": "Hello", "target_language": "Spanish"})
+        response = client.post("/api/translate", data={"transcript": "Hello", "target_language": "Spanish"})
         assert response.status_code == 422
 
     @patch("vtt_transcribe.api.routes.transcription.AudioTranslator")
