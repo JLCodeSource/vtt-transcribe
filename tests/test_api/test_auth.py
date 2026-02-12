@@ -27,7 +27,7 @@ class TestAPIKeyAuthentication:
     def test_invalid_api_key_rejected(self, client):
         """Invalid API keys should be rejected."""
         response = client.post(
-            "/transcribe",
+            "/api/transcribe",
             files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
             data={"api_key": "invalid-key"},
         )
@@ -43,7 +43,7 @@ class TestAPIKeyAuthentication:
             mock_instance.transcribe.return_value = "[00:00 - 00:05] Test"
 
             response = client.post(
-                "/transcribe",
+                "/api/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
                 data={"api_key": "sk-valid-test-key"},
             )
@@ -62,7 +62,7 @@ class TestAPIKeyHeader:
             mock_instance.transcribe.return_value = "[00:00 - 00:05] Test"
 
             response = client.post(
-                "/transcribe",
+                "/api/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
                 headers={"X-API-Key": "sk-valid-test-key"},
             )
@@ -78,7 +78,7 @@ class TestAPIKeyHeader:
             mock_instance.transcribe.return_value = "[00:00 - 00:05] Test"
 
             response = client.post(
-                "/transcribe",
+                "/api/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
                 headers={"Authorization": "Bearer sk-valid-test-key"},
             )

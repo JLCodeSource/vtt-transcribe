@@ -22,7 +22,7 @@ class TestDiarizationEndpoint:
     def test_transcribe_with_diarization_requires_hf_token(self, _mock_transcriber, client):  # noqa: PT019
         """POST /transcribe with diarize=true should require HF token."""
         response = client.post(
-            "/transcribe",
+            "/api/transcribe",
             files={"file": ("test.mp3", io.BytesIO(b"fake audio"), "audio/mpeg")},
             data={"api_key": "test-key", "diarize": "true"},
         )
@@ -36,7 +36,7 @@ class TestDiarizationEndpoint:
         mock_instance.transcribe.return_value = "[00:00 - 00:05] Speaker 1: Test"
 
         response = client.post(
-            "/transcribe",
+            "/api/transcribe",
             files={"file": ("test.mp3", io.BytesIO(b"fake audio"), "audio/mpeg")},
             data={"api_key": "test-key", "diarize": "true", "hf_token": "hf_test_token"},
         )
@@ -50,7 +50,7 @@ class TestDiarizationEndpoint:
         mock_instance.transcribe.return_value = "[00:00 - 00:05] Speaker 1: Test"
 
         response = client.post(
-            "/transcribe",
+            "/api/transcribe",
             files={"file": ("test.mp3", io.BytesIO(b"fake audio"), "audio/mpeg")},
             data={
                 "api_key": "test-key",

@@ -99,7 +99,7 @@ class TestJobStatusEndpoint:
         create_response = client.post("/api/transcribe", files=files, data=data)
         job_id = create_response.json()["job_id"]
 
-        response = client.get(f"/jobs/{job_id}")
+        response = client.get(f"/api/jobs/{job_id}")
         assert response.status_code != 404
 
     def test_job_status_returns_not_found_for_invalid_id(self, client):
@@ -118,7 +118,7 @@ class TestJobStatusEndpoint:
         create_response = client.post("/api/transcribe", files=files, data=data)
         job_id = create_response.json()["job_id"]
 
-        status_response = client.get(f"/jobs/{job_id}")
+        status_response = client.get(f"/api/jobs/{job_id}")
         assert status_response.status_code == 200
         status_data = status_response.json()
         assert "job_id" in status_data
@@ -259,7 +259,7 @@ class TestAPITranscriptionCoverage:
         time.sleep(0.3)
 
         # Verify job completed (covers the try/finally path)
-        status_response = client.get(f"/jobs/{job_id}")
+        status_response = client.get(f"/api/jobs/{job_id}")
         assert status_response.json()["status"] in ["completed", "processing", "failed"]
 
 
@@ -584,7 +584,7 @@ class TestDownloadTranscriptEndpoint:
         jobs[job_id]["status"] = "processing"
 
         # Try to download
-        response = client.get(f"/jobs/{job_id}/download?format=txt")
+        response = client.get(f"/api/jobs/{job_id}/download?format=txt")
         assert response.status_code == 400
         assert "Job not completed" in response.json()["detail"]
 
@@ -596,7 +596,7 @@ class TestDownloadTranscriptEndpoint:
         job_id = "test-empty-job"
         jobs[job_id] = {"status": "completed", "job_id": job_id, "result": ""}
 
-        response = client.get(f"/jobs/{job_id}/download?format=txt")
+        response = client.get(f"/api/jobs/{job_id}/download?format=txt")
         assert response.status_code == 404
         assert "No transcript available" in response.json()["detail"]
 
@@ -607,7 +607,7 @@ class TestDownloadTranscriptEndpoint:
         job_id = "test-no-segments-job"
         jobs[job_id] = {"status": "completed", "job_id": job_id, "result": "Invalid transcript format"}
 
-        response = client.get(f"/jobs/{job_id}/download?format=txt")
+        response = client.get(f"/api/jobs/{job_id}/download?format=txt")
         assert response.status_code == 404
         assert "No segments found" in response.json()["detail"]
 
@@ -622,7 +622,7 @@ class TestDownloadTranscriptEndpoint:
             "result": "[00:00:00 - 00:00:05] Hello world\n[00:00:05 - 00:00:10] How are you?",
         }
 
-        response = client.get(f"/jobs/{job_id}/download?format=txt")
+        response = client.get(f"/api/jobs/{job_id}/download?format=txt")
         assert response.status_code == 200
         assert response.headers["content-type"] == "text/plain; charset=utf-8"
         assert "Hello world" in response.text
@@ -640,7 +640,7 @@ class TestDownloadTranscriptEndpoint:
             "result": "[00:00:00 - 00:00:05] Hello world",
         }
 
-        response = client.get(f"/jobs/{job_id}/download?format=vtt")
+        response = client.get(f"/api/jobs/{job_id}/download?format=vtt")
         assert response.status_code == 200
         assert "text/vtt" in response.headers["content-type"]
         assert "WEBVTT" in response.text
@@ -656,7 +656,7 @@ class TestDownloadTranscriptEndpoint:
             "result": "[00:00:00 - 00:00:05] Hello world",
         }
 
-        response = client.get(f"/jobs/{job_id}/download?format=srt")
+        response = client.get(f"/api/jobs/{job_id}/download?format=srt")
         assert response.status_code == 200
         assert "application/x-subrip" in response.headers["content-type"]
         assert "1" in response.text  # SRT sequence number
@@ -673,7 +673,7 @@ class TestDownloadTranscriptEndpoint:
             "result": "[00:00:00 - 00:00:05] First line\n\n[00:00:10 - 00:00:15] Second line",
         }
 
-        response = client.get(f"/jobs/{job_id}/download?format=txt")
+        response = client.get(f"/api/jobs/{job_id}/download?format=txt")
         assert response.status_code == 200
         # Empty lines should be skipped during parsing
         assert "First line" in response.text
@@ -694,18 +694,18 @@ class TestDownloadTranscriptEndpoint:
         }
 
         # Test TXT format with speakers
-        response = client.get(f"/jobs/{job_id}/download?format=txt")
+        response = client.get(f"/api/jobs/{job_id}/download?format=txt")
         assert response.status_code == 200
         assert "[SPEAKER_00]" in response.text
         assert "[SPEAKER_01]" in response.text
 
         # Test VTT format with speakers
-        response = client.get(f"/jobs/{job_id}/download?format=vtt")
+        response = client.get(f"/api/jobs/{job_id}/download?format=vtt")
         assert response.status_code == 200
         assert "<v SPEAKER_00>" in response.text
 
         # Test SRT format with speakers
-        response = client.get(f"/jobs/{job_id}/download?format=srt")
+        response = client.get(f"/api/jobs/{job_id}/download?format=srt")
         assert response.status_code == 200
         assert "[SPEAKER_00]" in response.text
 
