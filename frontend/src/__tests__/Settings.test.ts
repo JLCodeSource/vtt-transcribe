@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import Settings from '../components/Settings.svelte';
 
-// Mock localStorage
-const localStorageMock = (() => {
+// Mock sessionStorage
+const sessionStorageMock = (() => {
   let store: Record<string, string> = {};
   return {
     getItem: (key: string) => store[key] || null,
@@ -13,15 +13,15 @@ const localStorageMock = (() => {
   };
 })();
 
-Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+Object.defineProperty(window, 'sessionStorage', { value: sessionStorageMock });
 
 describe('Settings', () => {
   beforeEach(() => {
-    localStorageMock.clear();
+    sessionStorageMock.clear();
   });
 
   afterEach(() => {
-    localStorageMock.clear();
+    sessionStorageMock.clear();
   });
 
   describe('Modal Visibility', () => {
@@ -225,7 +225,7 @@ describe('Settings', () => {
       expect(onclose).toHaveBeenCalledTimes(1);
     });
 
-    it('saves OpenAI key to localStorage', async () => {
+    it('saves OpenAI key to sessionStorage', async () => {
       render(Settings, { props: { isOpen: true } });
 
       const openaiInput = screen.getByLabelText(/OpenAI API Key/i);
@@ -234,10 +234,10 @@ describe('Settings', () => {
       const saveButton = screen.getByText(/Save Settings/i).closest('button');
       await fireEvent.click(saveButton!);
 
-      expect(localStorageMock.getItem('openai_api_key')).toBe('test-key-123');
+      expect(sessionStorageMock.getItem('openai_api_key')).toBe('test-key-123');
     });
 
-    it('saves HuggingFace token to localStorage', async () => {
+    it('saves HuggingFace token to sessionStorage', async () => {
       render(Settings, { props: { isOpen: true } });
 
       const hfInput = screen.getByLabelText(/HuggingFace Token/i);
@@ -246,10 +246,10 @@ describe('Settings', () => {
       const saveButton = screen.getByText(/Save Settings/i).closest('button');
       await fireEvent.click(saveButton!);
 
-      expect(localStorageMock.getItem('hf_token')).toBe('hf-token-456');
+      expect(sessionStorageMock.getItem('hf_token')).toBe('hf-token-456');
     });
 
-    it('saves translation language to localStorage', async () => {
+    it('saves translation language to sessionStorage', async () => {
       render(Settings, { props: { isOpen: true } });
 
       const select = screen.getByLabelText(/Target Language/i);
@@ -258,11 +258,11 @@ describe('Settings', () => {
       const saveButton = screen.getByText(/Save Settings/i).closest('button');
       await fireEvent.click(saveButton!);
 
-      expect(localStorageMock.getItem('translation_language')).toBe('es');
+      expect(sessionStorageMock.getItem('translation_language')).toBe('es');
     });
 
     it('removes OpenAI key from localStorage if empty', async () => {
-      localStorageMock.setItem('openai_api_key', 'existing-key');
+      sessionStorageMock.setItem('openai_api_key', 'existing-key');
       render(Settings, { props: { isOpen: true } });
 
       const openaiInput = screen.getByLabelText(/OpenAI API Key/i);
@@ -271,11 +271,11 @@ describe('Settings', () => {
       const saveButton = screen.getByText(/Save Settings/i).closest('button');
       await fireEvent.click(saveButton!);
 
-      expect(localStorageMock.getItem('openai_api_key')).toBe(null);
+      expect(sessionStorageMock.getItem('openai_api_key')).toBe(null);
     });
 
     it('removes HuggingFace token from localStorage if empty', async () => {
-      localStorageMock.setItem('hf_token', 'existing-token');
+      sessionStorageMock.setItem('hf_token', 'existing-token');
       render(Settings, { props: { isOpen: true } });
 
       const hfInput = screen.getByLabelText(/HuggingFace Token/i);
@@ -284,52 +284,52 @@ describe('Settings', () => {
       const saveButton = screen.getByText(/Save Settings/i).closest('button');
       await fireEvent.click(saveButton!);
 
-      expect(localStorageMock.getItem('hf_token')).toBe(null);
+      expect(sessionStorageMock.getItem('hf_token')).toBe(null);
     });
   });
 
   describe('localStorage Loading', () => {
-    it('loads OpenAI key from localStorage on mount', () => {
-      localStorageMock.setItem('openai_api_key', 'stored-key');
+    it('loads OpenAI key from localStorage on mount', async () => {
+      sessionStorageMock.setItem('openai_api_key', 'stored-key');
       render(Settings, { props: { isOpen: true } });
 
       const openaiInput = screen.getByLabelText(/OpenAI API Key/i) as HTMLInputElement;
       // Wait for effect to run
-      setTimeout(() => {
+      await waitFor(() => {
         expect(openaiInput.value).toBe('stored-key');
-      }, 0);
+      });
     });
 
-    it('loads HuggingFace token from localStorage on mount', () => {
-      localStorageMock.setItem('hf_token', 'stored-token');
+    it('loads HuggingFace token from localStorage on mount', async () => {
+      sessionStorageMock.setItem('hf_token', 'stored-token');
       render(Settings, { props: { isOpen: true } });
 
       const hfInput = screen.getByLabelText(/HuggingFace Token/i) as HTMLInputElement;
-      setTimeout(() => {
+      await waitFor(() => {
         expect(hfInput.value).toBe('stored-token');
-      }, 0);
+      });
     });
 
-    it('loads translation language from localStorage on mount', () => {
-      localStorageMock.setItem('translation_language', 'fr');
+    it('loads translation language from localStorage on mount', async () => {
+      sessionStorageMock.setItem('translation_language', 'fr');
       render(Settings, { props: { isOpen: true } });
 
       const select = screen.getByLabelText(/Target Language/i) as HTMLSelectElement;
-      setTimeout(() => {
+      await waitFor(() => {
         expect(select.value).toBe('fr');
-      }, 0);
+      });
     });
 
-    it('uses default values when localStorage is empty', () => {
+    it('uses default values when localStorage is empty', async () => {
       render(Settings, { props: { isOpen: true } });
 
       const openaiInput = screen.getByLabelText(/OpenAI API Key/i) as HTMLInputElement;
       const select = screen.getByLabelText(/Target Language/i) as HTMLSelectElement;
 
-      setTimeout(() => {
+      await waitFor(() => {
         expect(openaiInput.value).toBe('');
         expect(select.value).toBe('none');
-      }, 0);
+      });
     });
   });
 
@@ -384,7 +384,7 @@ describe('Settings', () => {
       const cancelButton = screen.getByText('Cancel').closest('button');
       await fireEvent.click(cancelButton!);
 
-      expect(localStorageMock.getItem('openai_api_key')).toBe(null);
+      expect(sessionStorageMock.getItem('openai_api_key')).toBe(null);
     });
   });
 
@@ -394,7 +394,7 @@ describe('Settings', () => {
       const dialog = screen.getByRole('dialog');
 
       expect(dialog.getAttribute('aria-modal')).toBe('true');
-      expect(dialog.getAttribute('tabindex')).toBe('0');
+      expect(dialog.getAttribute('tabindex')).toBe('-1');
     });
 
     it('close button has aria-label', () => {
