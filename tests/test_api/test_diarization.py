@@ -1,7 +1,6 @@
 """Tests for diarization API endpoints."""
 
 import io
-import os
 from unittest.mock import patch
 
 import pytest

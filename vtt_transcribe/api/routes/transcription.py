@@ -130,7 +130,10 @@ async def create_transcription_job(
             )
             raise HTTPException(
                 status_code=400,
-                detail="HuggingFace token required for diarization. Provide hf_token parameter or set HF_TOKEN environment variable.",
+                detail=(
+                    "HuggingFace token required for diarization. "
+                    "Provide hf_token parameter or set HF_TOKEN environment variable."
+                ),
             )
 
     # Validate file extension
