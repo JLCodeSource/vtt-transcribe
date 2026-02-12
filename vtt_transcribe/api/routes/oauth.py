@@ -31,6 +31,7 @@ oauth = OAuth()
 # Configure OAuth providers
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
+
 # Validate FRONTEND_URL
 def validate_frontend_url(url: str) -> bool:
     """Validate that FRONTEND_URL is a properly formatted URL."""
@@ -248,22 +249,14 @@ async def get_or_create_oauth_user(
 
 # User-friendly error messages
 ERROR_MESSAGES = {
-    "oauth_failed": (
-        "Authentication failed. Please try again or use a different login method."
-    ),
+    "oauth_failed": ("Authentication failed. Please try again or use a different login method."),
     "no_email": (
-        "We couldn't retrieve your email address. "
-        "Please ensure your email is visible in your provider settings and try again."
+        "We couldn't retrieve your email address. Please ensure your email is visible in your provider settings and try again."
     ),
-    "invalid_provider": (
-        "Invalid authentication provider. Please use one of the supported providers."
-    ),
-    "username_unavailable": (
-        "Unable to create your account. Please contact support for assistance."
-    ),
+    "invalid_provider": ("Invalid authentication provider. Please use one of the supported providers."),
+    "username_unavailable": ("Unable to create your account. Please contact support for assistance."),
     "account_mismatch": (
-        "This email is already registered with a different login method. "
-        "Please use your original login method."
+        "This email is already registered with a different login method. Please use your original login method."
     ),
 }
 

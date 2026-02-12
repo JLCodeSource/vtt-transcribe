@@ -123,7 +123,7 @@ class TestOAuthLogin:
         assert response.status_code == 400
         assert "Invalid provider" in response.json()["detail"]
 
-    def test_login_unconfigured_provider(self, client, mock_oauth_client):
+    def test_login_unconfigured_provider(self, client):
         """Should return 503 when provider is not configured."""
         with patch("vtt_transcribe.api.routes.oauth.oauth") as mock_oauth:
             mock_oauth.create_client.return_value = None
@@ -140,7 +140,7 @@ class TestOAuthLogin:
 
         with patch("vtt_transcribe.api.routes.oauth.oauth") as mock_oauth:
             mock_oauth.create_client.return_value = mock_oauth_client
-            response = client.get("/oauth/login/google", follow_redirects=False)
+            client.get("/oauth/login/google", follow_redirects=False)
             # Should attempt to redirect
             assert mock_oauth_client.authorize_redirect.called
 
@@ -223,9 +223,7 @@ class TestOAuthCallback:
 
     def test_callback_github_success_with_public_email(self, client, mock_oauth_client, mock_user_factory):
         """Should handle GitHub OAuth with public email."""
-        mock_oauth_client.authorize_access_token = AsyncMock(
-            return_value={"access_token": "test-token"}
-        )
+        mock_oauth_client.authorize_access_token = AsyncMock(return_value={"access_token": "test-token"})
 
         # Mock GitHub user API response
         user_response = MagicMock()
@@ -251,9 +249,7 @@ class TestOAuthCallback:
 
     def test_callback_github_private_email(self, client, mock_oauth_client, mock_user_factory):
         """Should fetch private email from GitHub emails endpoint."""
-        mock_oauth_client.authorize_access_token = AsyncMock(
-            return_value={"access_token": "test-token"}
-        )
+        mock_oauth_client.authorize_access_token = AsyncMock(return_value={"access_token": "test-token"})
 
         # Mock GitHub user API response (no email)
         user_response = MagicMock()
@@ -263,9 +259,7 @@ class TestOAuthCallback:
         # Mock GitHub emails API response
         emails_response = MagicMock()
         emails_response.status_code = 200
-        emails_response.json.return_value = [
-            {"email": "test@example.com", "primary": True, "verified": True}
-        ]
+        emails_response.json.return_value = [{"email": "test@example.com", "primary": True, "verified": True}]
 
         # Configure mock to return different responses
         mock_oauth_client.get = AsyncMock(side_effect=[user_response, emails_response])
@@ -287,9 +281,7 @@ class TestOAuthCallback:
 
     def test_callback_github_api_failure(self, client, mock_oauth_client):
         """Should handle GitHub API failures gracefully."""
-        mock_oauth_client.authorize_access_token = AsyncMock(
-            return_value={"access_token": "test-token"}
-        )
+        mock_oauth_client.authorize_access_token = AsyncMock(return_value={"access_token": "test-token"})
 
         # Mock GitHub API returning error status
         user_response = MagicMock()
@@ -332,7 +324,7 @@ class TestOAuthCallback:
             assert response.status_code == 307
             assert "#token=" in response.headers["location"]
 
-    def test_callback_prevents_account_takeover(self, client, mock_oauth_client, mock_user_factory):
+    def test_callback_prevents_account_takeover(self, client, mock_oauth_client):
         """Should prevent OAuth login for non-OAuth users (account takeover protection)."""
         mock_oauth_client.authorize_access_token = AsyncMock(
             return_value={
