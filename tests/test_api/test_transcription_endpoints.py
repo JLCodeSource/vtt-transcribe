@@ -225,7 +225,7 @@ class TestAPITranscriptionCoverage:
 
         with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber"):
             response = client.post(
-                "/transcribe",
+                "/api/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
                 data={"api_key": "test-key"},
             )
@@ -384,7 +384,7 @@ class TestTranslateEndpoint:
 
     def test_translate_endpoint_exists(self, client):
         """POST /translate endpoint should exist."""
-        response = client.post("/translate")
+        response = client.post("/api/translate")
         assert response.status_code != 404
 
     def test_translate_requires_transcript(self, client):
@@ -723,7 +723,7 @@ class TestProgressEventsInTranscription:
         mock_instance.detect_language.return_value = "en"
 
         response = client.post(
-            "/transcribe",
+            "/api/transcribe",
             files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
             data={"api_key": "test-key"},
         )
@@ -769,7 +769,7 @@ class TestProgressEventsInTranscription:
         mock_instance.detect_language.return_value = "es"
 
         response = client.post(
-            "/transcribe",
+            "/api/transcribe",
             files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
             data={"api_key": "test-key"},
         )
@@ -812,7 +812,7 @@ class TestProgressEventsInTranscription:
         mock_translator_instance.translate_transcript.return_value = "[00:00 - 00:05] Prueba"
 
         response = client.post(
-            "/transcribe",
+            "/api/transcribe",
             files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
             data={"api_key": "test-key", "translate_to": "Spanish"},
         )
