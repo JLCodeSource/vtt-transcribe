@@ -17,7 +17,7 @@ export const test = base.extend({
     if (isLoginVisible) {
       // Try to register test user (will fail if already exists, which is fine)
       try {
-        const registerResponse = await page.request.post('http://localhost:8000/auth/register', {
+        const registerResponse = await page.request.post('/auth/register', {
           data: {
             username: 'testuser',
             email: 'test@example.com',
