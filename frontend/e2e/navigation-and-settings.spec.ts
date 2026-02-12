@@ -62,7 +62,8 @@ test.describe('VTT Transcribe - User Menu', () => {
     
     // Dropdown should appear
     await expect(page.getByText('Configure your API keys in Settings')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Settings' })).toBeVisible();
+    // Check Settings button in the dropdown menu (in header/banner, not navigation)
+    await expect(page.getByRole('banner').getByRole('button', { name: 'Settings' })).toBeVisible();
   });
 
   test('should open settings from user menu', async ({ page }) => {
@@ -71,8 +72,8 @@ test.describe('VTT Transcribe - User Menu', () => {
     // Open user menu
     await page.getByRole('button', { name: 'User menu' }).click();
     
-    // Click settings in dropdown
-    await page.getByRole('button', { name: 'Settings' }).nth(1).click();
+    // Click settings in dropdown (from banner/header, not navigation)
+    await page.getByRole('banner').getByRole('button', { name: 'Settings' }).click();
     
     // Settings modal should open
     await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
@@ -83,12 +84,12 @@ test.describe('VTT Transcribe - Settings Modal', () => {
   test('should display all settings sections', async ({ page }) => {
     await page.goto('/');
     
-    // Open settings
-    await page.getByRole('button', { name: 'Settings' }).first().click();
+    // Open settings (from navigation list, not dropdown)
+    await page.getByRole('list').getByRole('button', { name: 'Settings' }).click();
     
     // Check sections exist
     await expect(page.getByText('API Configuration')).toBeVisible();
-    await expect(page.getByText('Translation')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Translation' })).toBeVisible();
     
     // Check OpenAI API key field
     await expect(page.getByLabel('OpenAI API Key')).toBeVisible();
@@ -134,17 +135,17 @@ test.describe('VTT Transcribe - Settings Modal', () => {
 
   test('should have language dropdown with options', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Settings' }).first().click();
+    await page.getByRole('list').getByRole('button', { name: 'Settings' }).click();
     
     const langSelect = page.getByLabel('Target Language');
     
     // Check default value
     await expect(langSelect).toHaveValue('none');
     
-    // Check some language options exist
-    await expect(langSelect.locator('option[value="es"]')).toBeVisible();
-    await expect(langSelect.locator('option[value="fr"]')).toBeVisible();
-    await expect(langSelect.locator('option[value="de"]')).toBeVisible();
+    // Check some language options exist (options in select are not individually visible, check they exist)
+    await expect(langSelect.locator('option[value="es"]')).toHaveCount(1);
+    await expect(langSelect.locator('option[value="fr"]')).toHaveCount(1);
+    await expect(langSelect.locator('option[value="de"]')).toHaveCount(1);
     
     // Select a language
     await langSelect.selectOption('es');

@@ -62,17 +62,9 @@ Tests configured in `frontend/playwright.config.ts`:
 - Set `DOCKER_FRONTEND=true` to test against Docker (port 3000)
 - Default is dev server mode (port 5173)
 
-### Known Test Issues
-As of 2026-02-11, 3 tests have selector issues that need fixing:
-- `should open user menu dropdown` - "Settings" button ambiguous
-- `should display all settings sections` - "Translation" text ambiguous  
-- `should have language dropdown with options` - Options visibility check needs update
-
-These are test quality issues, not application bugs.
-
 ## Coverage Requirements
 - Backend: 97%+ coverage required
-- Frontend: E2E tests cover critical user paths
+- Frontend: E2E tests cover critical user paths (12/12 tests passing)
 
 ## Test Output
 - HTML reports: `frontend/playwright-report/`
