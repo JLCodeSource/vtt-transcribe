@@ -409,7 +409,7 @@ class TestTranslateEndpoint:
         mock_instance.translate_transcript = MagicMock(return_value="[00:00 - 00:05] Hola, ¿cómo estás?")
 
         response = client.post(
-            "/translate",
+            "/api/translate",
             data={
                 "transcript": "[00:00 - 00:05] Hello, how are you?",
                 "target_language": "Spanish",
@@ -545,7 +545,7 @@ class TestTranslateErrorHandling:
         mock_instance.translate_transcript = MagicMock(side_effect=RuntimeError("Translation failed"))
 
         response = client.post(
-            "/translate",
+            "/api/translate",
             data={
                 "transcript": "[00:00 - 00:05] Hello",
                 "target_language": "Spanish",
