@@ -17,8 +17,10 @@
   onMount(async () => {
     try {
       const response = await fetch('/oauth/providers');
-      const data = await response.json();
-      oauthProviders = data.providers || [];
+      if (response.ok) {
+        const data = await response.json();
+        oauthProviders = data.providers || [];
+      }
     } catch {
       // OAuth providers not available
     }
