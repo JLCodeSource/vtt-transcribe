@@ -21,7 +21,7 @@ class TestAPIKeyAuthentication:
 
     def test_protected_endpoint_requires_auth(self, client):
         """Protected endpoints should require authentication."""
-        response = client.post("/transcribe")
+        response = client.post("/api/transcribe")
         assert response.status_code in [401, 422]  # Unauthorized or unprocessable
 
     def test_invalid_api_key_rejected(self, client):
