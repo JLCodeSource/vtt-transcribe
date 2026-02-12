@@ -8,7 +8,7 @@ export default defineConfig({
   resolve: {
     conditions: [
       'browser',
-      'module', 
+      'module',
       process.env.NODE_ENV === 'production' ? 'production' : 'development',
       'default',
     ],
@@ -35,6 +35,8 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],

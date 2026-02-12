@@ -16,7 +16,7 @@ describe('App', () => {
   it('shows the tagline', () => {
     render(App);
     expect(
-      screen.getByText(/AI-Powered Video Transcription with Speaker Diarization/i)
+      screen.getByText(/AI-Powered Video Transcription/i)
     ).toBeTruthy();
   });
 });

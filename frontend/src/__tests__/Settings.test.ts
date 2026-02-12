@@ -39,7 +39,7 @@ describe('Settings', () => {
 
     it('shows settings title when open', () => {
       render(Settings, { props: { isOpen: true } });
-      expect(screen.getByText(/Settings/i)).toBeTruthy();
+      expect(screen.getByRole('heading', { name: /Settings/i })).toBeTruthy();
     });
 
     it('has correct ARIA attributes', () => {
@@ -99,23 +99,25 @@ describe('Settings', () => {
     it('toggles HuggingFace token visibility when show/hide is clicked', async () => {
       render(Settings, { props: { isOpen: true } });
       const hfInput = screen.getByLabelText(/HuggingFace Token/i) as HTMLInputElement;
-      const toggleButton = screen.getAllByText('Show')[1].closest('button');
+      const toggleButton = screen.getByLabelText(/Show token/i);
 
       expect(hfInput.type).toBe('password');
 
       await fireEvent.click(toggleButton!);
       expect(hfInput.type).toBe('text');
 
-      await fireEvent.click(toggleButton!);
+      const hideButton = screen.getByLabelText(/Hide token/i);
+      await fireEvent.click(hideButton!);
       expect(hfInput.type).toBe('password');
     });
 
-    it('changes button text to Hide when showing', async () => {
+    it('changes button icon when showing', async () => {
       render(Settings, { props: { isOpen: true } });
       const toggleButton = screen.getByLabelText(/Show API key/i);
 
       await fireEvent.click(toggleButton!);
-      expect(screen.getAllByText('Hide')[0]).toBeTruthy();
+      const hideButton = screen.getByLabelText(/Hide API key/i);
+      expect(hideButton.textContent).toBe('🙈');
     });
   });
 
@@ -217,7 +219,7 @@ describe('Settings', () => {
       const onclose = vi.fn();
       render(Settings, { props: { isOpen: true, onclose } });
 
-      const saveButton = screen.getByText(/Save Changes/i).closest('button');
+      const saveButton = screen.getByText(/Save Settings/i).closest('button');
       await fireEvent.click(saveButton!);
 
       expect(onclose).toHaveBeenCalledTimes(1);
@@ -229,7 +231,7 @@ describe('Settings', () => {
       const openaiInput = screen.getByLabelText(/OpenAI API Key/i);
       await fireEvent.input(openaiInput, { target: { value: 'test-key-123' } });
 
-      const saveButton = screen.getByText(/Save Changes/i).closest('button');
+      const saveButton = screen.getByText(/Save Settings/i).closest('button');
       await fireEvent.click(saveButton!);
 
       expect(localStorageMock.getItem('openai_api_key')).toBe('test-key-123');
@@ -241,7 +243,7 @@ describe('Settings', () => {
       const hfInput = screen.getByLabelText(/HuggingFace Token/i);
       await fireEvent.input(hfInput, { target: { value: 'hf-token-456' } });
 
-      const saveButton = screen.getByText(/Save Changes/i).closest('button');
+      const saveButton = screen.getByText(/Save Settings/i).closest('button');
       await fireEvent.click(saveButton!);
 
       expect(localStorageMock.getItem('hf_token')).toBe('hf-token-456');
@@ -253,7 +255,7 @@ describe('Settings', () => {
       const select = screen.getByLabelText(/Target Language/i);
       await fireEvent.change(select, { target: { value: 'es' } });
 
-      const saveButton = screen.getByText(/Save Changes/i).closest('button');
+      const saveButton = screen.getByText(/Save Settings/i).closest('button');
       await fireEvent.click(saveButton!);
 
       expect(localStorageMock.getItem('translation_language')).toBe('es');
@@ -266,7 +268,7 @@ describe('Settings', () => {
       const openaiInput = screen.getByLabelText(/OpenAI API Key/i);
       await fireEvent.input(openaiInput, { target: { value: '' } });
 
-      const saveButton = screen.getByText(/Save Changes/i).closest('button');
+      const saveButton = screen.getByText(/Save Settings/i).closest('button');
       await fireEvent.click(saveButton!);
 
       expect(localStorageMock.getItem('openai_api_key')).toBe(null);
@@ -279,7 +281,7 @@ describe('Settings', () => {
       const hfInput = screen.getByLabelText(/HuggingFace Token/i);
       await fireEvent.input(hfInput, { target: { value: '' } });
 
-      const saveButton = screen.getByText(/Save Changes/i).closest('button');
+      const saveButton = screen.getByText(/Save Settings/i).closest('button');
       await fireEvent.click(saveButton!);
 
       expect(localStorageMock.getItem('hf_token')).toBe(null);
