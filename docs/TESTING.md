@@ -8,14 +8,16 @@ make test              # All backend tests with coverage
 make test-integration  # Integration tests only
 ```
 
-### Frontend Tests (E2E)
+### Frontend Tests
 ```bash
-make test-frontend  # E2E tests with dev server
+make test-frontend       # All frontend tests (unit + E2E)
+make test-frontend-unit  # Unit tests only (Vitest)
+make test-frontend-e2e   # E2E tests only (Playwright)
 ```
 
 ### All Tests
 ```bash
-make test-all  # Backend + Frontend
+make test-all  # Backend + Frontend (all tests)
 ```
 
 ## Pre-commit Hooks
@@ -44,17 +46,35 @@ git push --no-verify
 1. Node.js and npm installed
 2. Playwright browsers: `cd frontend && npx playwright install chromium --with-deps`
 
-### Running Tests
+### Test Types
+
+#### Unit Tests (Vitest)
+- Fast component-level tests
+- Test individual functions and components in isolation
+- Mock external dependencies
+- Run with: `make test-frontend-unit`
+- **112+ tests covering all components**
+
+#### E2E Tests (Playwright)
+- Full browser automation tests
+- Test complete user workflows
 - Automatically starts Vite dev server on port 5173
-- Fast hot-reload during development
-- Run with: `make test-frontend`
+- Run with: `make test-frontend-e2e`
+- **12 tests covering navigation and settings**
+
+### Running All Frontend Tests
+```bash
+make test-frontend  # Runs both unit tests + E2E tests
+```
 
 ### Configuration
-Tests configured in `frontend/playwright.config.ts` to use dev server on port 5173.
+- Unit tests: Configured in `frontend/vite.config.ts`
+- E2E tests: Configured in `frontend/playwright.config.ts`
 
 ## Coverage Requirements
 - Backend: 97%+ coverage required
-- Frontend: E2E tests cover critical user paths (12/12 tests passing)
+- Frontend Unit Tests: 112+ tests covering all components (92%+ passing)
+- Frontend E2E Tests: 12 tests covering critical user paths (100% passing)
 
 ## Test Output
 - HTML reports: `frontend/playwright-report/`

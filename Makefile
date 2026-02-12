@@ -27,7 +27,9 @@ help:
 	@echo ""
 	@echo "Available development targets:"
 	@echo "  test                   - Run backend tests with coverage"
-	@echo "  test-frontend          - Run frontend E2E tests"
+	@echo "  test-frontend          - Run all frontend tests (unit + E2E)"
+	@echo "  test-frontend-unit     - Run frontend unit tests only (Vitest)"
+	@echo "  test-frontend-e2e      - Run frontend E2E tests only (Playwright)"
 	@echo "  test-all               - Run all tests (backend + frontend)"
 	@echo "  test-integration       - Run only integration tests"
 	@echo "  lint                   - Run ruff and mypy checks"
@@ -144,7 +146,18 @@ test-integration:
 	@uv run pytest -v -k integration
 
 # Frontend testing (requires Node.js and npm)
-test-frontend:
+
+# Run frontend unit tests only (Vitest)
+test-frontend-unit:
+	@echo "Running frontend unit tests..."
+	@if [ ! -d "frontend/node_modules" ]; then \
+		echo "Installing frontend dependencies..."; \
+		cd frontend && npm install; \
+	fi
+	@cd frontend && npm run test
+
+# Run frontend E2E tests only (Playwright)
+test-frontend-e2e:
 	@echo "Running frontend E2E tests..."
 	@if [ ! -d "frontend/node_modules" ]; then \
 		echo "Installing frontend dependencies..."; \
@@ -155,6 +168,9 @@ test-frontend:
 		cd frontend && npx playwright install chromium --with-deps || npx playwright install chromium; \
 	fi
 	@cd frontend && npm run test:e2e -- --project=chromium
+
+# Run all frontend tests (unit + E2E)
+test-frontend: test-frontend-unit test-frontend-e2e
 
 # Run all tests (backend + frontend)
 test-all: test test-frontend
