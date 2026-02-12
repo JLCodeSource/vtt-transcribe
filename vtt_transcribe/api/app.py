@@ -12,7 +12,16 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from vtt_transcribe import __version__
 from vtt_transcribe.api.database import init_db
-from vtt_transcribe.api.routes import api_keys, auth, health, jobs, oauth, transcription, websockets
+from vtt_transcribe.api.routes import api_keys, auth, health, jobs, transcription, websockets
+
+# OAuth is optional - only available if authlib/httpx are installed
+try:
+    from vtt_transcribe.api.routes import oauth
+
+    OAUTH_AVAILABLE = True
+except ImportError:
+    OAUTH_AVAILABLE = False
+    oauth = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +79,13 @@ app.add_middleware(
 # Public routes
 app.include_router(health.router)
 app.include_router(auth.router)
-app.include_router(oauth.router)
+
+# OAuth routes (optional - only if dependencies installed)
+if OAUTH_AVAILABLE and oauth is not None:
+    app.include_router(oauth.router)
+    logger.info("OAuth routes registered (authlib/httpx available)")
+else:
+    logger.warning("OAuth routes not available (authlib/httpx not installed)")
 
 # API routes (authentication handled per-endpoint via dependencies)
 app.include_router(api_keys.router)
