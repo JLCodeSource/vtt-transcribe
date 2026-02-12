@@ -97,19 +97,22 @@ async def create_transcription_job(
         file: Audio or video file
         api_key: OpenAI API key
         diarize: Enable speaker diarization
-        hf_token: HuggingFace token (required if diarize=True)
+        hf_token: HuggingFace token (optional, falls back to HF_TOKEN environment variable)
         device: Device for diarization (auto/cpu/cuda)
         translate_to: Optional target language for translation (e.g., "Spanish", "French")
 
     Returns:
         Job ID and status
+
+    Note:
+        For diarization, provide hf_token parameter OR set HF_TOKEN environment variable.
+        Environment variable is recommended for security when using the web UI.
     """
     logger.info(
         "Creating transcription job",
         extra={
             "file_name": file.filename,
             "diarize": diarize,
-            "has_hf_token": bool(hf_token),
             "device": device,
             "translate_to": translate_to,
         },
@@ -135,6 +138,10 @@ async def create_transcription_job(
                     "Provide hf_token parameter or set HF_TOKEN environment variable."
                 ),
             )
+        logger.info(
+            "Diarization enabled with HF token",
+            extra={"file_name": file.filename, "has_hf_token": True},
+        )
 
     # Validate file extension
     file_ext = Path(file.filename).suffix.lower()
@@ -182,7 +189,7 @@ async def create_transcription_job(
         "filename": file.filename,
         "file_size": len(content),
         "diarize": diarize,
-        "hf_token": hf_token if diarize else None,
+        "has_hf_token": bool(hf_token) if diarize else False,
         "device": device if diarize else None,
         "translate_to": translate_to,
         # Bounded queue for progress updates
@@ -314,11 +321,15 @@ async def create_diarization_job(
 
     Args:
         file: Audio or video file
-        hf_token: HuggingFace token for diarization (or use HF_TOKEN env var)
+        hf_token: HuggingFace token (optional, falls back to HF_TOKEN environment variable)
         device: Device for diarization (auto/cpu/cuda)
 
     Returns:
         Job ID and status
+
+    Note:
+        Provide hf_token parameter OR set HF_TOKEN environment variable.
+        Environment variable is recommended for security.
     """
     if not file.filename:
         raise HTTPException(
@@ -339,7 +350,7 @@ async def create_diarization_job(
         "status": "pending",
         "filename": file.filename,
         "diarize_only": True,
-        "hf_token": hf_token,
+        "has_hf_token": True,
         "device": device,
         # Bounded queue for progress updates
         "progress_updates": asyncio.Queue(maxsize=MAX_PROGRESS_QUEUE_SIZE),
