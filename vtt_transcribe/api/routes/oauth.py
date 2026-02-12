@@ -186,7 +186,6 @@ async def generate_unique_username(
     """
     # Use OAuth-specific prefix to avoid confusion with regular users
     username = f"oauth-{provider}-{base_username}"
-    counter = 1
 
     for _ in range(max_attempts):
         existing_user = await get_user_by_username(db, username)
@@ -194,7 +193,6 @@ async def generate_unique_username(
             return username
         # Add random suffix for uniqueness
         username = f"oauth-{provider}-{base_username}-{secrets.token_hex(4)}"
-        counter += 1
 
     logger.error("Failed to generate unique username after %s attempts", max_attempts)
     return None
@@ -235,7 +233,8 @@ async def get_or_create_oauth_user(
     user = User(
         username=username,
         email=email,
-        # Random password for OAuth users (they can only log in via OAuth)
+        # Random password for OAuth users (they can ONLY log in via OAuth)
+        # Password-based login is intentionally disabled for OAuth users
         hashed_password=get_password_hash(secrets.token_hex(32)),
         is_active=True,
         is_superuser=False,
