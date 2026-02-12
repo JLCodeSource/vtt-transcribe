@@ -55,10 +55,12 @@
       </button>
     </form>
 
+    {#if onregister}
     <div class="register-link">
       <span>Don't have an account?</span>
       <button type="button" onclick={handleRegisterClick} class="link-button"> Register </button>
     </div>
+  {/if}
   </div>
 </div>
 

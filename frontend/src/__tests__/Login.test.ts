@@ -10,10 +10,17 @@ describe('Login', () => {
     expect(screen.getByLabelText(/password/i)).toBeTruthy();
   });
 
-  it('shows register link', () => {
-    render(Login);
+  it('shows register link when onregister is provided', () => {
+    const onregister = vi.fn();
+    render(Login, { props: { onregister } });
     expect(screen.getByText(/Don't have an account/i)).toBeTruthy();
     expect(screen.getByText(/Register/i)).toBeTruthy();
+  });
+
+  it('hides register link when onregister is not provided', () => {
+    render(Login);
+    expect(screen.queryByText(/Don't have an account/i)).toBeFalsy();
+    expect(screen.queryByText(/Register/i)).toBeFalsy();
   });
 
   it('calls onlogin callback when form is submitted', async () => {

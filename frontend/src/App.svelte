@@ -24,16 +24,40 @@
   let currentJob: TranscriptionJob | null = $state(null);
   let transcript: TranscriptSegment[] = $state([]);
 
-  // Restore session from localStorage on mount
+  // Restore and validate session from localStorage on mount
   onMount(() => {
-    const storedToken = localStorage.getItem('access_token');
-    const storedUsername = localStorage.getItem('username');
+    (async () => {
+      const storedToken = localStorage.getItem('access_token');
+      const storedUsername = localStorage.getItem('username');
 
-    if (storedToken && storedUsername) {
-      accessToken = storedToken;
-      username = storedUsername;
-      isAuthenticated = true;
-    }
+      if (!storedToken || !storedUsername) {
+        return;
+      }
+
+      try {
+        const response = await fetch('/auth/me', {
+          headers: {
+            Authorization: `Bearer ${storedToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          // Token is invalid or expired; clear stored credentials
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('username');
+          return;
+        }
+
+        // Token is valid - restore session
+        accessToken = storedToken;
+        username = storedUsername;
+        isAuthenticated = true;
+      } catch {
+        // On network or other errors, clear potentially stale credentials
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('username');
+      }
+    })();
   });
 
   async function handleLogin(event: CustomEvent<{ username: string; password: string }>) {

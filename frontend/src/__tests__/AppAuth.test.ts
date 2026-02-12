@@ -106,23 +106,42 @@ describe('App with Auth Integration', () => {
     });
   });
 
-  it('restores session from localStorage on mount', () => {
+  it('restores session from localStorage on mount', async () => {
     localStorage.setItem('access_token', 'existing-token');
     localStorage.setItem('username', 'existinguser');
 
+    // Mock /auth/me endpoint to validate token
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ username: 'existinguser', email: 'user@example.com' }),
+    });
+
     render(App);
 
-    // Should skip login form and show file upload
-    expect(screen.queryByRole('heading', { name: /Sign In/i })).toBeFalsy();
-    expect(screen.getByText(/Drop your video file here/i)).toBeTruthy();
-    expect(screen.getByText('existinguser')).toBeTruthy();
+    // Should skip login form and show file upload after validation
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: /Sign In/i })).toBeFalsy();
+      expect(screen.getByText(/Drop your video file here/i)).toBeTruthy();
+      expect(screen.getByText('existinguser')).toBeTruthy();
+    });
   });
 
   it('clears token and shows login on logout', async () => {
     localStorage.setItem('access_token', 'existing-token');
     localStorage.setItem('username', 'existinguser');
 
+    // Mock /auth/me endpoint for initial session restore
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ username: 'existinguser', email: 'user@example.com' }),
+    });
+
     render(App);
+
+    // Wait for session to restore
+    await waitFor(() => {
+      expect(screen.getByText('existinguser')).toBeTruthy();
+    });
 
     // Click user menu to open dropdown
     const userButton = screen.getByLabelText(/User menu/i);
