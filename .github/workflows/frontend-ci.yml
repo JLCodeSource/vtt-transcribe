@@ -63,8 +63,7 @@ jobs:
           ENCRYPTION_KEY: "NIiQ9PoBLY9fpqc_kWzhCE1EvcCpRzSZu9FT339Mz2k="
         run: |
           mkdir -p data
-          source .venv/bin/activate
-          uvicorn vtt_transcribe.api.app:app --host 0.0.0.0 --port 8000 &
+          .venv/bin/uvicorn vtt_transcribe.api.app:app --host 0.0.0.0 --port 8000 &
           echo $! > backend.pid
           # Wait for backend to be ready
           for i in {1..30}; do
