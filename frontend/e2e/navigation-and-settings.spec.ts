@@ -94,9 +94,6 @@ test.describe('VTT Transcribe - Settings Modal', () => {
     // Check OpenAI API key field
     await expect(page.getByLabel('OpenAI API Key')).toBeVisible();
     
-    // Check HuggingFace token field
-    await expect(page.getByLabel('HuggingFace Token')).toBeVisible();
-    
     // Check translation dropdown
     await expect(page.getByLabel('Target Language')).toBeVisible();
   });
@@ -109,11 +106,6 @@ test.describe('VTT Transcribe - Settings Modal', () => {
     const openaiInput = page.getByLabel('OpenAI API Key');
     await openaiInput.fill('sk-test-1234567890');
     await expect(openaiInput).toHaveValue('sk-test-1234567890');
-    
-    // Enter HF token
-    const hfInput = page.getByLabel('HuggingFace Token');
-    await hfInput.fill('hf_test_token');
-    await expect(hfInput).toHaveValue('hf_test_token');
   });
 
   test('should toggle password visibility', async ({ page }) => {
@@ -172,7 +164,6 @@ test.describe('VTT Transcribe - Settings Modal', () => {
     
     // Fill in settings
     await page.getByLabel('OpenAI API Key').fill('sk-test-key');
-    await page.getByLabel('HuggingFace Token').fill('hf_test');
     await page.getByLabel('Target Language').selectOption('es');
     
     // Save
@@ -180,11 +171,9 @@ test.describe('VTT Transcribe - Settings Modal', () => {
     
     // Check sessionStorage
     const openaiKey = await page.evaluate(() => sessionStorage.getItem('openai_api_key'));
-    const hfToken = await page.evaluate(() => sessionStorage.getItem('hf_token'));
     const lang = await page.evaluate(() => sessionStorage.getItem('translation_language'));
     
     expect(openaiKey).toBe('sk-test-key');
-    expect(hfToken).toBe('hf_test');
     expect(lang).toBe('es');
   });
 });
