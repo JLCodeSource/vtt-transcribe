@@ -20,7 +20,24 @@ A Python CLI tool (`vtt-transcribe`) that extracts audio from video files and tr
 
 **Never** write implementation before writing a failing test. This is non-negotiable.
 
-### 2. Never End Sessions With Failing Tests
+### 2. Complete Tasks Fully - Don't Stop at PR Creation
+**CRITICAL SESSION RULE**: Work is NOT complete when you create a PR. You must monitor and fix issues until the PR is merge-ready.
+
+**Session completion checklist:**
+1. ✅ Create Pull Request for your work
+2. ✅ Monitor CI checks until all pass
+3. ✅ Address ALL Copilot code review recommendations
+4. ✅ Fix any failing tests or linting issues
+5. ✅ Ensure PR shows "All checks have passed"
+
+**Do NOT end the session** until the PR is in a merge-ready state with:
+- All CI checks passing (tests, linting, builds)
+- All Copilot code review comments addressed
+- No failing tests or unresolved issues
+
+If there are review comments or CI failures, iterate and fix them immediately. The next developer should find a green, merge-ready PR.
+
+### 3. Never End Sessions With Failing Tests
 **CRITICAL SESSION RULE**: If your work causes tests to fail, you MUST fix them before ending the session.
 
 - **Before your changes**: Run `make test` to establish baseline (all passing)
@@ -33,7 +50,7 @@ A Python CLI tool (`vtt-transcribe`) that extracts audio from video files and tr
 
 The next session should start with a green test suite. Period.
 
-### 3. Task Tracking with Beads
+### 4. Task Tracking with Beads
 **Use `.github/skills/beads/SKILL.md` for `bd` CLI reference**:
 This project uses **bd (beads)** for issue tracking.
 Run `bd prime` for workflow context, or install hooks (`bd hooks install`) for auto-injection.
@@ -46,7 +63,7 @@ Run `bd prime` for workflow context, or install hooks (`bd hooks install`) for a
 
 For full workflow details: `bd prime`
 
-### 4. GitHub Operations
+### 5. GitHub Operations
 **Use `.github/skills/gh-cli/SKILL.md` for all GitHub interactions**:
 - Pull requests: `gh pr create`, `gh pr merge --squash`
 - Workflows: `gh workflow run`, `gh run watch`

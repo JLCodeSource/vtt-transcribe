@@ -55,51 +55,16 @@ describe('Settings', () => {
       render(Settings, { props: { isOpen: true } });
     });
 
-    it('shows API Configuration heading', () => {
-      expect(screen.getByText('API Configuration')).toBeTruthy();
+    it('does NOT show API Configuration section', () => {
+      expect(screen.queryByText('API Configuration')).toBeFalsy();
     });
 
-    it('shows OpenAI API Key field', () => {
-      expect(screen.getByLabelText(/OpenAI API Key/i)).toBeTruthy();
-    });
-
-
-    it('marks OpenAI API Key as required', () => {
-      const label = screen.getByText('OpenAI API Key').closest('label');
-      expect(label?.textContent).toContain('*');
-    });
-
-    it('renders password input types by default', () => {
-      const openaiInput = screen.getByLabelText(/OpenAI API Key/i) as HTMLInputElement;
-
-      expect(openaiInput.type).toBe('password');
+    it('does NOT show OpenAI API Key field', () => {
+      expect(screen.queryByLabelText(/OpenAI API Key/i)).toBeFalsy();
     });
   });
 
-  describe('Password Visibility Toggle', () => {
-    it('toggles OpenAI key visibility when show/hide is clicked', async () => {
-      render(Settings, { props: { isOpen: true } });
-      const openaiInput = screen.getByLabelText(/OpenAI API Key/i) as HTMLInputElement;
-      const toggleButton = screen.getByLabelText(/Show API key/i);
 
-      expect(openaiInput.type).toBe('password');
-
-      await fireEvent.click(toggleButton!);
-      expect(openaiInput.type).toBe('text');
-
-      await fireEvent.click(toggleButton!);
-      expect(openaiInput.type).toBe('password');
-    });
-
-    it('changes button icon when showing', async () => {
-      render(Settings, { props: { isOpen: true } });
-      const toggleButton = screen.getByLabelText(/Show API key/i);
-
-      await fireEvent.click(toggleButton!);
-      const hideButton = screen.getByLabelText(/Hide API key/i);
-      expect(hideButton.textContent).toBe('🙈');
-    });
-  });
 
   describe('Translation Settings', () => {
     beforeEach(() => {
@@ -204,18 +169,6 @@ describe('Settings', () => {
       expect(onclose).toHaveBeenCalledTimes(1);
     });
 
-    it('saves OpenAI key to sessionStorage', async () => {
-      render(Settings, { props: { isOpen: true } });
-
-      const openaiInput = screen.getByLabelText(/OpenAI API Key/i);
-      await fireEvent.input(openaiInput, { target: { value: 'test-key-123' } });
-
-      const saveButton = screen.getByText(/Save Settings/i).closest('button');
-      await fireEvent.click(saveButton!);
-
-      expect(sessionStorageMock.getItem('openai_api_key')).toBe('test-key-123');
-    });
-
     it('saves translation language to sessionStorage', async () => {
       render(Settings, { props: { isOpen: true } });
 
@@ -227,33 +180,9 @@ describe('Settings', () => {
 
       expect(sessionStorageMock.getItem('translation_language')).toBe('es');
     });
-
-    it('removes OpenAI key from sessionStorage if empty', async () => {
-      sessionStorageMock.setItem('openai_api_key', 'existing-key');
-      render(Settings, { props: { isOpen: true } });
-
-      const openaiInput = screen.getByLabelText(/OpenAI API Key/i);
-      await fireEvent.input(openaiInput, { target: { value: '' } });
-
-      const saveButton = screen.getByText(/Save Settings/i).closest('button');
-      await fireEvent.click(saveButton!);
-
-      expect(sessionStorageMock.getItem('openai_api_key')).toBe(null);
-    });
   });
 
   describe('sessionStorage Loading', () => {
-    it('loads OpenAI key from sessionStorage on mount', async () => {
-      sessionStorageMock.setItem('openai_api_key', 'stored-key');
-      render(Settings, { props: { isOpen: true } });
-
-      const openaiInput = screen.getByLabelText(/OpenAI API Key/i) as HTMLInputElement;
-      // Wait for effect to run
-      await waitFor(() => {
-        expect(openaiInput.value).toBe('stored-key');
-      });
-    });
-
     it('loads translation language from sessionStorage on mount', async () => {
       sessionStorageMock.setItem('translation_language', 'fr');
       render(Settings, { props: { isOpen: true } });
@@ -267,31 +196,21 @@ describe('Settings', () => {
     it('uses default values when sessionStorage is empty', async () => {
       render(Settings, { props: { isOpen: true } });
 
-      const openaiInput = screen.getByLabelText(/OpenAI API Key/i) as HTMLInputElement;
       const select = screen.getByLabelText(/Target Language/i) as HTMLSelectElement;
 
       await waitFor(() => {
-        expect(openaiInput.value).toBe('');
         expect(select.value).toBe('none');
       });
     });
   });
 
   describe('Form Validation', () => {
-    it('OpenAI input accepts text', async () => {
+    it('translation select works correctly', async () => {
       render(Settings, { props: { isOpen: true } });
-      const openaiInput = screen.getByLabelText(/OpenAI API Key/i) as HTMLInputElement;
+      const select = screen.getByLabelText(/Target Language/i) as HTMLSelectElement;
 
-      await fireEvent.input(openaiInput, { target: { value: 'sk-test123' } });
-      expect(openaiInput.value).toBe('sk-test123');
-    });
-
-    it('allows special characters in API keys', async () => {
-      render(Settings, { props: { isOpen: true } });
-      const openaiInput = screen.getByLabelText(/OpenAI API Key/i) as HTMLInputElement;
-
-      await fireEvent.input(openaiInput, { target: { value: 'sk-!@#$%^&*()_+-=' } });
-      expect(openaiInput.value).toBe('sk-!@#$%^&*()_+-=');
+      await fireEvent.change(select, { target: { value: 'es' } });
+      expect(select.value).toBe('es');
     });
   });
 
@@ -314,13 +233,13 @@ describe('Settings', () => {
     it('does not save changes when Cancel is clicked', async () => {
       render(Settings, { props: { isOpen: true } });
 
-      const openaiInput = screen.getByLabelText(/OpenAI API Key/i);
-      await fireEvent.input(openaiInput, { target: { value: 'test-key' } });
+      const select = screen.getByLabelText(/Target Language/i);
+      await fireEvent.change(select, { target: { value: 'fr' } });
 
       const cancelButton = screen.getByText('Cancel').closest('button');
       await fireEvent.click(cancelButton!);
 
-      expect(sessionStorageMock.getItem('openai_api_key')).toBe(null);
+      expect(sessionStorageMock.getItem('translation_language')).toBe(null);
     });
   });
 
@@ -342,7 +261,6 @@ describe('Settings', () => {
     it('all form fields have labels', () => {
       render(Settings, { props: { isOpen: true } });
 
-      expect(screen.getByLabelText(/OpenAI API Key/i)).toBeTruthy();
       expect(screen.getByLabelText(/Target Language/i)).toBeTruthy();
     });
 
