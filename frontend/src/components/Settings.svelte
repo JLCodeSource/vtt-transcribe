@@ -6,10 +6,6 @@
 
   let { isOpen = false, onclose }: Props = $props();
 
-  // API Key settings
-  let openaiKey = $state('');
-  let showOpenaiKey = $state(false);
-
   // Translation language setting
   let translationLanguage = $state('none');
 
@@ -23,13 +19,12 @@
     { value: 'ru', label: 'Russian (Русский)' },
     { value: 'ja', label: 'Japanese (日本語)' },
     { value: 'ko', label: 'Korean (한국어)' },
-    { value: 'zh', label: 'Chinese (中文)' }
+    { value: 'zh', label: 'Chinese (中文)' },
   ];
 
   // Load settings from sessionStorage on mount
   $effect(() => {
     if (typeof window !== 'undefined') {
-      openaiKey = sessionStorage.getItem('openai_api_key') || '';
       translationLanguage = sessionStorage.getItem('translation_language') || 'none';
     }
   });
@@ -49,14 +44,6 @@
   });
 
   function handleSave() {
-    // Save to sessionStorage (more secure than localStorage for API keys)
-    // Keys are kept in memory for the current session only
-    if (openaiKey) {
-      sessionStorage.setItem('openai_api_key', openaiKey);
-    } else {
-      sessionStorage.removeItem('openai_api_key');
-    }
-
     sessionStorage.setItem('translation_language', translationLanguage);
 
     if (onclose) {
@@ -80,11 +67,8 @@
 {#if isOpen}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div 
-    class="modal-backdrop" 
-    onclick={handleBackdropClick}
-  >
-    <div 
+  <div class="modal-backdrop" onclick={handleBackdropClick}>
+    <div
       class="modal"
       role="dialog"
       aria-modal="true"
@@ -98,55 +82,14 @@
 
       <div class="modal-content">
         <section class="settings-section">
-          <h3>API Configuration</h3>
-          <p class="section-description">
-            Configure your API keys for transcription and diarization features.
-          </p>
-          <div class="security-notice">
-            <span class="notice-icon">🔒</span>
-            <p>API keys are stored in your browser session only and are cleared when you close this tab.</p>
-          </div>
-
-          <div class="form-group">
-            <label for="openai-key">
-              OpenAI API Key
-              <span class="required">*</span>
-            </label>
-            <p class="field-help">Required for audio transcription using Whisper</p>
-            <div class="input-with-toggle">
-              <input
-                id="openai-key"
-                type={showOpenaiKey ? 'text' : 'password'}
-                bind:value={openaiKey}
-                placeholder="sk-proj-..."
-                class="input-field"
-              />
-              <button
-                class="toggle-button"
-                onclick={() => (showOpenaiKey = !showOpenaiKey)}
-                aria-label={showOpenaiKey ? 'Hide API key' : 'Show API key'}
-              >
-                {showOpenaiKey ? '🙈' : '👁️'}
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <section class="settings-section">
           <h3>Translation</h3>
           <p class="section-description">
             Select a target language to automatically translate transcripts.
           </p>
 
           <div class="form-group">
-            <label for="translation-lang">
-              Target Language
-            </label>
-            <select
-              id="translation-lang"
-              bind:value={translationLanguage}
-              class="select-field"
-            >
+            <label for="translation-lang"> Target Language </label>
+            <select id="translation-lang" bind:value={translationLanguage} class="select-field">
               {#each languages as lang}
                 <option value={lang.value}>{lang.label}</option>
               {/each}
@@ -156,12 +99,8 @@
       </div>
 
       <div class="modal-footer">
-        <button class="button button-secondary" onclick={handleClose}>
-          Cancel
-        </button>
-        <button class="button button-primary" onclick={handleSave}>
-          Save Settings
-        </button>
+        <button class="button button-secondary" onclick={handleClose}> Cancel </button>
+        <button class="button button-primary" onclick={handleSave}> Save Settings </button>
       </div>
     </div>
   </div>
@@ -269,29 +208,6 @@
     line-height: 1.5;
   }
 
-  .security-notice {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-    padding: 0.875rem;
-    background: #f0fdf4;
-    border: 1px solid #86efac;
-    border-radius: 8px;
-    margin-bottom: 1.5rem;
-  }
-
-  .notice-icon {
-    font-size: 1.25rem;
-    flex-shrink: 0;
-  }
-
-  .security-notice p {
-    margin: 0;
-    font-size: 0.8125rem;
-    color: #166534;
-    line-height: 1.5;
-  }
-
   .form-group {
     margin-bottom: 1.5rem;
   }
@@ -308,55 +224,6 @@
     font-size: 0.875rem;
   }
 
-  .required {
-    color: #ef4444;
-  }
-
-  .field-help {
-    margin: 0 0 0.5rem 0;
-    font-size: 0.75rem;
-    color: #6b7280;
-  }
-
-  .input-with-toggle {
-    position: relative;
-    display: flex;
-    align-items: center;
-  }
-
-  .input-field {
-    flex: 1;
-    padding: 0.625rem 3rem 0.625rem 0.875rem;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    font-size: 0.875rem;
-    font-family: 'Courier New', monospace;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  }
-
-  .input-field:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-  }
-
-  .toggle-button {
-    position: absolute;
-    right: 0.5rem;
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 1.25rem;
-    padding: 0.25rem;
-    line-height: 1;
-    opacity: 0.6;
-    transition: opacity 0.2s ease;
-  }
-
-  .toggle-button:hover {
-    opacity: 1;
-  }
-
   .select-field {
     width: 100%;
     padding: 0.625rem 0.875rem;
@@ -365,7 +232,9 @@
     font-size: 0.875rem;
     background: white;
     cursor: pointer;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
   }
 
   .select-field:focus {
