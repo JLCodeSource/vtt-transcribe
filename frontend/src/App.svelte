@@ -27,6 +27,35 @@
   // Restore and validate session from localStorage on mount
   onMount(() => {
     (async () => {
+      // Check for OAuth callback with token in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const tokenFromUrl = urlParams.get('token');
+      const usernameFromUrl = urlParams.get('username');
+      const oauthError = urlParams.get('error');
+
+      if (oauthError) {
+        loginError = `OAuth login failed: ${oauthError}`;
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return;
+      }
+
+      if (tokenFromUrl && usernameFromUrl) {
+        // OAuth login successful
+        accessToken = tokenFromUrl;
+        username = usernameFromUrl;
+        isAuthenticated = true;
+
+        // Store credentials
+        localStorage.setItem('access_token', tokenFromUrl);
+        localStorage.setItem('username', usernameFromUrl);
+
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return;
+      }
+
+      // Check for stored credentials
       const storedToken = localStorage.getItem('access_token');
       const storedUsername = localStorage.getItem('username');
 
@@ -161,11 +190,7 @@
       <h1>🎬 VTT Transcribe</h1>
       <p class="auth-subtitle">AI-Powered Video Transcription</p>
     </div>
-    <Login 
-      onlogin={handleLogin} 
-      loading={loginLoading}
-      error={loginError}
-    />
+    <Login onlogin={handleLogin} loading={loginLoading} error={loginError} />
   </div>
 {:else}
   <Navigation {currentPage} onnavigate={handleNavigate} />
@@ -173,74 +198,74 @@
   <div class="app-wrapper">
     <header class="app-header">
       <h1>🎬 VTT Transcribe</h1>
-      <UserMenu username={username} isLoggedIn={true} onlogout={handleLogout} onsettings={openSettings} />
-  </header>
+      <UserMenu {username} isLoggedIn={true} onlogout={handleLogout} onsettings={openSettings} />
+    </header>
 
-  <main class="main-content">
-    {#if currentPage === 'home'}
-      <div class="page-header">
-        <h2>AI-Powered Video Transcription</h2>
-        <p>Upload your video files for automatic transcription with speaker diarization</p>
-      </div>
+    <main class="main-content">
+      {#if currentPage === 'home'}
+        <div class="page-header">
+          <h2>AI-Powered Video Transcription</h2>
+          <p>Upload your video files for automatic transcription with speaker diarization</p>
+        </div>
 
-      <div class="content-card">
-        {#if !currentJob}
-          <FileUpload onuploadstart={handleUploadStart} />
-        {:else}
-          <div class="job-section">
-            <ProgressView
-              job={currentJob}
-              onprogress={handleProgress}
-              oncomplete={handleComplete}
-              onerror={handleError}
-            />
-
-            {#if transcript.length > 0}
-              <TranscriptViewer
-                segments={transcript}
-                jobId={currentJob.job_id}
-                onreset={handleReset}
+        <div class="content-card">
+          {#if !currentJob}
+            <FileUpload onuploadstart={handleUploadStart} />
+          {:else}
+            <div class="job-section">
+              <ProgressView
+                job={currentJob}
+                onprogress={handleProgress}
+                oncomplete={handleComplete}
+                onerror={handleError}
               />
-            {/if}
-          </div>
-        {/if}
-      </div>
-    {:else if currentPage === 'jobs'}
-      <div class="page-header">
-        <h2>📋 Transcription Jobs</h2>
-        <p>View and manage your transcription history</p>
-      </div>
-      <div class="content-card">
-        <p class="placeholder-text">Job history coming soon...</p>
-      </div>
-    {:else if currentPage === 'about'}
-      <div class="page-header">
-        <h2>ℹ️ About VTT Transcribe</h2>
-        <p>Learn more about this application</p>
-      </div>
-      <div class="content-card">
-        <p>
-          VTT Transcribe is an AI-powered video transcription tool that uses OpenAI's Whisper model
-          for accurate speech-to-text conversion and pyannote.audio for speaker diarization.
-        </p>
-        <h3>Features:</h3>
-        <ul>
-          <li>High-quality audio transcription</li>
-          <li>Speaker diarization</li>
-          <li>Multi-language support</li>
-          <li>Automatic translation</li>
-          <li>VTT subtitle export</li>
-        </ul>
-      </div>
-    {/if}
-  </main>
 
-  <footer class="app-footer">
-    <p>Powered by OpenAI Whisper & pyannote.audio</p>
-  </footer>
-</div>
+              {#if transcript.length > 0}
+                <TranscriptViewer
+                  segments={transcript}
+                  jobId={currentJob.job_id}
+                  onreset={handleReset}
+                />
+              {/if}
+            </div>
+          {/if}
+        </div>
+      {:else if currentPage === 'jobs'}
+        <div class="page-header">
+          <h2>📋 Transcription Jobs</h2>
+          <p>View and manage your transcription history</p>
+        </div>
+        <div class="content-card">
+          <p class="placeholder-text">Job history coming soon...</p>
+        </div>
+      {:else if currentPage === 'about'}
+        <div class="page-header">
+          <h2>ℹ️ About VTT Transcribe</h2>
+          <p>Learn more about this application</p>
+        </div>
+        <div class="content-card">
+          <p>
+            VTT Transcribe is an AI-powered video transcription tool that uses OpenAI's Whisper
+            model for accurate speech-to-text conversion and pyannote.audio for speaker diarization.
+          </p>
+          <h3>Features:</h3>
+          <ul>
+            <li>High-quality audio transcription</li>
+            <li>Speaker diarization</li>
+            <li>Multi-language support</li>
+            <li>Automatic translation</li>
+            <li>VTT subtitle export</li>
+          </ul>
+        </div>
+      {/if}
+    </main>
 
-<Settings isOpen={settingsOpen} onclose={closeSettings} />
+    <footer class="app-footer">
+      <p>Powered by OpenAI Whisper & pyannote.audio</p>
+    </footer>
+  </div>
+
+  <Settings isOpen={settingsOpen} onclose={closeSettings} />
 {/if}
 
 <style>

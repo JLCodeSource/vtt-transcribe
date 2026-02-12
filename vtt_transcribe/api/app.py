@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from vtt_transcribe import __version__
 from vtt_transcribe.api.database import init_db
-from vtt_transcribe.api.routes import api_keys, auth, health, jobs, transcription, websockets
+from vtt_transcribe.api.routes import api_keys, auth, health, jobs, oauth, transcription, websockets
 
 
 @asynccontextmanager
@@ -41,6 +41,7 @@ app.add_middleware(
 # Public routes
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(oauth.router)
 
 # API routes (authentication handled per-endpoint via dependencies)
 app.include_router(api_keys.router)
