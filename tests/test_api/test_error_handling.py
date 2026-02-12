@@ -16,7 +16,7 @@ def test_file_size_limit_enforcement() -> None:
     files = {"file": ("large.mp3", io.BytesIO(large_content), "audio/mpeg")}
     data = {"api_key": "test_key"}
 
-    response = client.post("/transcribe", files=files, data=data)
+    response = client.post("/api/transcribe", files=files, data=data)
 
     assert response.status_code == 413
     assert "too large" in response.json()["detail"].lower()
@@ -32,7 +32,7 @@ def test_unsupported_file_type() -> None:
     files = {"file": ("test.txt", io.BytesIO(fake_content), "text/plain")}
     data = {"api_key": "test_key"}
 
-    response = client.post("/transcribe", files=files, data=data)
+    response = client.post("/api/transcribe", files=files, data=data)
 
     assert response.status_code == 400
     assert "unsupported" in response.json()["detail"].lower()
@@ -47,7 +47,7 @@ def test_missing_api_key() -> None:
     fake_content = b"fake content"
     files = {"file": ("test.mp3", io.BytesIO(fake_content), "audio/mpeg")}
 
-    response = client.post("/transcribe", files=files)
+    response = client.post("/api/transcribe", files=files)
 
     assert response.status_code == 422
     assert "field required" in response.json()["detail"][0]["msg"].lower()
@@ -60,7 +60,7 @@ def test_missing_file() -> None:
     client = TestClient(app)
 
     data = {"api_key": "test_key"}
-    response = client.post("/transcribe", data=data)
+    response = client.post("/api/transcribe", data=data)
 
     assert response.status_code == 422
 
@@ -71,7 +71,7 @@ def test_invalid_job_id_format() -> None:
 
     client = TestClient(app)
 
-    response = client.get("/jobs/invalid-not-a-uuid")
+    response = client.get("/api/jobs/invalid-not-a-uuid")
 
     # Should return 404 for non-existent job (UUID validation optional)
     assert response.status_code == 404
@@ -87,7 +87,7 @@ def test_empty_filename() -> None:
     files = {"file": ("", io.BytesIO(fake_content), "audio/mpeg")}
     data = {"api_key": "test_key"}
 
-    response = client.post("/transcribe", files=files, data=data)
+    response = client.post("/api/transcribe", files=files, data=data)
 
     assert response.status_code == 422
     # FastAPI returns validation errors as a list
@@ -101,7 +101,7 @@ def test_error_response_structure() -> None:
 
     client = TestClient(app)
 
-    response = client.get("/jobs/nonexistent-job-id")
+    response = client.get("/api/jobs/nonexistent-job-id")
 
     assert response.status_code == 404
     data = response.json()

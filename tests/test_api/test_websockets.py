@@ -34,7 +34,7 @@ class TestWebSocketConnection:
             mock_vt.return_value = mock_instance
 
             response = client.post(
-                "/transcribe",
+                "/api/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
                 data={"api_key": "test-key"},
             )
@@ -52,7 +52,7 @@ class TestWebSocketConnection:
 
         with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber"):
             response = client.post(
-                "/transcribe",
+                "/api/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
                 data={"api_key": "test-key"},
             )
@@ -77,7 +77,7 @@ class TestWebSocketConnection:
             mock_instance.detect_language.return_value = "en"
 
             response = client.post(
-                "/transcribe",
+                "/api/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
                 data={"api_key": "test-key"},
             )
@@ -111,7 +111,7 @@ class TestWebSocketConnection:
             mock_instance.detect_language.return_value = "en"
 
             response = client.post(
-                "/transcribe",
+                "/api/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
                 data={"api_key": "test-key"},
             )
@@ -148,7 +148,7 @@ class TestWebSocketProgressUpdates:
             mock_instance.detect_language.return_value = "en"
 
             response = client.post(
-                "/transcribe",
+                "/api/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
                 data={"api_key": "test-key"},
             )
@@ -165,7 +165,7 @@ class TestWebSocketProgressUpdates:
         """WebSocket updates should include progress percentage."""
         with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber"):
             response = client.post(
-                "/transcribe",
+                "/api/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
                 data={"api_key": "test-key"},
             )
@@ -188,7 +188,7 @@ class TestWebSocketProgressUpdates:
             mock_vt.return_value = mock_instance
 
             response = client.post(
-                "/transcribe",
+                "/api/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
                 data={"api_key": "test-key"},
             )
@@ -235,7 +235,7 @@ class TestWebSocketProgressUpdates:
 
         with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber"):
             response = client.post(
-                "/transcribe",
+                "/api/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
                 data={"api_key": "test-key"},
             )
@@ -272,7 +272,7 @@ class TestWebSocketProgressUpdates:
 
         with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber"):
             response = client.post(
-                "/transcribe",
+                "/api/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
                 data={"api_key": "test-key", "translate_to": "French"},
             )
@@ -293,7 +293,7 @@ class TestWebSocketProgressUpdates:
 
         with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber"):
             response = client.post(
-                "/transcribe",
+                "/api/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
                 data={"api_key": "test-key"},
             )
@@ -314,7 +314,7 @@ class TestWebSocketProgressUpdates:
 
         with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber"):
             response = client.post(
-                "/transcribe",
+                "/api/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
                 data={"api_key": "test-key"},
             )
@@ -348,7 +348,7 @@ class TestWebSocketProgressUpdates:
 
         with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber"):
             response = client.post(
-                "/transcribe",
+                "/api/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
                 data={"api_key": "test-key"},
             )
@@ -380,7 +380,7 @@ class TestWebSocketProgressUpdates:
 
         with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber"):
             response = client.post(
-                "/transcribe",
+                "/api/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
                 data={"api_key": "test-key"},
             )
@@ -426,7 +426,7 @@ class TestAPIWebsocketsCoverage:
         # Create a job via API
         with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber"):
             response = client.post(
-                "/transcribe",
+                "/api/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
                 data={"api_key": "test-key"},
             )
@@ -453,7 +453,7 @@ class TestAPIWebsocketsCoverage:
         # Create job then make it cause an error
         with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber"):
             response = client.post(
-                "/transcribe",
+                "/api/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
                 data={"api_key": "test-key"},
             )
@@ -488,7 +488,7 @@ class TestAPIWebsocketsCoverageComplete:
         # Create a job
         with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber"):
             response = client.post(
-                "/transcribe",
+                "/api/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
                 data={"api_key": "test-key"},
             )
@@ -520,7 +520,7 @@ class TestAPIWebsocketsCoverageComplete:
 
         with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber"):
             response = client.post(
-                "/transcribe",
+                "/api/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
                 data={"api_key": "test-key"},
             )
@@ -547,7 +547,7 @@ class TestAPIWebsocketsCoverageComplete:
             mock_vt.return_value = mock_instance
 
             response = client.post(
-                "/transcribe",
+                "/api/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
                 data={"api_key": "test-key"},
             )

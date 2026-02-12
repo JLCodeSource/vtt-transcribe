@@ -28,18 +28,18 @@ class TestTranscribeEndpoint:
 
     def test_transcribe_endpoint_exists(self, client):
         """POST /transcribe endpoint should exist."""
-        response = client.post("/transcribe")
+        response = client.post("/api/transcribe")
         assert response.status_code != 404
 
     def test_transcribe_requires_file(self, client):
         """POST /transcribe should require a file upload."""
-        response = client.post("/transcribe")
+        response = client.post("/api/transcribe")
         assert response.status_code == 422
 
     def test_transcribe_requires_api_key(self, client, sample_audio_file):
         """POST /transcribe should require OpenAI API key."""
         files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
-        response = client.post("/transcribe", files=files)
+        response = client.post("/api/transcribe", files=files)
         assert response.status_code == 422
         data = response.json()
         assert "api_key" in str(data).lower() or "detail" in data
@@ -52,7 +52,7 @@ class TestTranscribeEndpoint:
 
         files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
         data = {"api_key": "test-api-key"}
-        response = client.post("/transcribe", files=files, data=data)
+        response = client.post("/api/transcribe", files=files, data=data)
 
         assert response.status_code in [200, 201, 202]
 
@@ -64,7 +64,7 @@ class TestTranscribeEndpoint:
 
         files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
         data = {"api_key": "test-api-key"}
-        response = client.post("/transcribe", files=files, data=data)
+        response = client.post("/api/transcribe", files=files, data=data)
 
         response_data = response.json()
         assert "job_id" in response_data
@@ -78,7 +78,7 @@ class TestTranscribeEndpoint:
 
         files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
         data = {"api_key": "test-api-key"}
-        response = client.post("/transcribe", files=files, data=data)
+        response = client.post("/api/transcribe", files=files, data=data)
 
         response_data = response.json()
         assert "status" in response_data
@@ -96,15 +96,15 @@ class TestJobStatusEndpoint:
 
         files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
         data = {"api_key": "test-api-key"}
-        create_response = client.post("/transcribe", files=files, data=data)
+        create_response = client.post("/api/transcribe", files=files, data=data)
         job_id = create_response.json()["job_id"]
 
-        response = client.get(f"/jobs/{job_id}")
+        response = client.get(f"/api/jobs/{job_id}")
         assert response.status_code != 404
 
     def test_job_status_returns_not_found_for_invalid_id(self, client):
         """GET /jobs/{job_id} should return 404 for non-existent job."""
-        response = client.get("/jobs/nonexistent-job-id")
+        response = client.get("/api/jobs/nonexistent-job-id")
         assert response.status_code == 404
 
     @patch("vtt_transcribe.api.routes.transcription.VideoTranscriber")
@@ -115,10 +115,10 @@ class TestJobStatusEndpoint:
 
         files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
         data = {"api_key": "test-api-key"}
-        create_response = client.post("/transcribe", files=files, data=data)
+        create_response = client.post("/api/transcribe", files=files, data=data)
         job_id = create_response.json()["job_id"]
 
-        status_response = client.get(f"/jobs/{job_id}")
+        status_response = client.get(f"/api/jobs/{job_id}")
         assert status_response.status_code == 200
         status_data = status_response.json()
         assert "job_id" in status_data
@@ -147,7 +147,7 @@ class TestSupportedFileTypes:
         file_content = io.BytesIO(b"fake file data")
         files = {"file": (filename, file_content, mimetype)}
         data = {"api_key": "test-api-key"}
-        response = client.post("/transcribe", files=files, data=data)
+        response = client.post("/api/transcribe", files=files, data=data)
 
         assert response.status_code in [200, 201, 202]
 
@@ -200,7 +200,7 @@ class TestAPITranscriptionCoverage:
         client = TestClient(app)
 
         response = client.post(
-            "/diarize",
+            "/api/diarize",
             files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
             data={"hf_token": "test-hf-token", "device": "cpu"},
         )
@@ -225,7 +225,7 @@ class TestAPITranscriptionCoverage:
 
         with patch("vtt_transcribe.api.routes.transcription.VideoTranscriber"):
             response = client.post(
-                "/transcribe",
+                "/api/transcribe",
                 files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
                 data={"api_key": "test-key"},
             )
@@ -246,7 +246,7 @@ class TestAPITranscriptionCoverage:
 
         # Test the async exception path directly
         response = client.post(
-            "/diarize",
+            "/api/diarize",
             files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
             data={"hf_token": "test-hf-token"},
         )
@@ -259,7 +259,7 @@ class TestAPITranscriptionCoverage:
         time.sleep(0.3)
 
         # Verify job completed (covers the try/finally path)
-        status_response = client.get(f"/jobs/{job_id}")
+        status_response = client.get(f"/api/jobs/{job_id}")
         assert status_response.json()["status"] in ["completed", "processing", "failed"]
 
 
@@ -349,18 +349,18 @@ class TestDetectLanguageEndpoint:
 
     def test_detect_language_endpoint_exists(self, client):
         """POST /detect-language endpoint should exist."""
-        response = client.post("/detect-language")
+        response = client.post("/api/detect-language")
         assert response.status_code != 404
 
     def test_detect_language_requires_file(self, client):
         """POST /detect-language should require a file upload."""
-        response = client.post("/detect-language")
+        response = client.post("/api/detect-language")
         assert response.status_code == 422
 
     def test_detect_language_requires_api_key(self, client, sample_audio_file):
         """POST /detect-language should require OpenAI API key."""
         files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
-        response = client.post("/detect-language", files=files)
+        response = client.post("/api/detect-language", files=files)
         assert response.status_code == 422
 
     @patch("vtt_transcribe.api.routes.transcription.VideoTranscriber")
@@ -371,7 +371,7 @@ class TestDetectLanguageEndpoint:
 
         files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
         data = {"api_key": "test-api-key"}
-        response = client.post("/detect-language", files=files, data=data)
+        response = client.post("/api/detect-language", files=files, data=data)
 
         assert response.status_code == 200
         response_data = response.json()
@@ -384,22 +384,22 @@ class TestTranslateEndpoint:
 
     def test_translate_endpoint_exists(self, client):
         """POST /translate endpoint should exist."""
-        response = client.post("/translate")
+        response = client.post("/api/translate")
         assert response.status_code != 404
 
     def test_translate_requires_transcript(self, client):
         """POST /translate should require transcript text."""
-        response = client.post("/translate", data={})
+        response = client.post("/api/translate", data={})
         assert response.status_code == 422
 
     def test_translate_requires_target_language(self, client):
         """POST /translate should require target_language."""
-        response = client.post("/translate", data={"transcript": "Hello"})
+        response = client.post("/api/translate", data={"transcript": "Hello"})
         assert response.status_code == 422
 
     def test_translate_requires_api_key(self, client):
         """POST /translate should require OpenAI API key."""
-        response = client.post("/translate", data={"transcript": "Hello", "target_language": "Spanish"})
+        response = client.post("/api/translate", data={"transcript": "Hello", "target_language": "Spanish"})
         assert response.status_code == 422
 
     @patch("vtt_transcribe.api.routes.transcription.AudioTranslator")
@@ -409,7 +409,7 @@ class TestTranslateEndpoint:
         mock_instance.translate_transcript = MagicMock(return_value="[00:00 - 00:05] Hola, ¿cómo estás?")
 
         response = client.post(
-            "/translate",
+            "/api/translate",
             data={
                 "transcript": "[00:00 - 00:05] Hello, how are you?",
                 "target_language": "Spanish",
@@ -438,7 +438,7 @@ class TestTranscribeWithTranslation:
 
         files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
         data = {"api_key": "test-api-key", "translate_to": "Spanish"}
-        response = client.post("/transcribe", files=files, data=data)
+        response = client.post("/api/transcribe", files=files, data=data)
 
         assert response.status_code in [200, 201, 202]
         response_data = response.json()
@@ -505,7 +505,7 @@ class TestDetectLanguageErrorHandling:
         """Test detect_language with unsupported file extension."""
         files = {"file": ("test.xyz", sample_audio_file, "application/octet-stream")}
         data = {"api_key": "test-api-key"}
-        response = client.post("/detect-language", files=files, data=data)
+        response = client.post("/api/detect-language", files=files, data=data)
 
         assert response.status_code == 400
         assert "Unsupported file type" in response.json()["detail"]
@@ -516,7 +516,7 @@ class TestDetectLanguageErrorHandling:
         large_content = b"x" * (101 * 1024 * 1024)
         files = {"file": ("test.mp3", io.BytesIO(large_content), "audio/mpeg")}
         data = {"api_key": "test-api-key"}
-        response = client.post("/detect-language", files=files, data=data)
+        response = client.post("/api/detect-language", files=files, data=data)
 
         assert response.status_code == 413
         assert "File too large" in response.json()["detail"]
@@ -529,7 +529,7 @@ class TestDetectLanguageErrorHandling:
 
         files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
         data = {"api_key": "test-api-key"}
-        response = client.post("/detect-language", files=files, data=data)
+        response = client.post("/api/detect-language", files=files, data=data)
 
         assert response.status_code == 500
         assert "Language detection failed" in response.json()["detail"]
@@ -545,7 +545,7 @@ class TestTranslateErrorHandling:
         mock_instance.translate_transcript = MagicMock(side_effect=RuntimeError("Translation failed"))
 
         response = client.post(
-            "/translate",
+            "/api/translate",
             data={
                 "transcript": "[00:00 - 00:05] Hello",
                 "target_language": "Spanish",
@@ -562,7 +562,7 @@ class TestDownloadTranscriptEndpoint:
 
     def test_download_job_not_found(self, client):
         """Test download with non-existent job ID."""
-        response = client.get("/jobs/nonexistent-job/download?format=txt")
+        response = client.get("/api/jobs/nonexistent-job/download?format=txt")
         assert response.status_code == 404
         assert "Job not found" in response.json()["detail"]
 
@@ -575,7 +575,7 @@ class TestDownloadTranscriptEndpoint:
 
         files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
         data = {"api_key": "test-api-key"}
-        create_response = client.post("/transcribe", files=files, data=data)
+        create_response = client.post("/api/transcribe", files=files, data=data)
         job_id = create_response.json()["job_id"]
 
         # Manually set job to processing state
@@ -584,7 +584,7 @@ class TestDownloadTranscriptEndpoint:
         jobs[job_id]["status"] = "processing"
 
         # Try to download
-        response = client.get(f"/jobs/{job_id}/download?format=txt")
+        response = client.get(f"/api/jobs/{job_id}/download?format=txt")
         assert response.status_code == 400
         assert "Job not completed" in response.json()["detail"]
 
@@ -596,7 +596,7 @@ class TestDownloadTranscriptEndpoint:
         job_id = "test-empty-job"
         jobs[job_id] = {"status": "completed", "job_id": job_id, "result": ""}
 
-        response = client.get(f"/jobs/{job_id}/download?format=txt")
+        response = client.get(f"/api/jobs/{job_id}/download?format=txt")
         assert response.status_code == 404
         assert "No transcript available" in response.json()["detail"]
 
@@ -607,7 +607,7 @@ class TestDownloadTranscriptEndpoint:
         job_id = "test-no-segments-job"
         jobs[job_id] = {"status": "completed", "job_id": job_id, "result": "Invalid transcript format"}
 
-        response = client.get(f"/jobs/{job_id}/download?format=txt")
+        response = client.get(f"/api/jobs/{job_id}/download?format=txt")
         assert response.status_code == 404
         assert "No segments found" in response.json()["detail"]
 
@@ -622,7 +622,7 @@ class TestDownloadTranscriptEndpoint:
             "result": "[00:00:00 - 00:00:05] Hello world\n[00:00:05 - 00:00:10] How are you?",
         }
 
-        response = client.get(f"/jobs/{job_id}/download?format=txt")
+        response = client.get(f"/api/jobs/{job_id}/download?format=txt")
         assert response.status_code == 200
         assert response.headers["content-type"] == "text/plain; charset=utf-8"
         assert "Hello world" in response.text
@@ -640,7 +640,7 @@ class TestDownloadTranscriptEndpoint:
             "result": "[00:00:00 - 00:00:05] Hello world",
         }
 
-        response = client.get(f"/jobs/{job_id}/download?format=vtt")
+        response = client.get(f"/api/jobs/{job_id}/download?format=vtt")
         assert response.status_code == 200
         assert "text/vtt" in response.headers["content-type"]
         assert "WEBVTT" in response.text
@@ -656,7 +656,7 @@ class TestDownloadTranscriptEndpoint:
             "result": "[00:00:00 - 00:00:05] Hello world",
         }
 
-        response = client.get(f"/jobs/{job_id}/download?format=srt")
+        response = client.get(f"/api/jobs/{job_id}/download?format=srt")
         assert response.status_code == 200
         assert "application/x-subrip" in response.headers["content-type"]
         assert "1" in response.text  # SRT sequence number
@@ -673,7 +673,7 @@ class TestDownloadTranscriptEndpoint:
             "result": "[00:00:00 - 00:00:05] First line\n\n[00:00:10 - 00:00:15] Second line",
         }
 
-        response = client.get(f"/jobs/{job_id}/download?format=txt")
+        response = client.get(f"/api/jobs/{job_id}/download?format=txt")
         assert response.status_code == 200
         # Empty lines should be skipped during parsing
         assert "First line" in response.text
@@ -694,18 +694,18 @@ class TestDownloadTranscriptEndpoint:
         }
 
         # Test TXT format with speakers
-        response = client.get(f"/jobs/{job_id}/download?format=txt")
+        response = client.get(f"/api/jobs/{job_id}/download?format=txt")
         assert response.status_code == 200
         assert "[SPEAKER_00]" in response.text
         assert "[SPEAKER_01]" in response.text
 
         # Test VTT format with speakers
-        response = client.get(f"/jobs/{job_id}/download?format=vtt")
+        response = client.get(f"/api/jobs/{job_id}/download?format=vtt")
         assert response.status_code == 200
         assert "<v SPEAKER_00>" in response.text
 
         # Test SRT format with speakers
-        response = client.get(f"/jobs/{job_id}/download?format=srt")
+        response = client.get(f"/api/jobs/{job_id}/download?format=srt")
         assert response.status_code == 200
         assert "[SPEAKER_00]" in response.text
 
@@ -723,7 +723,7 @@ class TestProgressEventsInTranscription:
         mock_instance.detect_language.return_value = "en"
 
         response = client.post(
-            "/transcribe",
+            "/api/transcribe",
             files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
             data={"api_key": "test-key"},
         )
@@ -769,7 +769,7 @@ class TestProgressEventsInTranscription:
         mock_instance.detect_language.return_value = "es"
 
         response = client.post(
-            "/transcribe",
+            "/api/transcribe",
             files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
             data={"api_key": "test-key"},
         )
@@ -812,7 +812,7 @@ class TestProgressEventsInTranscription:
         mock_translator_instance.translate_transcript.return_value = "[00:00 - 00:05] Prueba"
 
         response = client.post(
-            "/transcribe",
+            "/api/transcribe",
             files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
             data={"api_key": "test-key", "translate_to": "Spanish"},
         )
@@ -842,7 +842,7 @@ class TestProgressEventsInTranscription:
         from vtt_transcribe.api.routes.transcription import jobs
 
         response = client.post(
-            "/diarize",
+            "/api/diarize",
             files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
             data={"hf_token": "test-token"},
         )
