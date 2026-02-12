@@ -15,6 +15,12 @@ def client():
     return TestClient(app)
 
 
+@pytest.fixture(autouse=True)
+def clear_hf_token(monkeypatch):
+    """Clear HF_TOKEN environment variable to prevent test interference."""
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+
+
 class TestDiarizationEndpoint:
     """Tests for diarization-enabled transcription."""
 
@@ -120,3 +126,17 @@ class TestDiarizeOnlyEndpoint:
             data={"hf_token": "hf_test_token", "device": "cpu"},
         )
         assert response.status_code in [200, 201, 202]
+
+    @patch("vtt_transcribe.api.routes.transcription.VideoTranscriber")
+    def test_diarize_uses_env_token(self, mock_transcriber, client, monkeypatch):
+        """POST /diarize should use HF_TOKEN env var when no token provided."""
+        monkeypatch.setenv("HF_TOKEN", "hf_env_token")
+        mock_instance = mock_transcriber.return_value
+        mock_instance.transcribe.return_value = "[00:00 - 00:05] Speaker 1: Test"
+
+        response = client.post(
+            "/api/diarize",
+            files={"file": ("test.mp3", io.BytesIO(b"fake audio"), "audio/mpeg")},
+        )
+        assert response.status_code in [200, 201, 202]
+        assert "job_id" in response.json()
