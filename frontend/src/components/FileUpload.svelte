@@ -14,22 +14,17 @@
     language: 'auto',
     model: 'whisper-1',
     apiKey: '',
-    hfToken: '',
   });
   let isUploading = $state(false);
   let validationError = $state('');
 
-  // Load API keys from sessionStorage on mount
+  // Load API key from sessionStorage on mount
   $effect(() => {
     if (typeof window !== 'undefined') {
       const savedApiKey = sessionStorage.getItem('openai_api_key');
-      const savedHfToken = sessionStorage.getItem('hf_token');
       
       if (savedApiKey) {
         options.apiKey = savedApiKey;
-      }
-      if (savedHfToken) {
-        options.hfToken = savedHfToken;
       }
     }
   });
@@ -104,11 +99,6 @@
       return;
     }
 
-    if (options.diarization && !options.hfToken) {
-      alert('HuggingFace token is required for speaker diarization');
-      return;
-    }
-
     isUploading = true;
 
     try {
@@ -116,10 +106,6 @@
       formData.append('file', selectedFile);
       formData.append('api_key', options.apiKey);
       formData.append('diarize', String(options.diarization));
-      
-      if (options.diarization && options.hfToken) {
-        formData.append('hf_token', options.hfToken);
-      }
       
       if (options.language && options.language !== 'auto') {
         formData.append('language', options.language);
@@ -231,22 +217,8 @@
       <label class="checkbox-label">
         <input type="checkbox" bind:checked={options.diarization} disabled={isUploading} />
         <span>Enable Speaker Diarization</span>
-        <span class="hint-text">Identify different speakers in the audio</span>
+        <span class="hint-text">Identify different speakers in the audio (requires HF_TOKEN env var)</span>
       </label>
-
-      {#if options.diarization}
-        <label class="input-label">
-          <span>HuggingFace Token <span class="required">*</span></span>
-          <input
-            type="password"
-            bind:value={options.hfToken}
-            placeholder="hf_..."
-            disabled={isUploading}
-            required={options.diarization}
-          />
-          <span class="hint-text">Required for speaker diarization</span>
-        </label>
-      {/if}
 
       <label class="input-label">
         <span>Language</span>
