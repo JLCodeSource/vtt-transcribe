@@ -200,7 +200,7 @@ class TestAPITranscriptionCoverage:
         client = TestClient(app)
 
         response = client.post(
-            "/diarize",
+            "/api/diarize",
             files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
             data={"hf_token": "test-hf-token", "device": "cpu"},
         )
@@ -246,7 +246,7 @@ class TestAPITranscriptionCoverage:
 
         # Test the async exception path directly
         response = client.post(
-            "/diarize",
+            "/api/diarize",
             files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
             data={"hf_token": "test-hf-token"},
         )
@@ -842,7 +842,7 @@ class TestProgressEventsInTranscription:
         from vtt_transcribe.api.routes.transcription import jobs
 
         response = client.post(
-            "/diarize",
+            "/api/diarize",
             files={"file": ("test.mp3", b"fake audio", "audio/mpeg")},
             data={"hf_token": "test-token"},
         )
