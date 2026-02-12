@@ -54,7 +54,7 @@ jobs:
       - name: Install backend dependencies
         run: |
           export PATH="$HOME/.cargo/bin:$PATH"
-          uv sync
+          uv sync --all-extras
 
       - name: Start backend server
         env:
