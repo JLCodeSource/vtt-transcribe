@@ -135,10 +135,8 @@ describe('Navigation', () => {
       render(Navigation);
       const homeButton = screen.getByText('Home').closest('button');
 
-      // Should not throw
-      expect(async () => {
-        await fireEvent.click(homeButton!);
-      }).not.toThrow();
+      // Should not throw or reject
+      await fireEvent.click(homeButton!);
     });
   });
 

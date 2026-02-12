@@ -163,7 +163,7 @@ test-frontend-e2e:
 		echo "Installing frontend dependencies..."; \
 		cd frontend && npm install; \
 	fi
-	@if [ ! -d "$(HOME)/.cache/ms-playwright/chromium-"* ]; then \
+	@if ! ls -d "$(HOME)/.cache/ms-playwright"/chromium-* >/dev/null 2>&1; then \
 		echo "Installing Playwright browsers..."; \
 		cd frontend && npx playwright install chromium --with-deps || npx playwright install chromium; \
 	fi

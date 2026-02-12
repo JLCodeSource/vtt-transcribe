@@ -26,25 +26,25 @@ Pre-commit hooks automatically run:
 - `make format` - Auto-format code
 - `make lint` - Check code quality
 
-Pre-push hooks automatically run:
+Currently, no pre-push hooks are configured. Before pushing, it is recommended to run:
 - `make test` - Backend unit tests
-- `make test-frontend` - Frontend E2E tests
+- `make test-frontend` - Frontend tests
 
 ### Installing Hooks
 ```bash
-uv run pre-commit install --hook-type pre-commit --hook-type pre-push
-```
-
-### Bypassing Hooks (not recommended)
-```bash
-git push --no-verify
+uv run pre-commit install --hook-type pre-commit
 ```
 
 ## Frontend Testing Details
 
 ### Prerequisites
 1. Node.js and npm installed
-2. Playwright browsers: `cd frontend && npx playwright install chromium --with-deps`
+2. Playwright browsers installed:
+   ```bash
+   cd frontend && npx playwright install chromium --with-deps
+   ```
+   - On Linux, `--with-deps` may require additional system packages (e.g., `libnss3`, `libatk1.0-0`, `libatk-bridge2.0-0`, etc.)
+   - See [Playwright system requirements](https://playwright.dev/docs/browsers#system-requirements) for your OS
 
 ### Test Types
 
@@ -58,7 +58,7 @@ git push --no-verify
 #### E2E Tests (Playwright)
 - Full browser automation tests
 - Test complete user workflows
-- Automatically starts Vite dev server on port 5173
+- Automatically starts Vite dev server on port 3000
 - Run with: `make test-frontend-e2e`
 - **12 tests covering navigation and settings**
 
@@ -73,8 +73,8 @@ make test-frontend  # Runs both unit tests + E2E tests
 
 ## Coverage Requirements
 - Backend: 97%+ coverage required
-- Frontend Unit Tests: 112+ tests covering all components (92%+ passing)
-- Frontend E2E Tests: 12 tests covering critical user paths (100% passing)
+- Frontend Unit Tests: 100+ tests covering all components
+- Frontend E2E Tests: 12 tests covering critical user paths
 
 ## Test Output
 - HTML reports: `frontend/playwright-report/`
