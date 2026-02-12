@@ -67,14 +67,14 @@ class TestDiarizeOnlyEndpoint:
 
     def test_diarize_endpoint_exists(self, client):
         """POST /diarize endpoint should exist."""
-        response = client.post("/diarize")
+        response = client.post("/api/diarize")
         assert response.status_code in [400, 422]  # Bad request or validation error, but endpoint exists
 
     @patch("vtt_transcribe.api.routes.transcription.VideoTranscriber")
     def test_diarize_requires_hf_token(self, _mock_transcriber, client):  # noqa: PT019
         """POST /diarize should require HF token."""
         response = client.post(
-            "/diarize",
+            "/api/diarize",
             files={"file": ("test.mp3", io.BytesIO(b"fake audio"), "audio/mpeg")},
         )
         assert response.status_code in [400, 422]
@@ -86,7 +86,7 @@ class TestDiarizeOnlyEndpoint:
         mock_instance.transcribe.return_value = "[00:00 - 00:05] Speaker 1: Test"
 
         response = client.post(
-            "/diarize",
+            "/api/diarize",
             files={"file": ("test.mp3", io.BytesIO(b"fake audio"), "audio/mpeg")},
             data={"hf_token": "hf_test_token"},
         )
@@ -100,7 +100,7 @@ class TestDiarizeOnlyEndpoint:
         mock_instance.transcribe.return_value = "[00:00 - 00:05] Speaker 1: Test"
 
         response = client.post(
-            "/diarize",
+            "/api/diarize",
             files={"file": ("test.mp3", io.BytesIO(b"fake audio"), "audio/mpeg")},
             data={"hf_token": "hf_test_token", "device": "cpu"},
         )

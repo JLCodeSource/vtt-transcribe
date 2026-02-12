@@ -349,18 +349,18 @@ class TestDetectLanguageEndpoint:
 
     def test_detect_language_endpoint_exists(self, client):
         """POST /detect-language endpoint should exist."""
-        response = client.post("/detect-language")
+        response = client.post("/api/detect-language")
         assert response.status_code != 404
 
     def test_detect_language_requires_file(self, client):
         """POST /detect-language should require a file upload."""
-        response = client.post("/detect-language")
+        response = client.post("/api/detect-language")
         assert response.status_code == 422
 
     def test_detect_language_requires_api_key(self, client, sample_audio_file):
         """POST /detect-language should require OpenAI API key."""
         files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
-        response = client.post("/detect-language", files=files)
+        response = client.post("/api/detect-language", files=files)
         assert response.status_code == 422
 
     @patch("vtt_transcribe.api.routes.transcription.VideoTranscriber")
@@ -371,7 +371,7 @@ class TestDetectLanguageEndpoint:
 
         files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
         data = {"api_key": "test-api-key"}
-        response = client.post("/detect-language", files=files, data=data)
+        response = client.post("/api/detect-language", files=files, data=data)
 
         assert response.status_code == 200
         response_data = response.json()
@@ -505,7 +505,7 @@ class TestDetectLanguageErrorHandling:
         """Test detect_language with unsupported file extension."""
         files = {"file": ("test.xyz", sample_audio_file, "application/octet-stream")}
         data = {"api_key": "test-api-key"}
-        response = client.post("/detect-language", files=files, data=data)
+        response = client.post("/api/detect-language", files=files, data=data)
 
         assert response.status_code == 400
         assert "Unsupported file type" in response.json()["detail"]
@@ -516,7 +516,7 @@ class TestDetectLanguageErrorHandling:
         large_content = b"x" * (101 * 1024 * 1024)
         files = {"file": ("test.mp3", io.BytesIO(large_content), "audio/mpeg")}
         data = {"api_key": "test-api-key"}
-        response = client.post("/detect-language", files=files, data=data)
+        response = client.post("/api/detect-language", files=files, data=data)
 
         assert response.status_code == 413
         assert "File too large" in response.json()["detail"]
@@ -529,7 +529,7 @@ class TestDetectLanguageErrorHandling:
 
         files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
         data = {"api_key": "test-api-key"}
-        response = client.post("/detect-language", files=files, data=data)
+        response = client.post("/api/detect-language", files=files, data=data)
 
         assert response.status_code == 500
         assert "Language detection failed" in response.json()["detail"]
