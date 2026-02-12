@@ -24,35 +24,66 @@
   let currentJob: TranscriptionJob | null = $state(null);
   let transcript: TranscriptSegment[] = $state([]);
 
+  // User-friendly error messages for OAuth errors
+  const oauthErrorMessages: Record<string, string> = {
+    oauth_failed: 'Authentication failed. Please try again or use a different login method.',
+    no_email: 'We couldn\'t retrieve your email address. Please ensure your email is visible in your provider settings and try again.',
+    invalid_provider: 'Invalid authentication provider. Please use one of the supported providers.',
+    username_unavailable: 'Unable to create your account. Please contact support for assistance.',
+    account_mismatch: 'This email is already registered with a different login method. Please use your original login method.',
+  };
+
   // Restore and validate session from localStorage on mount
   onMount(() => {
     (async () => {
-      // Check for OAuth callback with token in URL
-      const urlParams = new URLSearchParams(window.location.search);
-      const tokenFromUrl = urlParams.get('token');
-      const usernameFromUrl = urlParams.get('username');
-      const oauthError = urlParams.get('error');
+      // Check for OAuth callback with token in URL fragment (more secure than query params)
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const tokenFromUrl = hashParams.get('token');
+      const usernameFromUrl = hashParams.get('username');
+      const oauthError = hashParams.get('error');
 
       if (oauthError) {
-        loginError = `OAuth login failed: ${oauthError}`;
-        // Clean URL
+        // Display user-friendly error message
+        loginError = oauthErrorMessages[oauthError] || `OAuth login failed: ${oauthError}`;
+        // Clean URL fragment
         window.history.replaceState({}, document.title, window.location.pathname);
         return;
       }
 
       if (tokenFromUrl && usernameFromUrl) {
-        // OAuth login successful
-        accessToken = tokenFromUrl;
-        username = usernameFromUrl;
-        isAuthenticated = true;
+        // Validate token before storing by making an API call
+        try {
+          const response = await fetch('/auth/me', {
+            headers: {
+              Authorization: `Bearer ${tokenFromUrl}`,
+            },
+          });
 
-        // Store credentials
-        localStorage.setItem('access_token', tokenFromUrl);
-        localStorage.setItem('username', usernameFromUrl);
+          if (!response.ok) {
+            loginError = 'OAuth login failed: invalid or expired token';
+            // Clean URL fragment
+            window.history.replaceState({}, document.title, window.location.pathname);
+            return;
+          }
 
-        // Clean URL
-        window.history.replaceState({}, document.title, window.location.pathname);
-        return;
+          // OAuth login successful - token verified
+          accessToken = tokenFromUrl;
+          username = usernameFromUrl;
+          isAuthenticated = true;
+
+          // Store credentials
+          localStorage.setItem('access_token', tokenFromUrl);
+          localStorage.setItem('username', usernameFromUrl);
+
+          // Clean URL fragment
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return;
+        } catch {
+          loginError = 'OAuth login failed: unable to verify token';
+          // Clean URL fragment
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return;
+        }
       }
 
       // Check for stored credentials
