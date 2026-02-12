@@ -42,7 +42,7 @@ def validate_frontend_url(url: str) -> bool:
 
 
 if not validate_frontend_url(FRONTEND_URL):
-    logger.warning(f"FRONTEND_URL '{FRONTEND_URL}' is not a valid URL format")
+    logger.warning("FRONTEND_URL '%s' is not a valid URL format", FRONTEND_URL)
 
 # Google OAuth
 if os.getenv("GOOGLE_CLIENT_ID") and os.getenv("GOOGLE_CLIENT_SECRET"):
@@ -108,19 +108,22 @@ async def oauth_login(provider: str, request: Request) -> RedirectResponse:
     return await client.authorize_redirect(request, str(redirect_uri))  # type: ignore[no-any-return]
 
 
-async def get_user_info_from_google(token: dict) -> str | None:
+async def get_user_info_from_google(token: dict[str, object]) -> str | None:
     """Extract email from Google OAuth token."""
     user_info = token.get("userinfo")
-    return user_info.get("email") if user_info else None
+    if user_info and isinstance(user_info, dict):
+        email = user_info.get("email")
+        return email if isinstance(email, str) else None
+    return None
 
 
-async def get_user_info_from_github(client, token: dict) -> str | None:
+async def get_user_info_from_github(client: object, token: dict[str, object]) -> str | None:
     """Fetch email from GitHub API (handles private emails)."""
     try:
         # Get user data
-        user_response = await client.get("https://api.github.com/user", token=token)
+        user_response = await client.get("https://api.github.com/user", token=token)  # type: ignore
         if user_response.status_code not in (200, 201):
-            logger.warning(f"GitHub user API returned status {user_response.status_code}")
+            logger.warning("GitHub user API returned status %s", user_response.status_code)
             return None
 
         user_data = user_response.json()
@@ -132,12 +135,12 @@ async def get_user_info_from_github(client, token: dict) -> str | None:
 
         # If email is private, fetch from emails endpoint
         if not email:
-            emails_response = await client.get(
+            emails_response = await client.get(  # type: ignore
                 "https://api.github.com/user/emails",
                 token=token,
             )
             if emails_response.status_code not in (200, 201):
-                logger.warning(f"GitHub emails API returned status {emails_response.status_code}")
+                logger.warning("GitHub emails API returned status %s", emails_response.status_code)
                 return None
 
             emails = emails_response.json()
@@ -149,21 +152,25 @@ async def get_user_info_from_github(client, token: dict) -> str | None:
                 (e for e in emails if isinstance(e, dict) and e.get("primary")),
                 None,
             )
-            email = primary_email.get("email") if primary_email else None
+            if primary_email and isinstance(primary_email, dict):
+                email = primary_email.get("email")
 
-        return email
+        return email if isinstance(email, str) else None
     except httpx.HTTPError as e:
-        logger.error(f"HTTP error fetching GitHub user info: {e}")
+        logger.error("HTTP error fetching GitHub user info: %s", e)
         return None
     except Exception as e:
-        logger.error(f"Unexpected error fetching GitHub user info: {e}")
+        logger.error("Unexpected error fetching GitHub user info: %s", e)
         return None
 
 
-async def get_user_info_from_microsoft(token: dict) -> str | None:
+async def get_user_info_from_microsoft(token: dict[str, object]) -> str | None:
     """Extract email from Microsoft OAuth token."""
     user_info = token.get("userinfo")
-    return user_info.get("email") if user_info else None
+    if user_info and isinstance(user_info, dict):
+        email = user_info.get("email")
+        return email if isinstance(email, str) else None
+    return None
 
 
 async def generate_unique_username(
@@ -174,7 +181,7 @@ async def generate_unique_username(
 ) -> str | None:
     """
     Generate a unique username with format oauth-{provider}-{base}.
-    
+
     Returns None if unable to generate unique username after max_attempts.
     """
     # Use OAuth-specific prefix to avoid confusion with regular users
@@ -189,7 +196,7 @@ async def generate_unique_username(
         username = f"oauth-{provider}-{base_username}-{secrets.token_hex(4)}"
         counter += 1
 
-    logger.error(f"Failed to generate unique username after {max_attempts} attempts")
+    logger.error("Failed to generate unique username after %s attempts", max_attempts)
     return None
 
 
@@ -200,7 +207,7 @@ async def get_or_create_oauth_user(
 ) -> User | None:
     """
     Get existing user or create new OAuth user.
-    
+
     Only allows OAuth login for users originally created via OAuth to prevent account takeover.
     """
     user = await get_user_by_email(db, email)
@@ -209,7 +216,9 @@ async def get_or_create_oauth_user(
         # Security: Only allow OAuth login if user was created via OAuth
         if user.oauth_provider is None:
             logger.warning(
-                f"Attempted OAuth login for non-OAuth user: {email} via {provider}"
+                "Attempted OAuth login for non-OAuth user: %s via %s",
+                email,
+                provider,
             )
             return None
         # User exists and was created via OAuth - allow login
@@ -218,9 +227,9 @@ async def get_or_create_oauth_user(
     # Create new OAuth user
     local_part = email.split("@", 1)[0]
     username = await generate_unique_username(db, local_part, provider)
-    
+
     if not username:
-        logger.error(f"Could not generate unique username for {email}")
+        logger.error("Could not generate unique username for %s", email)
         return None
 
     user = User(
@@ -240,11 +249,23 @@ async def get_or_create_oauth_user(
 
 # User-friendly error messages
 ERROR_MESSAGES = {
-    "oauth_failed": "Authentication failed. Please try again or use a different login method.",
-    "no_email": "We couldn't retrieve your email address. Please ensure your email is visible in your provider settings and try again.",
-    "invalid_provider": "Invalid authentication provider. Please use one of the supported providers.",
-    "username_unavailable": "Unable to create your account. Please contact support for assistance.",
-    "account_mismatch": "This email is already registered with a different login method. Please use your original login method.",
+    "oauth_failed": (
+        "Authentication failed. Please try again or use a different login method."
+    ),
+    "no_email": (
+        "We couldn't retrieve your email address. "
+        "Please ensure your email is visible in your provider settings and try again."
+    ),
+    "invalid_provider": (
+        "Invalid authentication provider. Please use one of the supported providers."
+    ),
+    "username_unavailable": (
+        "Unable to create your account. Please contact support for assistance."
+    ),
+    "account_mismatch": (
+        "This email is already registered with a different login method. "
+        "Please use your original login method."
+    ),
 }
 
 
@@ -269,10 +290,10 @@ async def oauth_callback(
     try:
         token = await client.authorize_access_token(request)
     except OAuthError as e:
-        logger.error(f"OAuth authorization error for {provider}: {e.error} - {e.description}")
+        logger.error("OAuth authorization error for %s: %s - %s", provider, e.error, e.description)
         return RedirectResponse(url=f"{FRONTEND_URL}#error=oauth_failed")
     except Exception as e:
-        logger.error(f"Unexpected error during OAuth authorization for {provider}: {e}")
+        logger.error("Unexpected error during OAuth authorization for %s: %s", provider, e)
         return RedirectResponse(url=f"{FRONTEND_URL}#error=oauth_failed")
 
     # Get user info from provider
@@ -291,7 +312,7 @@ async def oauth_callback(
 
     # Find or create user
     user = await get_or_create_oauth_user(db, email, provider)
-    
+
     if not user:
         # This happens when a non-OAuth user tries to log in via OAuth
         return RedirectResponse(url=f"{FRONTEND_URL}#error=account_mismatch")

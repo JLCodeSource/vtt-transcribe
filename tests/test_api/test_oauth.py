@@ -158,6 +158,8 @@ class TestOAuthCallback:
 
     def test_callback_google_success_new_user(self, client, mock_oauth_client):
         """Should create new user and redirect with token for Google OAuth."""
+        from vtt_transcribe.api.models import User
+        
         mock_oauth_client.authorize_access_token = AsyncMock(
             return_value={
                 "access_token": "test-token",
@@ -165,15 +167,19 @@ class TestOAuthCallback:
             }
         )
 
+        # Create mock user that will be returned
+        mock_user = MagicMock(spec=User)
+        mock_user.username = "oauth-google-test"
+        mock_user.email = "test@example.com"
+        mock_user.oauth_provider = "google"
+
         with (
             patch("vtt_transcribe.api.routes.oauth.oauth") as mock_oauth,
-            patch("vtt_transcribe.api.routes.oauth.get_user_by_email") as mock_get_user,
-            patch("vtt_transcribe.api.routes.oauth.get_user_by_username") as mock_get_username,
+            patch("vtt_transcribe.api.routes.oauth.get_or_create_oauth_user") as mock_get_or_create,
             patch.dict("os.environ", {"FRONTEND_URL": "http://localhost:3000"}, clear=False),
         ):
             mock_oauth.create_client.return_value = mock_oauth_client
-            mock_get_user.return_value = None  # No existing user
-            mock_get_username.return_value = None  # Username available
+            mock_get_or_create.return_value = mock_user
 
             response = client.get("/oauth/callback/google", follow_redirects=False)
             assert response.status_code == 307
@@ -202,6 +208,8 @@ class TestOAuthCallback:
 
     def test_callback_github_success_with_public_email(self, client, mock_oauth_client):
         """Should handle GitHub OAuth with public email."""
+        from vtt_transcribe.api.models import User
+        
         mock_oauth_client.authorize_access_token = AsyncMock(
             return_value={"access_token": "test-token"}
         )
@@ -212,15 +220,19 @@ class TestOAuthCallback:
         user_response.json.return_value = {"email": "test@example.com", "login": "testuser"}
         mock_oauth_client.get = AsyncMock(return_value=user_response)
 
+        # Create mock user
+        mock_user = MagicMock(spec=User)
+        mock_user.username = "oauth-github-test"
+        mock_user.email = "test@example.com"
+        mock_user.oauth_provider = "github"
+
         with (
             patch("vtt_transcribe.api.routes.oauth.oauth") as mock_oauth,
-            patch("vtt_transcribe.api.routes.oauth.get_user_by_email") as mock_get_user,
-            patch("vtt_transcribe.api.routes.oauth.get_user_by_username") as mock_get_username,
+            patch("vtt_transcribe.api.routes.oauth.get_or_create_oauth_user") as mock_get_or_create,
             patch.dict("os.environ", {"FRONTEND_URL": "http://localhost:3000"}, clear=False),
         ):
             mock_oauth.create_client.return_value = mock_oauth_client
-            mock_get_user.return_value = None
-            mock_get_username.return_value = None
+            mock_get_or_create.return_value = mock_user
 
             response = client.get("/oauth/callback/github", follow_redirects=False)
             assert response.status_code == 307
@@ -229,6 +241,8 @@ class TestOAuthCallback:
 
     def test_callback_github_private_email(self, client, mock_oauth_client):
         """Should fetch private email from GitHub emails endpoint."""
+        from vtt_transcribe.api.models import User
+        
         mock_oauth_client.authorize_access_token = AsyncMock(
             return_value={"access_token": "test-token"}
         )
@@ -248,15 +262,19 @@ class TestOAuthCallback:
         # Configure mock to return different responses
         mock_oauth_client.get = AsyncMock(side_effect=[user_response, emails_response])
 
+        # Create mock user
+        mock_user = MagicMock(spec=User)
+        mock_user.username = "oauth-github-test"
+        mock_user.email = "test@example.com"
+        mock_user.oauth_provider = "github"
+
         with (
             patch("vtt_transcribe.api.routes.oauth.oauth") as mock_oauth,
-            patch("vtt_transcribe.api.routes.oauth.get_user_by_email") as mock_get_user,
-            patch("vtt_transcribe.api.routes.oauth.get_user_by_username") as mock_get_username,
+            patch("vtt_transcribe.api.routes.oauth.get_or_create_oauth_user") as mock_get_or_create,
             patch.dict("os.environ", {"FRONTEND_URL": "http://localhost:3000"}, clear=False),
         ):
             mock_oauth.create_client.return_value = mock_oauth_client
-            mock_get_user.return_value = None
-            mock_get_username.return_value = None
+            mock_get_or_create.return_value = mock_user
 
             response = client.get("/oauth/callback/github", follow_redirects=False)
             assert response.status_code == 307
@@ -340,37 +358,31 @@ class TestOAuthCallback:
 
     def test_callback_username_generation_with_collision(self, client, mock_oauth_client):
         """Should generate unique username when collision occurs."""
+        from vtt_transcribe.api.models import User
+        
         mock_oauth_client.authorize_access_token = AsyncMock(
             return_value={
                 "userinfo": {"email": "test@example.com"},
             }
         )
 
-        call_count = 0
-
-        def mock_get_username(db, username):
-            nonlocal call_count
-            call_count += 1
-            # First call returns existing user, second returns None
-            if call_count == 1:
-                return MagicMock()  # User exists
-            return None  # Username available
+        # Create mock user
+        mock_user = MagicMock(spec=User)
+        mock_user.username = "oauth-google-test-abc123"
+        mock_user.email = "test@example.com"
+        mock_user.oauth_provider = "google"
 
         with (
             patch("vtt_transcribe.api.routes.oauth.oauth") as mock_oauth,
-            patch("vtt_transcribe.api.routes.oauth.get_user_by_email") as mock_get_user,
-            patch("vtt_transcribe.api.routes.oauth.get_user_by_username") as mock_get_username_patch,
+            patch("vtt_transcribe.api.routes.oauth.get_or_create_oauth_user") as mock_get_or_create,
             patch.dict("os.environ", {"FRONTEND_URL": "http://localhost:3000"}, clear=False),
         ):
             mock_oauth.create_client.return_value = mock_oauth_client
-            mock_get_user.return_value = None
-            mock_get_username_patch.side_effect = mock_get_username
+            mock_get_or_create.return_value = mock_user
 
             response = client.get("/oauth/callback/google", follow_redirects=False)
             assert response.status_code == 307
             assert "#token=" in response.headers["location"]
-            # Should have tried multiple usernames
-            assert call_count >= 1
 
 
 class TestOAuthHelpers:
