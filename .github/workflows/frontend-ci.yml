@@ -9,11 +9,15 @@ on:
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-ci.yml'
+      - 'Makefile'
+      - 'docs/TESTING.md'
   pull_request:
     branches: [ main ]
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-ci.yml'
+      - 'Makefile'
+      - 'docs/TESTING.md'
 
 jobs:
   frontend-tests:
