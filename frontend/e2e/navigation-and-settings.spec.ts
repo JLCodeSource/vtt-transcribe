@@ -166,7 +166,7 @@ test.describe('VTT Transcribe - Settings Modal', () => {
     await expect(page.getByRole('dialog', { name: 'Settings' })).not.toBeVisible();
   });
 
-  test('should save settings to localStorage', async ({ page }) => {
+  test('should save settings to sessionStorage', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Settings' }).first().click();
     
@@ -178,10 +178,10 @@ test.describe('VTT Transcribe - Settings Modal', () => {
     // Save
     await page.getByRole('button', { name: 'Save Settings' }).click();
     
-    // Check localStorage
-    const openaiKey = await page.evaluate(() => localStorage.getItem('openai_api_key'));
-    const hfToken = await page.evaluate(() => localStorage.getItem('hf_token'));
-    const lang = await page.evaluate(() => localStorage.getItem('translation_language'));
+    // Check sessionStorage
+    const openaiKey = await page.evaluate(() => sessionStorage.getItem('openai_api_key'));
+    const hfToken = await page.evaluate(() => sessionStorage.getItem('hf_token'));
+    const lang = await page.evaluate(() => sessionStorage.getItem('translation_language'));
     
     expect(openaiKey).toBe('sk-test-key');
     expect(hfToken).toBe('hf_test');
