@@ -62,8 +62,10 @@ jobs:
           OPENAI_API_KEY: "test-key-not-used-in-e2e"
           ENCRYPTION_KEY: "NIiQ9PoBLY9fpqc_kWzhCE1EvcCpRzSZu9FT339Mz2k="
         run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
           mkdir -p data
-          .venv/bin/uvicorn vtt_transcribe.api.app:app --host 0.0.0.0 --port 8000 &
+          # Use uv run with --no-sync to use existing synced environment
+          uv run --no-sync uvicorn vtt_transcribe.api.app:app --host 0.0.0.0 --port 8000 &
           echo $! > backend.pid
           # Wait for backend to be ready
           for i in {1..30}; do
