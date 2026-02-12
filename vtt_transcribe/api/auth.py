@@ -77,6 +77,9 @@ async def authenticate_user(db: AsyncSession, username: str, password: str) -> U
     user = await get_user_by_username(db, username)
     if not user:
         return None
+    # Prevent password-based login for OAuth users
+    if user.oauth_provider is not None:
+        return None
     if not verify_password(password, user.hashed_password):
         return None
     return user

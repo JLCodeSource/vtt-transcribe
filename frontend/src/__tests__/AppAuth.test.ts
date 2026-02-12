@@ -12,20 +12,32 @@ describe('App with Auth Integration', () => {
   });
 
   it('shows login form when not authenticated', () => {
+    // Mock OAuth providers fetch
+    (global.fetch as any).mockResolvedValue({
+      ok: false,
+      json: async () => ({ providers: [] }),
+    });
+
     render(App);
     expect(screen.getByRole('heading', { name: /Sign In/i })).toBeTruthy();
   });
 
   it('hides file upload when not authenticated', () => {
+    // Mock OAuth providers fetch
+    (global.fetch as any).mockResolvedValue({
+      ok: false,
+      json: async () => ({ providers: [] }),
+    });
+
     render(App);
     expect(screen.queryByText(/Drop your video file here/i)).toBeFalsy();
   });
 
   it('shows file upload after successful login', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ access_token: 'fake-token', token_type: 'bearer' }),
-    });
+    // Mock OAuth providers fetch on Login mount, then login request
+    (global.fetch as any)
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ providers: [] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'fake-token', token_type: 'bearer' }) });
 
     render(App);
 
@@ -43,11 +55,10 @@ describe('App with Auth Integration', () => {
   });
 
   it('shows error message on failed login', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: false,
-      status: 401,
-      json: async () => ({ detail: 'Incorrect username or password' }),
-    });
+    // Mock OAuth providers fetch, then failed login request
+    (global.fetch as any)
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ providers: [] }) })
+      .mockResolvedValueOnce({ ok: false, status: 401, json: async () => ({ detail: 'Incorrect username or password' }) });
 
     render(App);
 
@@ -65,10 +76,10 @@ describe('App with Auth Integration', () => {
   });
 
   it('updates UserMenu with username after login', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ access_token: 'fake-token', token_type: 'bearer' }),
-    });
+    // Mock OAuth providers fetch, then login request
+    (global.fetch as any)
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ providers: [] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'fake-token', token_type: 'bearer' }) });
 
     render(App);
 
@@ -86,10 +97,10 @@ describe('App with Auth Integration', () => {
   });
 
   it('persists token in localStorage after login', async () => {
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ access_token: 'fake-token-12345', token_type: 'bearer' }),
-    });
+    // Mock OAuth providers fetch, then login request
+    (global.fetch as any)
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ providers: [] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'fake-token-12345', token_type: 'bearer' }) });
 
     render(App);
 
@@ -110,11 +121,12 @@ describe('App with Auth Integration', () => {
     localStorage.setItem('access_token', 'existing-token');
     localStorage.setItem('username', 'existinguser');
 
-    // Mock /auth/me endpoint to validate token
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ username: 'existinguser', email: 'user@example.com' }),
-    });
+    // When App mounts, Login initially renders (isAuthenticated=false) and fetches OAuth providers
+    // Then App's onMount validates token with /auth/me
+    // If valid, Login unmounts (no longer authenticated state)
+    (global.fetch as any)
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ providers: [] }) }) // Login's OAuth providers fetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ username: 'existinguser', email: 'user@example.com' }) }); // App's /auth/me
 
     render(App);
 
@@ -130,11 +142,12 @@ describe('App with Auth Integration', () => {
     localStorage.setItem('access_token', 'existing-token');
     localStorage.setItem('username', 'existinguser');
 
-    // Mock /auth/me endpoint for initial session restore
-    (global.fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ username: 'existinguser', email: 'user@example.com' }),
-    });
+    // Initial: OAuth providers fetch, then /auth/me validates session
+    // After logout: OAuth providers fetch again when Login re-renders
+    (global.fetch as any)
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ providers: [] }) }) // Initial OAuth providers
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ username: 'existinguser', email: 'user@example.com' }) }) // /auth/me validation
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ providers: [] }) }); // OAuth providers after logout
 
     render(App);
 

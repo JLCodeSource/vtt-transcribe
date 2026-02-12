@@ -1,8 +1,20 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import Login from '../components/Login.svelte';
 
+// Mock fetch globally
+global.fetch = vi.fn();
+
 describe('Login', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Mock OAuth providers fetch that happens on mount
+    (global.fetch as any).mockResolvedValue({
+      ok: false,
+      json: async () => ({ providers: [] }),
+    });
+  });
+
   it('renders login form', () => {
     render(Login);
     expect(screen.getByRole('heading', { name: /Sign In/i })).toBeTruthy();

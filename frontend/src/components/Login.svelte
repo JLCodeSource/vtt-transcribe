@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+
   interface Props {
     loading?: boolean;
     error?: string;
@@ -10,6 +12,19 @@
 
   let username = $state('');
   let password = $state('');
+  let oauthProviders = $state<string[]>([]);
+
+  onMount(async () => {
+    try {
+      const response = await fetch('/oauth/providers');
+      if (response.ok) {
+        const data = await response.json();
+        oauthProviders = data.providers || [];
+      }
+    } catch {
+      // OAuth providers not available
+    }
+  });
 
   function handleSubmit(event: Event) {
     event.preventDefault();
@@ -26,6 +41,23 @@
       onregister();
     }
   }
+
+  function handleOAuthLogin(provider: string) {
+    window.location.href = `/oauth/login/${provider}`;
+  }
+
+  function getProviderIcon(provider: string): string {
+    const icons: Record<string, string> = {
+      google: '🔍',
+      github: '🐙',
+      microsoft: '🪟',
+    };
+    return icons[provider] || '🔐';
+  }
+
+  function getProviderName(provider: string): string {
+    return provider.charAt(0).toUpperCase() + provider.slice(1);
+  }
 </script>
 
 <div class="login-container">
@@ -36,6 +68,22 @@
     {#if error}
       <div class="error-message" role="alert">
         {error}
+      </div>
+    {/if}
+
+    {#if oauthProviders.length > 0}
+      <div class="oauth-section">
+        <div class="oauth-buttons">
+          {#each oauthProviders as provider}
+            <button type="button" onclick={() => handleOAuthLogin(provider)} class="oauth-button">
+              <span class="oauth-icon">{getProviderIcon(provider)}</span>
+              Continue with {getProviderName(provider)}
+            </button>
+          {/each}
+        </div>
+        <div class="divider">
+          <span>or</span>
+        </div>
       </div>
     {/if}
 
@@ -187,5 +235,64 @@
 
   .link-button:hover {
     color: #764ba2;
+  }
+
+  .oauth-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .oauth-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .oauth-button {
+    width: 100%;
+    padding: 0.875rem;
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: #374151;
+  }
+
+  .oauth-button:hover {
+    border-color: #667eea;
+    background: #f9fafb;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+  }
+
+  .oauth-icon {
+    font-size: 1.25rem;
+  }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 1.5rem 0;
+  }
+
+  .divider::before,
+  .divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .divider span {
+    padding: 0 1rem;
+    color: #9ca3af;
+    font-size: 0.875rem;
+    font-weight: 500;
   }
 </style>

@@ -24,9 +24,69 @@
   let currentJob: TranscriptionJob | null = $state(null);
   let transcript: TranscriptSegment[] = $state([]);
 
+  // User-friendly error messages for OAuth errors
+  const oauthErrorMessages: Record<string, string> = {
+    oauth_failed: 'Authentication failed. Please try again or use a different login method.',
+    no_email: 'We couldn\'t retrieve your email address. Please ensure your email is visible in your provider settings and try again.',
+    invalid_provider: 'Invalid authentication provider. Please use one of the supported providers.',
+    username_unavailable: 'Unable to create your account. Please contact support for assistance.',
+    account_mismatch: 'This email is already registered with a different login method. Please use your original login method.',
+  };
+
   // Restore and validate session from localStorage on mount
   onMount(() => {
     (async () => {
+      // Check for OAuth callback with token in URL fragment (more secure than query params)
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const tokenFromUrl = hashParams.get('token');
+      const usernameFromUrl = hashParams.get('username');
+      const oauthError = hashParams.get('error');
+
+      if (oauthError) {
+        // Display user-friendly error message
+        loginError = oauthErrorMessages[oauthError] || `OAuth login failed: ${oauthError}`;
+        // Clean URL fragment
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return;
+      }
+
+      if (tokenFromUrl && usernameFromUrl) {
+        // Validate token before storing by making an API call
+        try {
+          const response = await fetch('/auth/me', {
+            headers: {
+              Authorization: `Bearer ${tokenFromUrl}`,
+            },
+          });
+
+          if (!response.ok) {
+            loginError = 'OAuth login failed: invalid or expired token';
+            // Clean URL fragment
+            window.history.replaceState({}, document.title, window.location.pathname);
+            return;
+          }
+
+          // OAuth login successful - token verified
+          accessToken = tokenFromUrl;
+          username = usernameFromUrl;
+          isAuthenticated = true;
+
+          // Store credentials
+          localStorage.setItem('access_token', tokenFromUrl);
+          localStorage.setItem('username', usernameFromUrl);
+
+          // Clean URL fragment
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return;
+        } catch {
+          loginError = 'OAuth login failed: unable to verify token';
+          // Clean URL fragment
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return;
+        }
+      }
+
+      // Check for stored credentials
       const storedToken = localStorage.getItem('access_token');
       const storedUsername = localStorage.getItem('username');
 
@@ -161,11 +221,7 @@
       <h1>🎬 VTT Transcribe</h1>
       <p class="auth-subtitle">AI-Powered Video Transcription</p>
     </div>
-    <Login 
-      onlogin={handleLogin} 
-      loading={loginLoading}
-      error={loginError}
-    />
+    <Login onlogin={handleLogin} loading={loginLoading} error={loginError} />
   </div>
 {:else}
   <Navigation {currentPage} onnavigate={handleNavigate} />
@@ -173,74 +229,74 @@
   <div class="app-wrapper">
     <header class="app-header">
       <h1>🎬 VTT Transcribe</h1>
-      <UserMenu username={username} isLoggedIn={true} onlogout={handleLogout} onsettings={openSettings} />
-  </header>
+      <UserMenu {username} isLoggedIn={true} onlogout={handleLogout} onsettings={openSettings} />
+    </header>
 
-  <main class="main-content">
-    {#if currentPage === 'home'}
-      <div class="page-header">
-        <h2>AI-Powered Video Transcription</h2>
-        <p>Upload your video files for automatic transcription with speaker diarization</p>
-      </div>
+    <main class="main-content">
+      {#if currentPage === 'home'}
+        <div class="page-header">
+          <h2>AI-Powered Video Transcription</h2>
+          <p>Upload your video files for automatic transcription with speaker diarization</p>
+        </div>
 
-      <div class="content-card">
-        {#if !currentJob}
-          <FileUpload onuploadstart={handleUploadStart} />
-        {:else}
-          <div class="job-section">
-            <ProgressView
-              job={currentJob}
-              onprogress={handleProgress}
-              oncomplete={handleComplete}
-              onerror={handleError}
-            />
-
-            {#if transcript.length > 0}
-              <TranscriptViewer
-                segments={transcript}
-                jobId={currentJob.job_id}
-                onreset={handleReset}
+        <div class="content-card">
+          {#if !currentJob}
+            <FileUpload onuploadstart={handleUploadStart} />
+          {:else}
+            <div class="job-section">
+              <ProgressView
+                job={currentJob}
+                onprogress={handleProgress}
+                oncomplete={handleComplete}
+                onerror={handleError}
               />
-            {/if}
-          </div>
-        {/if}
-      </div>
-    {:else if currentPage === 'jobs'}
-      <div class="page-header">
-        <h2>📋 Transcription Jobs</h2>
-        <p>View and manage your transcription history</p>
-      </div>
-      <div class="content-card">
-        <p class="placeholder-text">Job history coming soon...</p>
-      </div>
-    {:else if currentPage === 'about'}
-      <div class="page-header">
-        <h2>ℹ️ About VTT Transcribe</h2>
-        <p>Learn more about this application</p>
-      </div>
-      <div class="content-card">
-        <p>
-          VTT Transcribe is an AI-powered video transcription tool that uses OpenAI's Whisper model
-          for accurate speech-to-text conversion and pyannote.audio for speaker diarization.
-        </p>
-        <h3>Features:</h3>
-        <ul>
-          <li>High-quality audio transcription</li>
-          <li>Speaker diarization</li>
-          <li>Multi-language support</li>
-          <li>Automatic translation</li>
-          <li>VTT subtitle export</li>
-        </ul>
-      </div>
-    {/if}
-  </main>
 
-  <footer class="app-footer">
-    <p>Powered by OpenAI Whisper & pyannote.audio</p>
-  </footer>
-</div>
+              {#if transcript.length > 0}
+                <TranscriptViewer
+                  segments={transcript}
+                  jobId={currentJob.job_id}
+                  onreset={handleReset}
+                />
+              {/if}
+            </div>
+          {/if}
+        </div>
+      {:else if currentPage === 'jobs'}
+        <div class="page-header">
+          <h2>📋 Transcription Jobs</h2>
+          <p>View and manage your transcription history</p>
+        </div>
+        <div class="content-card">
+          <p class="placeholder-text">Job history coming soon...</p>
+        </div>
+      {:else if currentPage === 'about'}
+        <div class="page-header">
+          <h2>ℹ️ About VTT Transcribe</h2>
+          <p>Learn more about this application</p>
+        </div>
+        <div class="content-card">
+          <p>
+            VTT Transcribe is an AI-powered video transcription tool that uses OpenAI's Whisper
+            model for accurate speech-to-text conversion and pyannote.audio for speaker diarization.
+          </p>
+          <h3>Features:</h3>
+          <ul>
+            <li>High-quality audio transcription</li>
+            <li>Speaker diarization</li>
+            <li>Multi-language support</li>
+            <li>Automatic translation</li>
+            <li>VTT subtitle export</li>
+          </ul>
+        </div>
+      {/if}
+    </main>
 
-<Settings isOpen={settingsOpen} onclose={closeSettings} />
+    <footer class="app-footer">
+      <p>Powered by OpenAI Whisper & pyannote.audio</p>
+    </footer>
+  </div>
+
+  <Settings isOpen={settingsOpen} onclose={closeSettings} />
 {/if}
 
 <style>
