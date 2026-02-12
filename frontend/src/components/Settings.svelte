@@ -8,9 +8,7 @@
 
   // API Key settings
   let openaiKey = $state('');
-  let hfToken = $state('');
   let showOpenaiKey = $state(false);
-  let showHfToken = $state(false);
 
   // Translation language setting
   let translationLanguage = $state('none');
@@ -32,7 +30,6 @@
   $effect(() => {
     if (typeof window !== 'undefined') {
       openaiKey = sessionStorage.getItem('openai_api_key') || '';
-      hfToken = sessionStorage.getItem('hf_token') || '';
       translationLanguage = sessionStorage.getItem('translation_language') || 'none';
     }
   });
@@ -58,12 +55,6 @@
       sessionStorage.setItem('openai_api_key', openaiKey);
     } else {
       sessionStorage.removeItem('openai_api_key');
-    }
-
-    if (hfToken) {
-      sessionStorage.setItem('hf_token', hfToken);
-    } else {
-      sessionStorage.removeItem('hf_token');
     }
 
     sessionStorage.setItem('translation_language', translationLanguage);
@@ -136,29 +127,6 @@
                 aria-label={showOpenaiKey ? 'Hide API key' : 'Show API key'}
               >
                 {showOpenaiKey ? '🙈' : '👁️'}
-              </button>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="hf-token">
-              HuggingFace Token
-            </label>
-            <p class="field-help">Optional: Required for speaker diarization features</p>
-            <div class="input-with-toggle">
-              <input
-                id="hf-token"
-                type={showHfToken ? 'text' : 'password'}
-                bind:value={hfToken}
-                placeholder="hf_..."
-                class="input-field"
-              />
-              <button
-                class="toggle-button"
-                onclick={() => (showHfToken = !showHfToken)}
-                aria-label={showHfToken ? 'Hide token' : 'Show token'}
-              >
-                {showHfToken ? '🙈' : '👁️'}
               </button>
             </div>
           </div>

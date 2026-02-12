@@ -19,7 +19,6 @@ export interface UploadOptions {
   language?: string;
   model?: string;
   apiKey?: string;
-  hfToken?: string;
   translateTo?: string;
 }
 

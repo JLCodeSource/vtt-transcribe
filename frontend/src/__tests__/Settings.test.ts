@@ -63,9 +63,6 @@ describe('Settings', () => {
       expect(screen.getByLabelText(/OpenAI API Key/i)).toBeTruthy();
     });
 
-    it('shows HuggingFace Token field', () => {
-      expect(screen.getByLabelText(/HuggingFace Token/i)).toBeTruthy();
-    });
 
     it('marks OpenAI API Key as required', () => {
       const label = screen.getByText('OpenAI API Key').closest('label');
@@ -74,10 +71,8 @@ describe('Settings', () => {
 
     it('renders password input types by default', () => {
       const openaiInput = screen.getByLabelText(/OpenAI API Key/i) as HTMLInputElement;
-      const hfInput = screen.getByLabelText(/HuggingFace Token/i) as HTMLInputElement;
 
       expect(openaiInput.type).toBe('password');
-      expect(hfInput.type).toBe('password');
     });
   });
 
@@ -94,21 +89,6 @@ describe('Settings', () => {
 
       await fireEvent.click(toggleButton!);
       expect(openaiInput.type).toBe('password');
-    });
-
-    it('toggles HuggingFace token visibility when show/hide is clicked', async () => {
-      render(Settings, { props: { isOpen: true } });
-      const hfInput = screen.getByLabelText(/HuggingFace Token/i) as HTMLInputElement;
-      const toggleButton = screen.getByLabelText(/Show token/i);
-
-      expect(hfInput.type).toBe('password');
-
-      await fireEvent.click(toggleButton!);
-      expect(hfInput.type).toBe('text');
-
-      const hideButton = screen.getByLabelText(/Hide token/i);
-      await fireEvent.click(hideButton!);
-      expect(hfInput.type).toBe('password');
     });
 
     it('changes button icon when showing', async () => {
@@ -236,18 +216,6 @@ describe('Settings', () => {
       expect(sessionStorageMock.getItem('openai_api_key')).toBe('test-key-123');
     });
 
-    it('saves HuggingFace token to sessionStorage', async () => {
-      render(Settings, { props: { isOpen: true } });
-
-      const hfInput = screen.getByLabelText(/HuggingFace Token/i);
-      await fireEvent.input(hfInput, { target: { value: 'hf-token-456' } });
-
-      const saveButton = screen.getByText(/Save Settings/i).closest('button');
-      await fireEvent.click(saveButton!);
-
-      expect(sessionStorageMock.getItem('hf_token')).toBe('hf-token-456');
-    });
-
     it('saves translation language to sessionStorage', async () => {
       render(Settings, { props: { isOpen: true } });
 
@@ -272,19 +240,6 @@ describe('Settings', () => {
 
       expect(sessionStorageMock.getItem('openai_api_key')).toBe(null);
     });
-
-    it('removes HuggingFace token from sessionStorage if empty', async () => {
-      sessionStorageMock.setItem('hf_token', 'existing-token');
-      render(Settings, { props: { isOpen: true } });
-
-      const hfInput = screen.getByLabelText(/HuggingFace Token/i);
-      await fireEvent.input(hfInput, { target: { value: '' } });
-
-      const saveButton = screen.getByText(/Save Settings/i).closest('button');
-      await fireEvent.click(saveButton!);
-
-      expect(sessionStorageMock.getItem('hf_token')).toBe(null);
-    });
   });
 
   describe('sessionStorage Loading', () => {
@@ -296,16 +251,6 @@ describe('Settings', () => {
       // Wait for effect to run
       await waitFor(() => {
         expect(openaiInput.value).toBe('stored-key');
-      });
-    });
-
-    it('loads HuggingFace token from sessionStorage on mount', async () => {
-      sessionStorageMock.setItem('hf_token', 'stored-token');
-      render(Settings, { props: { isOpen: true } });
-
-      const hfInput = screen.getByLabelText(/HuggingFace Token/i) as HTMLInputElement;
-      await waitFor(() => {
-        expect(hfInput.value).toBe('stored-token');
       });
     });
 
@@ -339,14 +284,6 @@ describe('Settings', () => {
 
       await fireEvent.input(openaiInput, { target: { value: 'sk-test123' } });
       expect(openaiInput.value).toBe('sk-test123');
-    });
-
-    it('HuggingFace input accepts text', async () => {
-      render(Settings, { props: { isOpen: true } });
-      const hfInput = screen.getByLabelText(/HuggingFace Token/i) as HTMLInputElement;
-
-      await fireEvent.input(hfInput, { target: { value: 'hf_test456' } });
-      expect(hfInput.value).toBe('hf_test456');
     });
 
     it('allows special characters in API keys', async () => {
@@ -406,7 +343,6 @@ describe('Settings', () => {
       render(Settings, { props: { isOpen: true } });
 
       expect(screen.getByLabelText(/OpenAI API Key/i)).toBeTruthy();
-      expect(screen.getByLabelText(/HuggingFace Token/i)).toBeTruthy();
       expect(screen.getByLabelText(/Target Language/i)).toBeTruthy();
     });
 
