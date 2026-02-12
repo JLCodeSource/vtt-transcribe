@@ -28,18 +28,18 @@ class TestTranscribeEndpoint:
 
     def test_transcribe_endpoint_exists(self, client):
         """POST /transcribe endpoint should exist."""
-        response = client.post("/transcribe")
+        response = client.post("/api/transcribe")
         assert response.status_code != 404
 
     def test_transcribe_requires_file(self, client):
         """POST /transcribe should require a file upload."""
-        response = client.post("/transcribe")
+        response = client.post("/api/transcribe")
         assert response.status_code == 422
 
     def test_transcribe_requires_api_key(self, client, sample_audio_file):
         """POST /transcribe should require OpenAI API key."""
         files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
-        response = client.post("/transcribe", files=files)
+        response = client.post("/api/transcribe", files=files)
         assert response.status_code == 422
         data = response.json()
         assert "api_key" in str(data).lower() or "detail" in data
@@ -52,7 +52,7 @@ class TestTranscribeEndpoint:
 
         files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
         data = {"api_key": "test-api-key"}
-        response = client.post("/transcribe", files=files, data=data)
+        response = client.post("/api/transcribe", files=files, data=data)
 
         assert response.status_code in [200, 201, 202]
 
@@ -64,7 +64,7 @@ class TestTranscribeEndpoint:
 
         files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
         data = {"api_key": "test-api-key"}
-        response = client.post("/transcribe", files=files, data=data)
+        response = client.post("/api/transcribe", files=files, data=data)
 
         response_data = response.json()
         assert "job_id" in response_data
@@ -78,7 +78,7 @@ class TestTranscribeEndpoint:
 
         files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
         data = {"api_key": "test-api-key"}
-        response = client.post("/transcribe", files=files, data=data)
+        response = client.post("/api/transcribe", files=files, data=data)
 
         response_data = response.json()
         assert "status" in response_data
@@ -96,7 +96,7 @@ class TestJobStatusEndpoint:
 
         files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
         data = {"api_key": "test-api-key"}
-        create_response = client.post("/transcribe", files=files, data=data)
+        create_response = client.post("/api/transcribe", files=files, data=data)
         job_id = create_response.json()["job_id"]
 
         response = client.get(f"/jobs/{job_id}")
@@ -104,7 +104,7 @@ class TestJobStatusEndpoint:
 
     def test_job_status_returns_not_found_for_invalid_id(self, client):
         """GET /jobs/{job_id} should return 404 for non-existent job."""
-        response = client.get("/jobs/nonexistent-job-id")
+        response = client.get("/api/jobs/nonexistent-job-id")
         assert response.status_code == 404
 
     @patch("vtt_transcribe.api.routes.transcription.VideoTranscriber")
@@ -115,7 +115,7 @@ class TestJobStatusEndpoint:
 
         files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
         data = {"api_key": "test-api-key"}
-        create_response = client.post("/transcribe", files=files, data=data)
+        create_response = client.post("/api/transcribe", files=files, data=data)
         job_id = create_response.json()["job_id"]
 
         status_response = client.get(f"/jobs/{job_id}")
@@ -147,7 +147,7 @@ class TestSupportedFileTypes:
         file_content = io.BytesIO(b"fake file data")
         files = {"file": (filename, file_content, mimetype)}
         data = {"api_key": "test-api-key"}
-        response = client.post("/transcribe", files=files, data=data)
+        response = client.post("/api/transcribe", files=files, data=data)
 
         assert response.status_code in [200, 201, 202]
 
@@ -438,7 +438,7 @@ class TestTranscribeWithTranslation:
 
         files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
         data = {"api_key": "test-api-key", "translate_to": "Spanish"}
-        response = client.post("/transcribe", files=files, data=data)
+        response = client.post("/api/transcribe", files=files, data=data)
 
         assert response.status_code in [200, 201, 202]
         response_data = response.json()
@@ -562,7 +562,7 @@ class TestDownloadTranscriptEndpoint:
 
     def test_download_job_not_found(self, client):
         """Test download with non-existent job ID."""
-        response = client.get("/jobs/nonexistent-job/download?format=txt")
+        response = client.get("/api/jobs/nonexistent-job/download?format=txt")
         assert response.status_code == 404
         assert "Job not found" in response.json()["detail"]
 
@@ -575,7 +575,7 @@ class TestDownloadTranscriptEndpoint:
 
         files = {"file": ("test.mp3", sample_audio_file, "audio/mpeg")}
         data = {"api_key": "test-api-key"}
-        create_response = client.post("/transcribe", files=files, data=data)
+        create_response = client.post("/api/transcribe", files=files, data=data)
         job_id = create_response.json()["job_id"]
 
         # Manually set job to processing state
