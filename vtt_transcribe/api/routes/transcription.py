@@ -1,6 +1,7 @@
 """Transcription API endpoints."""
 
 import asyncio
+import os
 import re
 import tempfile
 import time
@@ -20,6 +21,18 @@ logger = get_logger(__name__)
 
 # Jobs dictionary now includes progress_updates queue for each job
 jobs: dict[str, dict[str, Any]] = {}
+
+
+def _get_hf_token(provided_token: str | None) -> str | None:
+    """Get HuggingFace token from parameter or environment.
+
+    Args:
+        provided_token: Token provided as parameter (may be None)
+
+    Returns:
+        Token from parameter if provided, otherwise from HF_TOKEN environment variable
+    """
+    return provided_token or os.environ.get("HF_TOKEN")
 
 
 def _emit_progress(job_id: str, message: str, progress_type: str = "info") -> None:
@@ -107,15 +120,18 @@ async def create_transcription_job(
         raise HTTPException(
             status_code=422, detail="File must have a filename")
 
-    if diarize and not hf_token:
-        logger.warning(
-            "Job creation failed: diarization requested without HF token",
-            extra={"file_name": file.filename},
-        )
-        raise HTTPException(
-            status_code=400,
-            detail="HuggingFace token required for diarization. Provide hf_token parameter.",
-        )
+    # If diarization is requested, ensure HF token is available (from parameter or environment)
+    if diarize:
+        hf_token = _get_hf_token(hf_token)
+        if not hf_token:
+            logger.warning(
+                "Job creation failed: diarization requested without HF token",
+                extra={"file_name": file.filename},
+            )
+            raise HTTPException(
+                status_code=400,
+                detail="HuggingFace token required for diarization. Provide hf_token parameter or set HF_TOKEN environment variable.",
+            )
 
     # Validate file extension
     file_ext = Path(file.filename).suffix.lower()
@@ -288,14 +304,14 @@ async def translate_transcript(
 @router.post("/diarize")
 async def create_diarization_job(
     file: UploadFile = File(...),
-    hf_token: str = Form(...),
+    hf_token: str | None = Form(None),
     device: str | None = Form(None),
 ) -> dict[str, str]:
     """Create a diarization-only job.
 
     Args:
         file: Audio or video file
-        hf_token: HuggingFace token for diarization
+        hf_token: HuggingFace token for diarization (or use HF_TOKEN env var)
         device: Device for diarization (auto/cpu/cuda)
 
     Returns:
@@ -304,6 +320,14 @@ async def create_diarization_job(
     if not file.filename:
         raise HTTPException(
             status_code=422, detail="File must have a filename")
+
+    # Get HF token from parameter or environment
+    hf_token = _get_hf_token(hf_token)
+    if not hf_token:
+        raise HTTPException(
+            status_code=400,
+            detail="HuggingFace token required. Provide hf_token parameter or set HF_TOKEN environment variable.",
+        )
 
     job_id = str(uuid.uuid4())
 

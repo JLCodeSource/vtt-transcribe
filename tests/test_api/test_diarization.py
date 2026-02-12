@@ -1,6 +1,7 @@
 """Tests for diarization API endpoints."""
 
 import io
+import os
 from unittest.mock import patch
 
 import pytest
@@ -39,6 +40,21 @@ class TestDiarizationEndpoint:
             "/api/transcribe",
             files={"file": ("test.mp3", io.BytesIO(b"fake audio"), "audio/mpeg")},
             data={"api_key": "test-key", "diarize": "true", "hf_token": "hf_test_token"},
+        )
+        assert response.status_code in [200, 201, 202]
+        assert "job_id" in response.json()
+
+    @patch("vtt_transcribe.api.routes.transcription.VideoTranscriber")
+    def test_transcribe_with_diarization_uses_env_token(self, mock_transcriber, client, monkeypatch):
+        """POST /transcribe with diarize=true should use HF_TOKEN env var if no token provided."""
+        monkeypatch.setenv("HF_TOKEN", "hf_env_token")
+        mock_instance = mock_transcriber.return_value
+        mock_instance.transcribe.return_value = "[00:00 - 00:05] Speaker 1: Test"
+
+        response = client.post(
+            "/api/transcribe",
+            files={"file": ("test.mp3", io.BytesIO(b"fake audio"), "audio/mpeg")},
+            data={"api_key": "test-key", "diarize": "true"},
         )
         assert response.status_code in [200, 201, 202]
         assert "job_id" in response.json()
