@@ -191,6 +191,7 @@ class TestOAuthCallback:
         with (
             patch("vtt_transcribe.api.routes.oauth.oauth") as mock_oauth,
             patch("vtt_transcribe.api.routes.oauth.get_or_create_oauth_user") as mock_get_or_create,
+            patch("vtt_transcribe.api.auth.SECRET_KEY", "test-secret-key-for-oauth-testing"),
             patch.dict("os.environ", {"FRONTEND_URL": "http://localhost:3000"}, clear=False),
         ):
             mock_oauth.create_client.return_value = mock_oauth_client
@@ -237,6 +238,7 @@ class TestOAuthCallback:
         with (
             patch("vtt_transcribe.api.routes.oauth.oauth") as mock_oauth,
             patch("vtt_transcribe.api.routes.oauth.get_or_create_oauth_user") as mock_get_or_create,
+            patch("vtt_transcribe.api.auth.SECRET_KEY", "test-secret-key-for-oauth-testing"),
             patch.dict("os.environ", {"FRONTEND_URL": "http://localhost:3000"}, clear=False),
         ):
             mock_oauth.create_client.return_value = mock_oauth_client
@@ -270,6 +272,7 @@ class TestOAuthCallback:
         with (
             patch("vtt_transcribe.api.routes.oauth.oauth") as mock_oauth,
             patch("vtt_transcribe.api.routes.oauth.get_or_create_oauth_user") as mock_get_or_create,
+            patch("vtt_transcribe.api.auth.SECRET_KEY", "test-secret-key-for-oauth-testing"),
             patch.dict("os.environ", {"FRONTEND_URL": "http://localhost:3000"}, clear=False),
         ):
             mock_oauth.create_client.return_value = mock_oauth_client
@@ -315,6 +318,7 @@ class TestOAuthCallback:
         with (
             patch("vtt_transcribe.api.routes.oauth.oauth") as mock_oauth,
             patch("vtt_transcribe.api.routes.oauth.get_or_create_oauth_user") as mock_get_or_create,
+            patch("vtt_transcribe.api.auth.SECRET_KEY", "test-secret-key-for-oauth-testing"),
             patch.dict("os.environ", {"FRONTEND_URL": "http://localhost:3000"}, clear=False),
         ):
             mock_oauth.create_client.return_value = mock_oauth_client
@@ -363,6 +367,7 @@ class TestOAuthCallback:
         with (
             patch("vtt_transcribe.api.routes.oauth.oauth") as mock_oauth,
             patch("vtt_transcribe.api.routes.oauth.get_or_create_oauth_user") as mock_get_or_create,
+            patch("vtt_transcribe.api.auth.SECRET_KEY", "test-secret-key-for-oauth-testing"),
             patch.dict("os.environ", {"FRONTEND_URL": "http://localhost:3000"}, clear=False),
         ):
             mock_oauth.create_client.return_value = mock_oauth_client
@@ -370,6 +375,7 @@ class TestOAuthCallback:
 
             response = client.get("/oauth/callback/google", follow_redirects=False)
             assert response.status_code == 307
+            assert "#token=" in response.headers["location"]
             assert "#token=" in response.headers["location"]
 
 
