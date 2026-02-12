@@ -1,27 +1,48 @@
 """OAuth provider authentication routes."""
 
+import logging
 import os
+import secrets
+from datetime import timedelta
+from urllib.parse import urlparse
 
-from authlib.integrations.starlette_client import OAuth
+import httpx
+from authlib.integrations.starlette_client import OAuth, OAuthError
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import RedirectResponse
 
 from vtt_transcribe.api.auth import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
     create_access_token,
     get_password_hash,
     get_user_by_email,
+    get_user_by_username,
 )
 from vtt_transcribe.api.database import get_db
 from vtt_transcribe.api.models import User
 
 router = APIRouter(prefix="/oauth", tags=["oauth"])
+logger = logging.getLogger(__name__)
 
 # Initialize OAuth
 oauth = OAuth()
 
 # Configure OAuth providers
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
+# Validate FRONTEND_URL
+def validate_frontend_url(url: str) -> bool:
+    """Validate that FRONTEND_URL is a properly formatted URL."""
+    try:
+        result = urlparse(url)
+        return all([result.scheme, result.netloc])
+    except Exception:
+        return False
+
+
+if not validate_frontend_url(FRONTEND_URL):
+    logger.warning("FRONTEND_URL '%s' is not a valid URL format", FRONTEND_URL)
 
 # Google OAuth
 if os.getenv("GOOGLE_CLIENT_ID") and os.getenv("GOOGLE_CLIENT_SECRET"):
@@ -59,13 +80,13 @@ if os.getenv("MICROSOFT_CLIENT_ID") and os.getenv("MICROSOFT_CLIENT_SECRET"):
 
 @router.get("/providers")
 async def get_providers() -> dict[str, list[str]]:
-    """Get list of enabled OAuth providers."""
+    """Get list of enabled OAuth providers (only those with both CLIENT_ID and CLIENT_SECRET)."""
     providers = []
-    if os.getenv("GOOGLE_CLIENT_ID"):
+    if os.getenv("GOOGLE_CLIENT_ID") and os.getenv("GOOGLE_CLIENT_SECRET"):
         providers.append("google")
-    if os.getenv("GITHUB_CLIENT_ID"):
+    if os.getenv("GITHUB_CLIENT_ID") and os.getenv("GITHUB_CLIENT_SECRET"):
         providers.append("github")
-    if os.getenv("MICROSOFT_CLIENT_ID"):
+    if os.getenv("MICROSOFT_CLIENT_ID") and os.getenv("MICROSOFT_CLIENT_SECRET"):
         providers.append("microsoft")
     return {"providers": providers}
 
@@ -87,8 +108,168 @@ async def oauth_login(provider: str, request: Request) -> RedirectResponse:
     return await client.authorize_redirect(request, str(redirect_uri))  # type: ignore[no-any-return]
 
 
+async def get_user_info_from_google(token: dict[str, object]) -> str | None:
+    """Extract email from Google OAuth token."""
+    user_info = token.get("userinfo")
+    if user_info and isinstance(user_info, dict):
+        email = user_info.get("email")
+        return email if isinstance(email, str) else None
+    return None
+
+
+async def get_user_info_from_github(client: object, token: dict[str, object]) -> str | None:
+    """Fetch email from GitHub API (handles private emails)."""
+    try:
+        # Get user data
+        user_response = await client.get("https://api.github.com/user", token=token)  # type: ignore
+        if user_response.status_code not in (200, 201):
+            logger.warning("GitHub user API returned status %s", user_response.status_code)
+            return None
+
+        user_data = user_response.json()
+        if not isinstance(user_data, dict):
+            logger.warning("GitHub user API returned non-dict response")
+            return None
+
+        email = user_data.get("email")
+
+        # If email is private, fetch from emails endpoint
+        if not email:
+            emails_response = await client.get(  # type: ignore
+                "https://api.github.com/user/emails",
+                token=token,
+            )
+            if emails_response.status_code not in (200, 201):
+                logger.warning("GitHub emails API returned status %s", emails_response.status_code)
+                return None
+
+            emails = emails_response.json()
+            if not isinstance(emails, list):
+                logger.warning("GitHub emails API returned non-list response")
+                return None
+
+            primary_email = next(
+                (e for e in emails if isinstance(e, dict) and e.get("primary")),
+                None,
+            )
+            if primary_email and isinstance(primary_email, dict):
+                email = primary_email.get("email")
+
+        return email if isinstance(email, str) else None
+    except httpx.HTTPError as e:
+        logger.error("HTTP error fetching GitHub user info: %s", e)
+        return None
+    except Exception as e:
+        logger.error("Unexpected error fetching GitHub user info: %s", e)
+        return None
+
+
+async def get_user_info_from_microsoft(token: dict[str, object]) -> str | None:
+    """Extract email from Microsoft OAuth token."""
+    user_info = token.get("userinfo")
+    if user_info and isinstance(user_info, dict):
+        email = user_info.get("email")
+        return email if isinstance(email, str) else None
+    return None
+
+
+async def generate_unique_username(
+    db: AsyncSession,
+    base_username: str,
+    provider: str,
+    max_attempts: int = 100,
+) -> str | None:
+    """
+    Generate a unique username with format oauth-{provider}-{base}.
+
+    Returns None if unable to generate unique username after max_attempts.
+    """
+    # Use OAuth-specific prefix to avoid confusion with regular users
+    username = f"oauth-{provider}-{base_username}"
+
+    for _ in range(max_attempts):
+        existing_user = await get_user_by_username(db, username)
+        if not existing_user:
+            return username
+        # Add random suffix for uniqueness
+        username = f"oauth-{provider}-{base_username}-{secrets.token_hex(4)}"
+
+    logger.error("Failed to generate unique username after %s attempts", max_attempts)
+    return None
+
+
+async def get_or_create_oauth_user(
+    db: AsyncSession,
+    email: str,
+    provider: str,
+) -> User | None:
+    """
+    Get existing user or create new OAuth user.
+
+    Only allows OAuth login for users originally created via OAuth to prevent account takeover.
+    """
+    user = await get_user_by_email(db, email)
+
+    if user:
+        # Security: Only allow OAuth login if user was created via OAuth
+        if user.oauth_provider is None:
+            logger.warning(
+                "Attempted OAuth login for non-OAuth user: %s via %s",
+                email,
+                provider,
+            )
+            return None
+        # User exists and was created via OAuth - allow login
+        return user
+
+    # Create new OAuth user
+    local_part = email.split("@", 1)[0]
+    username = await generate_unique_username(db, local_part, provider)
+
+    if not username:
+        logger.error("Could not generate unique username for %s", email)
+        return None
+
+    user = User(
+        username=username,
+        email=email,
+        # Random password for OAuth users (they can ONLY log in via OAuth)
+        # Password-based login is intentionally disabled for OAuth users
+        hashed_password=get_password_hash(secrets.token_hex(32)),
+        is_active=True,
+        is_superuser=False,
+        oauth_provider=provider,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+# User-friendly error messages
+ERROR_MESSAGES = {
+    "oauth_failed": (
+        "Authentication failed. Please try again or use a different login method."
+    ),
+    "no_email": (
+        "We couldn't retrieve your email address. "
+        "Please ensure your email is visible in your provider settings and try again."
+    ),
+    "invalid_provider": (
+        "Invalid authentication provider. Please use one of the supported providers."
+    ),
+    "username_unavailable": (
+        "Unable to create your account. Please contact support for assistance."
+    ),
+    "account_mismatch": (
+        "This email is already registered with a different login method. "
+        "Please use your original login method."
+    ),
+}
+
+
 @router.get("/callback/{provider}")
-async def oauth_callback(  # noqa: C901
+async def oauth_callback(
     provider: str,
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -104,71 +285,40 @@ async def oauth_callback(  # noqa: C901
             detail=f"{provider} OAuth not configured",
         )
 
+    # Authorize access token with specific error handling
     try:
         token = await client.authorize_access_token(request)
-    except Exception:
-        return RedirectResponse(url=f"{FRONTEND_URL}?error=oauth_failed")
+    except OAuthError as e:
+        logger.error("OAuth authorization error for %s: %s - %s", provider, e.error, e.description)
+        return RedirectResponse(url=f"{FRONTEND_URL}#error=oauth_failed")
+    except Exception as e:
+        logger.error("Unexpected error during OAuth authorization for %s: %s", provider, e)
+        return RedirectResponse(url=f"{FRONTEND_URL}#error=oauth_failed")
 
     # Get user info from provider
     email: str | None = None
     if provider == "google":
-        user_info = token.get("userinfo")
-        email = user_info.get("email") if user_info else None
+        email = await get_user_info_from_google(token)
     elif provider == "github":
-        # GitHub needs an extra request for user info
-        user_response = await client.get("https://api.github.com/user", token=token)
-        user_data = user_response.json()
-        email = user_data.get("email")
-
-        # If email is private, fetch from emails endpoint
-        if not email:
-            emails_response = await client.get("https://api.github.com/user/emails", token=token)
-            emails = emails_response.json()
-            primary_email = next((e for e in emails if e.get("primary")), None)
-            email = primary_email.get("email") if primary_email else None
+        email = await get_user_info_from_github(client, token)
     elif provider == "microsoft":
-        user_info = token.get("userinfo")
-        email = user_info.get("email") if user_info else None
+        email = await get_user_info_from_microsoft(token)
     else:
-        return RedirectResponse(url=f"{FRONTEND_URL}?error=invalid_provider")
+        return RedirectResponse(url=f"{FRONTEND_URL}#error=invalid_provider")
 
     if not email:
-        return RedirectResponse(url=f"{FRONTEND_URL}?error=no_email")
+        return RedirectResponse(url=f"{FRONTEND_URL}#error=no_email")
 
     # Find or create user
-    user = await get_user_by_email(db, email)
+    user = await get_or_create_oauth_user(db, email, provider)
 
     if not user:
-        # Create new user from OAuth
-        username = email.split("@")[0] + f"_{provider}"
-        # Ensure unique username
-        counter = 1
-        base_username = username
-        from vtt_transcribe.api.auth import get_user_by_username
-
-        while await get_user_by_username(db, username):
-            username = f"{base_username}{counter}"
-            counter += 1
-
-        user = User(
-            username=username,
-            email=email,
-            # Random password for OAuth users
-            hashed_password=get_password_hash(os.urandom(32).hex()),
-            is_active=True,
-            is_superuser=False,
-        )
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
+        # This happens when a non-OAuth user tries to log in via OAuth
+        return RedirectResponse(url=f"{FRONTEND_URL}#error=account_mismatch")
 
     # Create JWT token
-    from datetime import timedelta
-
-    from vtt_transcribe.api.auth import ACCESS_TOKEN_EXPIRE_MINUTES
-
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
 
-    # Redirect to frontend with token
-    return RedirectResponse(url=f"{FRONTEND_URL}?token={access_token}&username={user.username}")
+    # Redirect to frontend with token in URL fragment (more secure than query params)
+    return RedirectResponse(url=f"{FRONTEND_URL}#token={access_token}&username={user.username}")
