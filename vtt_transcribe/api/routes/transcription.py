@@ -97,12 +97,16 @@ async def create_transcription_job(
         file: Audio or video file
         api_key: OpenAI API key
         diarize: Enable speaker diarization
-        hf_token: HuggingFace token (required if diarize=True)
+        hf_token: HuggingFace token (optional, falls back to HF_TOKEN environment variable)
         device: Device for diarization (auto/cpu/cuda)
         translate_to: Optional target language for translation (e.g., "Spanish", "French")
 
     Returns:
         Job ID and status
+
+    Note:
+        For diarization, provide hf_token parameter OR set HF_TOKEN environment variable.
+        Environment variable is recommended for security when using the web UI.
     """
     logger.info(
         "Creating transcription job",
@@ -317,11 +321,15 @@ async def create_diarization_job(
 
     Args:
         file: Audio or video file
-        hf_token: HuggingFace token for diarization (or use HF_TOKEN env var)
+        hf_token: HuggingFace token (optional, falls back to HF_TOKEN environment variable)
         device: Device for diarization (auto/cpu/cuda)
 
     Returns:
         Job ID and status
+
+    Note:
+        Provide hf_token parameter OR set HF_TOKEN environment variable.
+        Environment variable is recommended for security.
     """
     if not file.filename:
         raise HTTPException(
