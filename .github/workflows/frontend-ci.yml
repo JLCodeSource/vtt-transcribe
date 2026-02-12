@@ -22,7 +22,7 @@ on:
 jobs:
   frontend-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -43,6 +43,39 @@ jobs:
         working-directory: frontend
         run: npm run test
 
+      - name: Setup Python for backend
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install backend dependencies
+        run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
+          uv sync --all-extras
+
+      - name: Start backend server
+        env:
+          VTT_TRANSCRIBE_DEV_MODE: "1"
+          OPENAI_API_KEY: "test-key-not-used-in-e2e"
+          ENCRYPTION_KEY: "NIiQ9PoBLY9fpqc_kWzhCE1EvcCpRzSZu9FT339Mz2k="
+        run: |
+          mkdir -p data
+          # Use Python from venv to run uvicorn directly  
+          .venv/bin/python -m uvicorn vtt_transcribe.api.app:app --host 0.0.0.0 --port 8000 &
+          echo $! > backend.pid
+          # Wait for backend to be ready
+          for i in {1..30}; do
+            if curl -s http://localhost:8000/health > /dev/null 2>&1; then
+              echo "Backend is ready"
+              break
+            fi
+            echo "Waiting for backend... ($i/30)"
+            sleep 1
+          done
+
       - name: Install Playwright browsers
         working-directory: frontend
         run: npx playwright install chromium --with-deps
@@ -50,6 +83,14 @@ jobs:
       - name: Run E2E tests
         working-directory: frontend
         run: npm run test:e2e -- --project=chromium
+
+      - name: Stop backend server
+        if: always()
+        run: |
+          if [ -f backend.pid ]; then
+            kill $(cat backend.pid) || true
+            rm backend.pid
+          fi
 
       - name: Upload test results
         if: failure()
