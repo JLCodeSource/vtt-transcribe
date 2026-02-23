@@ -37,6 +37,10 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: frontend
+        run: npm install
+
+      - name: Verify frontend dependencies
+        working-directory: frontend
         run: npm ci
 
       - name: Run unit tests
