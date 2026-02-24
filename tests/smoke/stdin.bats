@@ -184,6 +184,11 @@ setup() {
 
     run bash -c "cat '$TEST_VIDEO' | docker run --rm -i -e HF_TOKEN=\"\$HF_TOKEN\" '$DIARIZATION_IMAGE' --diarize-only --no-review-speakers --hf-token \"\$HF_TOKEN\""
 
+    echo "diarization_status=$status"
+    echo "diarization_output_begin"
+    echo "$output"
+    echo "diarization_output_end"
+
     [ "$status" -eq 0 ]
     [[ "$output" =~ "SPEAKER" ]]
 }
@@ -204,6 +209,11 @@ setup() {
     fi
 
     run bash -c "cat '$TEST_VIDEO' | docker run --rm -i -e HF_TOKEN=\"\$HF_TOKEN\" '$DIARIZATION_GPU_IMAGE' --diarize-only --no-review-speakers --hf-token \"\$HF_TOKEN\""
+
+    echo "diarization_gpu_status=$status"
+    echo "diarization_gpu_output_begin"
+    echo "$output"
+    echo "diarization_gpu_output_end"
 
     [ "$status" -eq 0 ]
     [[ "$output" =~ "SPEAKER" ]]

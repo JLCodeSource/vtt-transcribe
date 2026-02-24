@@ -102,4 +102,19 @@ jobs:
           BUILD_DIARIZATION_IMAGE: "0"
           BUILD_DIARIZATION_GPU_IMAGE: "0"
         run: |
-          bats --filter "stdin mode: docker diarization-gpu transcribes mp4 from stdin" tests/smoke/stdin.bats
+          set +e
+          bats \
+            --timing \
+            --verbose-run \
+            --show-output-of-passing-tests \
+            --print-output-on-failure \
+            --filter "stdin mode: docker diarization-gpu transcribes mp4 from stdin" \
+            tests/smoke/stdin.bats
+          BATS_EXIT=$?
+          if [ "$BATS_EXIT" -ne 0 ]; then
+            echo "::group::Diarization GPU dependency diagnostics"
+            docker run --rm --entrypoint python vtt-transcribe:diarization-gpu-test -c "import torch; print(f'torch={torch.__version__}'); print(f'cuda={torch.version.cuda}'); import pyannote.audio; print(f'pyannote.audio={pyannote.audio.__version__}')"
+            docker run --rm --entrypoint python vtt-transcribe:diarization-gpu-test -m pip show torch torchaudio pyannote-audio || true
+            echo "::endgroup::"
+          fi
+          exit "$BATS_EXIT"
