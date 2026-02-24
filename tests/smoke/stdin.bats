@@ -19,22 +19,25 @@ setup() {
     DIARIZATION_GPU_IMAGE="${DIARIZATION_GPU_IMAGE:-vtt:diarization-gpu}"
     SETUP_PYTHON_CLI="${SETUP_PYTHON_CLI:-1}"
 
-    # Build defaults are inferred from the current test name so targeted runs
-    # don't build unrelated heavy images (especially diarization-gpu).
-    if [[ "$BATS_TEST_NAME" =~ "diarization-gpu" ]]; then
-        DEFAULT_BUILD_DIARIZATION_GPU_IMAGE="1"
-    else
-        DEFAULT_BUILD_DIARIZATION_GPU_IMAGE="0"
-    fi
-    if [[ "$BATS_TEST_NAME" =~ "diarization" ]]; then
-        DEFAULT_BUILD_DIARIZATION_IMAGE="1"
-    else
-        DEFAULT_BUILD_DIARIZATION_IMAGE="0"
+    # Build behavior is test-driven so CPU/GPU tests only build their respective
+    # images by default, regardless of values loaded from .env.
+    BUILD_DIARIZATION_IMAGE="0"
+    BUILD_DIARIZATION_GPU_IMAGE="0"
+    if [[ "$BATS_TEST_NAME" == *"diarization-gpu"* ]]; then
+        BUILD_DIARIZATION_GPU_IMAGE="1"
+    elif [[ "$BATS_TEST_NAME" == *"docker diarization"* ]]; then
+        BUILD_DIARIZATION_IMAGE="1"
     fi
 
     BUILD_BASE_IMAGE="${BUILD_BASE_IMAGE:-1}"
-    BUILD_DIARIZATION_IMAGE="${BUILD_DIARIZATION_IMAGE:-$DEFAULT_BUILD_DIARIZATION_IMAGE}"
-    BUILD_DIARIZATION_GPU_IMAGE="${BUILD_DIARIZATION_GPU_IMAGE:-$DEFAULT_BUILD_DIARIZATION_GPU_IMAGE}"
+
+    # Optional explicit overrides for custom runs.
+    if [[ -n "${OVERRIDE_BUILD_DIARIZATION_IMAGE:-}" ]]; then
+        BUILD_DIARIZATION_IMAGE="$OVERRIDE_BUILD_DIARIZATION_IMAGE"
+    fi
+    if [[ -n "${OVERRIDE_BUILD_DIARIZATION_GPU_IMAGE:-}" ]]; then
+        BUILD_DIARIZATION_GPU_IMAGE="$OVERRIDE_BUILD_DIARIZATION_GPU_IMAGE"
+    fi
     
     # Skip if test audio doesn't exist
     if [[ ! -f "$TEST_AUDIO" ]]; then

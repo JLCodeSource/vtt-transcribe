@@ -64,13 +64,11 @@ jobs:
       - name: Test stdin mode - Basic functionality
         run: |
           set -o pipefail
-          echo "Testing stdin mode with dummy audio data..."
-          # Create a minimal MP3 file (silent audio for testing stdin passthrough)
-          # This tests that stdin mode activates but will fail transcription (expected without real audio)
-          if echo "test" | docker run -i vtt-transcribe:test 2>&1 | grep -q "usage:"; then
-            echo "✓ Stdin mode activated (no API key provided as expected)"
+          echo "Testing stdin mode with real fixture and missing API key..."
+          if cat tests/hello_conversation.mp3 | docker run -i vtt-transcribe:test 2>&1 | grep -q "OpenAI API key not provided"; then
+            echo "✓ Stdin mode read input and returned expected missing API key error"
           else
-            echo "✗ Stdin mode test failed"
+            echo "✗ Stdin mode test failed (expected missing API key error)"
             exit 1
           fi
       
