@@ -25,7 +25,3 @@ updates:
        versions: [">=2.10.0"]
      - dependency-name: "torchcodec"
        versions: [">=0.8.0"]
- - package-ecosystem: "uv"
-   directory: "/"
-   schedule:
-     interval: "monthly"
