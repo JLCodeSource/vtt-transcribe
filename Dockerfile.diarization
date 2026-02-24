@@ -15,21 +15,34 @@ RUN pip install --no-cache-dir uv
 RUN uv venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
+# Copy dependency metadata early for dependency-layer caching
+COPY pyproject.toml uv.lock README.md ./
+
+# Export fully-resolved diarization requirements from uv/pyproject.
+RUN uv export --format requirements-txt --no-hashes --extra diarization > /tmp/requirements-diarization.txt
+
 # Layer 1: PyTorch CPU (~800MB) — must use CPU index to avoid 4GB CUDA bundle
 # torchaudio required by pyannote.audio 4.x for resampling
-RUN uv pip install torch==2.8.0 torchaudio \
+RUN TORCH_SPEC=$(grep -E '^torch==' /tmp/requirements-diarization.txt | head -n1) \
+    && TORCHAUDIO_SPEC=$(grep -E '^torchaudio==' /tmp/requirements-diarization.txt | head -n1) \
+    && test -n "$TORCH_SPEC" \
+    && test -n "$TORCHAUDIO_SPEC" \
+    && uv pip install "$TORCH_SPEC" "$TORCHAUDIO_SPEC" \
     --index-url https://download.pytorch.org/whl/cpu
 
 # Layer 2: torchcodec (audio decoding for pyannote.audio 4.x)
-# Pin <0.10 for torch 2.8.0 ABI compatibility
-RUN uv pip install "torchcodec>=0.6.0,<0.8"
+RUN TORCHCODEC_SPEC=$(grep -E '^torchcodec==' /tmp/requirements-diarization.txt | head -n1) \
+    && test -n "$TORCHCODEC_SPEC" \
+    && uv pip install "$TORCHCODEC_SPEC"
 
 # Layer 3: pyannote.audio (~1GB)
-RUN uv pip install "pyannote.audio>=4.0.0"
+RUN PYANNOTE_AUDIO_SPEC=$(grep -E '^pyannote-audio==' /tmp/requirements-diarization.txt | head -n1) \
+    && test -n "$PYANNOTE_AUDIO_SPEC" \
+    && uv pip install "$PYANNOTE_AUDIO_SPEC"
 
 # Layer 4: vtt-transcribe
-COPY pyproject.toml README.md ./
 COPY vtt_transcribe ./vtt_transcribe
+# Final dependency resolution comes from pyproject.toml extras.
 RUN uv pip install ".[diarization]"
 
 # Remove build tools

@@ -59,3 +59,28 @@ jobs:
           if [ $SIZE_MB -gt 5000 ]; then
             echo "⚠ Warning: Diarization image size exceeds 5GB"
           fi
+
+      - name: Install bats
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bats
+
+      - name: Validate required secret for stdin diarization smoke
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "HF_TOKEN is not configured"
+            exit 1
+          fi
+
+      - name: Run stdin diarization smoke test (mp4)
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          DIARIZATION_IMAGE: vtt-transcribe:diarization-test
+          SETUP_PYTHON_CLI: "0"
+          BUILD_BASE_IMAGE: "0"
+          BUILD_DIARIZATION_IMAGE: "0"
+          BUILD_DIARIZATION_GPU_IMAGE: "0"
+        run: |
+          bats --filter "stdin mode: docker diarization transcribes mp4 from stdin" tests/smoke/stdin.bats

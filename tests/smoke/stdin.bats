@@ -12,28 +12,39 @@ setup() {
         set +a
     fi
     
-    # Test audio file path
+    # Test input file paths
     TEST_AUDIO="${BATS_TEST_DIRNAME}/../hello_conversation.mp3"
+    TEST_VIDEO="${BATS_TEST_DIRNAME}/../hello_conversation.mp4"
+    DIARIZATION_IMAGE="${DIARIZATION_IMAGE:-vtt:diarization}"
+    DIARIZATION_GPU_IMAGE="${DIARIZATION_GPU_IMAGE:-vtt:diarization-gpu}"
+    SETUP_PYTHON_CLI="${SETUP_PYTHON_CLI:-1}"
+    BUILD_BASE_IMAGE="${BUILD_BASE_IMAGE:-1}"
+    BUILD_DIARIZATION_IMAGE="${BUILD_DIARIZATION_IMAGE:-1}"
+    BUILD_DIARIZATION_GPU_IMAGE="${BUILD_DIARIZATION_GPU_IMAGE:-1}"
     
     # Skip if test audio doesn't exist
     if [[ ! -f "$TEST_AUDIO" ]]; then
         skip "Test audio file not found: $TEST_AUDIO"
     fi
-    
-    # Ensure venv is activated or vtt is available
-    if [[ -f "${PROJECT_ROOT}/.venv/bin/vtt" ]]; then
-        export PATH="${PROJECT_ROOT}/.venv/bin:$PATH"
+
+    if [[ ! -f "$TEST_VIDEO" ]]; then
+        skip "Test video file not found: $TEST_VIDEO"
     fi
     
+    # Ensure venv is activated or vtt is available when Python CLI tests are enabled
+    if [[ "$SETUP_PYTHON_CLI" == "1" ]] && [[ -f "${PROJECT_ROOT}/.venv/bin/vtt" ]]; then
+        export PATH="${PROJECT_ROOT}/.venv/bin:$PATH"
+    fi
+
     # Install vtt if not available (for package tests)
-    if ! command -v vtt &> /dev/null; then
+    if [[ "$SETUP_PYTHON_CLI" == "1" ]] && ! command -v vtt &> /dev/null; then
         echo "# Installing vtt package..." >&3
         cd "${PROJECT_ROOT}" && uv pip install -e . >&3 2>&1
         export PATH="${PROJECT_ROOT}/.venv/bin:$PATH"
     fi
     
     # Build Docker image if not available or force rebuild requested
-    if [[ "$FORCE_DOCKER_REBUILD" == "1" ]] || ! docker image inspect vtt:latest &> /dev/null; then
+    if [[ "$BUILD_BASE_IMAGE" == "1" ]] && ([[ "$FORCE_DOCKER_REBUILD" == "1" ]] || ! docker image inspect vtt:latest &> /dev/null); then
         echo "# Building vtt:latest Docker image..." >&3
         BUILD_FLAGS=""
         if [[ "$DOCKER_NO_CACHE" == "1" ]]; then
@@ -43,13 +54,23 @@ setup() {
     fi
     
     # Build Docker diarization image if not available or force rebuild requested
-    if [[ "$FORCE_DOCKER_REBUILD" == "1" ]] || ! docker image inspect vtt:diarization &> /dev/null; then
-        echo "# Building vtt:diarization Docker image..." >&3
+    if [[ "$BUILD_DIARIZATION_IMAGE" == "1" ]] && ([[ "$FORCE_DOCKER_REBUILD" == "1" ]] || ! docker image inspect "$DIARIZATION_IMAGE" &> /dev/null); then
+        echo "# Building $DIARIZATION_IMAGE Docker image..." >&3
         BUILD_FLAGS=""
         if [[ "$DOCKER_NO_CACHE" == "1" ]]; then
             BUILD_FLAGS="--no-cache"
         fi
-        cd "${PROJECT_ROOT}" && docker build $BUILD_FLAGS -f Dockerfile.diarization -t vtt:diarization . >&3 2>&1
+        cd "${PROJECT_ROOT}" && docker build $BUILD_FLAGS -f Dockerfile.diarization -t "$DIARIZATION_IMAGE" . >&3 2>&1
+    fi
+
+    # Build Docker diarization GPU image if not available or force rebuild requested
+    if [[ "$BUILD_DIARIZATION_GPU_IMAGE" == "1" ]] && ([[ "$FORCE_DOCKER_REBUILD" == "1" ]] || ! docker image inspect "$DIARIZATION_GPU_IMAGE" &> /dev/null); then
+        echo "# Building $DIARIZATION_GPU_IMAGE Docker image..." >&3
+        BUILD_FLAGS=""
+        if [[ "$DOCKER_NO_CACHE" == "1" ]]; then
+            BUILD_FLAGS="--no-cache"
+        fi
+        cd "${PROJECT_ROOT}" && docker build $BUILD_FLAGS -f Dockerfile.diarization-gpu -t "$DIARIZATION_GPU_IMAGE" . >&3 2>&1
     fi
 }
 
@@ -94,7 +115,7 @@ setup() {
         skip "OPENAI_API_KEY not set (set in environment or .env file)"
     fi
     
-    run bash -c "cat '$TEST_AUDIO' | docker run -i -e OPENAI_API_KEY=\"\$OPENAI_API_KEY\" vtt:latest"
+    run bash -c "cat '$TEST_AUDIO' | docker run --rm -i -e OPENAI_API_KEY=\"\$OPENAI_API_KEY\" vtt:latest"
     
     [ "$status" -eq 0 ]
     [[ "$output" =~ "hello world" ]] || [[ "$output" =~ "Hello world" ]]
@@ -115,7 +136,7 @@ setup() {
     TEMP_TRANSCRIPT=$(mktemp)
     
     # Run with output redirect
-    cat "$TEST_AUDIO" | docker run -i -e OPENAI_API_KEY="$OPENAI_API_KEY" vtt:latest > "$TEMP_TRANSCRIPT"
+    cat "$TEST_AUDIO" | docker run --rm -i -e OPENAI_API_KEY="$OPENAI_API_KEY" vtt:latest > "$TEMP_TRANSCRIPT"
     
     # Check output file
     [[ -s "$TEMP_TRANSCRIPT" ]]
@@ -125,24 +146,65 @@ setup() {
     rm -f "$TEMP_TRANSCRIPT"
 }
 
-@test "stdin mode: docker diarization with env vars" {
+@test "stdin mode: docker diarization (HF-only) with env vars" {
     # Skip if docker not available
     if ! command -v docker &> /dev/null; then
         skip "docker not available"
-    fi
-    
-    # Skip if OPENAI_API_KEY not set
-    if [[ -z "$OPENAI_API_KEY" ]]; then
-        skip "OPENAI_API_KEY not set (set in environment or .env file)"
     fi
     
     # Skip if HF_TOKEN not set (needed for diarization)
     if [[ -z "$HF_TOKEN" ]]; then
         skip "HF_TOKEN not set (set in environment or .env file)"
     fi
+
+    if ! docker image inspect "$DIARIZATION_IMAGE" &> /dev/null; then
+        skip "Diarization image not found: $DIARIZATION_IMAGE"
+    fi
     
-    run bash -c "cat '$TEST_AUDIO' | docker run -i -e OPENAI_API_KEY=\"\$OPENAI_API_KEY\" -e HF_TOKEN=\"\$HF_TOKEN\" vtt:diarization --diarize --no-review-speakers --hf-token \"\$HF_TOKEN\""
+    run bash -c "cat '$TEST_AUDIO' | docker run --rm -i -e HF_TOKEN=\"\$HF_TOKEN\" '$DIARIZATION_IMAGE' --diarize-only --no-review-speakers --hf-token \"\$HF_TOKEN\""
     
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "SPEAKER" ]]
+}
+
+@test "stdin mode: docker diarization transcribes mp4 from stdin" {
+    # Skip if docker not available
+    if ! command -v docker &> /dev/null; then
+        skip "docker not available"
+    fi
+
+    # Skip if HF_TOKEN not set (needed for diarization)
+    if [[ -z "$HF_TOKEN" ]]; then
+        skip "HF_TOKEN not set (set in environment or .env file)"
+    fi
+
+    if ! docker image inspect "$DIARIZATION_IMAGE" &> /dev/null; then
+        skip "Diarization image not found: $DIARIZATION_IMAGE"
+    fi
+
+    run bash -c "cat '$TEST_VIDEO' | docker run --rm -i -e HF_TOKEN=\"\$HF_TOKEN\" '$DIARIZATION_IMAGE' --diarize-only --no-review-speakers --hf-token \"\$HF_TOKEN\""
+
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "SPEAKER" ]]
+}
+
+@test "stdin mode: docker diarization-gpu transcribes mp4 from stdin" {
+    # Skip if docker not available
+    if ! command -v docker &> /dev/null; then
+        skip "docker not available"
+    fi
+
+    # Skip if HF_TOKEN not set (needed for diarization)
+    if [[ -z "$HF_TOKEN" ]]; then
+        skip "HF_TOKEN not set (set in environment or .env file)"
+    fi
+
+    if ! docker image inspect "$DIARIZATION_GPU_IMAGE" &> /dev/null; then
+        skip "Diarization GPU image not found: $DIARIZATION_GPU_IMAGE"
+    fi
+
+    run bash -c "cat '$TEST_VIDEO' | docker run --rm -i -e HF_TOKEN=\"\$HF_TOKEN\" '$DIARIZATION_GPU_IMAGE' --diarize-only --no-review-speakers --hf-token \"\$HF_TOKEN\""
+
     [ "$status" -eq 0 ]
     [[ "$output" =~ "SPEAKER" ]]
 }

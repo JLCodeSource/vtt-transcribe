@@ -63,18 +63,25 @@ jobs:
       
       - name: Test stdin mode - Basic functionality
         run: |
-          echo "Testing stdin mode with dummy audio data..."
-          # Create a minimal MP3 file (silent audio for testing stdin passthrough)
-          # This tests that stdin mode activates but will fail transcription (expected without real audio)
-          echo "test" | docker run -i vtt-transcribe:test 2>&1 | grep -q "usage:" && \
-            echo "✓ Stdin mode activated (no API key provided as expected)" || \
-            echo "✗ Stdin mode test failed"
+          echo "Testing stdin mode with real fixture and missing API key..."
+          output=$(cat tests/hello_conversation.mp3 | docker run --rm -i vtt-transcribe:test 2>&1 || true)
+          if echo "$output" | grep -q "OpenAI API key not provided"; then
+            echo "✓ Stdin mode read input and returned expected missing API key error"
+          else
+            echo "✗ Stdin mode test failed (expected missing API key error)"
+            echo "$output"
+            exit 1
+          fi
       
       - name: Test stdin mode - Error handling
         run: |
           echo "Testing stdin mode flag validation..."
           # Test that incompatible flags are rejected in stdin mode
-          echo "test" | docker run -i vtt-transcribe:test -s output.txt 2>&1 | \
-            grep -q "incompatible" && \
-            echo "✓ Incompatible -s flag correctly rejected" || \
+          output=$(echo "test" | docker run --rm -i vtt-transcribe:test -s output.txt 2>&1 || true)
+          if echo "$output" | grep -q "incompatible"; then
+            echo "✓ Incompatible -s flag correctly rejected"
+          else
             echo "✗ Flag validation test failed"
+            echo "$output"
+            exit 1
+          fi
