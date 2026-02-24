@@ -14,6 +14,15 @@ def tests(session: nox.Session) -> None:
     session.install("pip>=23.0")
     # Install package with development, API, and diarization extras
     session.install(".[dev,api,diarization]")
+    session.env.update(
+        {
+            "GOOGLE_CLIENT_ID": "",
+            "GOOGLE_CLIENT_SECRET": "",
+            "GITHUB_CLIENT_ID": "",
+            "GITHUB_CLIENT_SECRET": "",
+            "FRONTEND_URL": "http://localhost:3000",
+        }
+    )
     # Run tests
     session.run("pytest", "-q")
 
@@ -29,21 +38,30 @@ def tests_core(session: nox.Session) -> None:
     session.install("pip>=23.0")
     # Install package with development and API extras (no diarization)
     session.install(".[dev,api]")
+    session.env.update(
+        {
+            "GOOGLE_CLIENT_ID": "",
+            "GOOGLE_CLIENT_SECRET": "",
+            "GITHUB_CLIENT_ID": "",
+            "GITHUB_CLIENT_SECRET": "",
+            "FRONTEND_URL": "http://localhost:3000",
+        }
+    )
     # Run tests, skipping those that require diarization dependencies
     session.run("pytest", "-q", "-m", "not diarization")
 
 
 @nox.session(python=["3.10"])
 def lint(session: nox.Session) -> None:
-    """Run linters/formatters (ruff, mypy) on earliest supported Python version."""
+    """Run linters/formatters (ruff, mypy) on Python 3.10."""
     session.install("pip>=23.0")
-    session.install(".[dev]")
+    session.install(".[dev,api]")
     # Run ruff
     session.run("ruff", "check", ".")
     # Run mypy with strict type checking
     session.run(
         "mypy",
-        ".",
+        "vtt_transcribe",
         "--ignore-missing-imports",
         "--disallow-untyped-defs",
         "--disallow-incomplete-defs",

@@ -212,13 +212,16 @@ class TestAPIAppLifespan:
     @pytest.mark.asyncio
     async def test_lifespan_init_db_error_suppressed(self) -> None:
         """Should suppress database initialization errors."""
-        from vtt_transcribe.api.app import lifespan
+        import importlib
+
+        app_module = importlib.import_module("vtt_transcribe.api.app")
+        lifespan = app_module.lifespan
 
         # Mock app object
         mock_app = MagicMock()
 
         # Mock init_db to raise an error
-        with patch("vtt_transcribe.api.app.init_db", side_effect=Exception("DB error")):
+        with patch.object(app_module, "init_db", side_effect=Exception("DB error")):
             # lifespan uses contextlib.suppress, so errors should be suppressed
             async with lifespan(mock_app):
                 # Should not raise error even though init_db failed
