@@ -25,7 +25,13 @@ if not SECRET_KEY:
             "To use the built-in development key, explicitly set VTT_TRANSCRIBE_DEV_MODE=1."
         )
         raise RuntimeError(msg)
-ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+ALGORITHM = os.getenv("JWT_ALGORITHM", "HS512") or "HS512"
+if ALGORITHM in {"ES256", "ES384", "ES512"}:
+    msg = (
+        "ECDSA JWT algorithms are not permitted due upstream python-ecdsa security risk. "
+        "Use HS512 (default), HS256/HS384, or RSA algorithms."
+    )
+    raise RuntimeError(msg)
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
 # Password hashing

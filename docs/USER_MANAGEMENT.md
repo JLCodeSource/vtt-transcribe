@@ -103,7 +103,7 @@ SECRET_KEY=your-secret-key-here
 ENCRYPTION_KEY=your-encryption-key-here
 
 # JWT Configuration
-JWT_ALGORITHM=HS256
+JWT_ALGORITHM=HS512
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
 

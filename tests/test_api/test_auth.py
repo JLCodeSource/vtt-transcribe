@@ -516,6 +516,45 @@ class TestGetCurrentUserOptional:
 class TestSecretKeyConfiguration:
     """Tests for secret key configuration."""
 
+    def test_jwt_algorithm_defaults_to_hs512(self) -> None:
+        """Should default JWT_ALGORITHM to HS512 when not explicitly configured."""
+        with patch.dict(
+            "os.environ",
+            {
+                "SECRET_KEY": "test-secret-key",
+                "ENCRYPTION_KEY": "NIiQ9PoBLY9fpqc_kWzhCE1EvcCpRzSZu9FT339Mz2k=",
+                "JWT_ALGORITHM": "",
+            },
+            clear=True,
+        ):
+            import importlib
+
+            auth_module = importlib.import_module("vtt_transcribe.api.auth")
+            importlib.reload(auth_module)
+
+            from vtt_transcribe.api.auth import ALGORITHM
+
+            assert ALGORITHM == "HS512"
+
+    @pytest.mark.parametrize("algorithm", ["ES256", "ES384", "ES512"])
+    def test_ecdsa_jwt_algorithms_are_rejected(self, algorithm: str) -> None:
+        """Should raise RuntimeError when JWT_ALGORITHM is set to ECDSA variants."""
+        import importlib
+
+        with patch.dict(
+            "os.environ",
+            {
+                "SECRET_KEY": "test-secret-key",
+                "ENCRYPTION_KEY": "NIiQ9PoBLY9fpqc_kWzhCE1EvcCpRzSZu9FT339Mz2k=",
+                "JWT_ALGORITHM": algorithm,
+            },
+            clear=True,
+        ):
+            with pytest.raises(RuntimeError) as exc_info:
+                importlib.reload(importlib.import_module("vtt_transcribe.api.auth"))
+
+        assert "ECDSA JWT algorithms are not permitted" in str(exc_info.value)
+
     def test_secret_key_from_environment(self) -> None:
         """Should use SECRET_KEY from environment if available."""
         with patch.dict("os.environ", {"SECRET_KEY": "test-secret-key"}):
