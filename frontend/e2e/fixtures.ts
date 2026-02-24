@@ -7,44 +7,29 @@ import { test as base, expect } from '@playwright/test';
 export const test = base.extend({
   // Automatically login before each test
   page: async ({ page }, use) => {
-    // Navigate to app
+    await page.route('**/auth/me', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ username: 'testuser', email: 'test@example.com' }),
+      });
+    });
+
+    await page.route('**/oauth/providers', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ providers: [] }),
+      });
+    });
+
+    await page.addInitScript(() => {
+      window.localStorage.setItem('access_token', 'e2e-test-token');
+      window.localStorage.setItem('username', 'testuser');
+    });
+
     await page.goto('/');
-
-    // Check if login form is visible
-    const loginHeading = page.getByRole('heading', { name: /Sign In/i });
-    const isLoginVisible = await loginHeading.isVisible().catch(() => false);
-
-    if (isLoginVisible) {
-      // Try to register test user (will fail if already exists, which is fine)
-      try {
-        const registerResponse = await page.request.post('/auth/register', {
-          data: {
-            username: 'testuser',
-            email: 'test@example.com',
-            password: 'testpass123',
-          },
-        });
-        // Ignore 400 errors (user already exists)
-        if (registerResponse.status() !== 201 && registerResponse.status() !== 400) {
-          console.warn(`Registration returned status ${registerResponse.status()}`);
-        }
-      } catch (error) {
-        // Registration might fail if user exists, continue to login
-        console.log('Registration skipped, continuing to login');
-      }
-
-      // Login with test credentials
-      const usernameInput = page.getByLabel(/username/i);
-      const passwordInput = page.getByLabel(/password/i);
-      const submitButton = page.getByRole('button', { name: /sign in/i });
-
-      await usernameInput.fill('testuser');
-      await passwordInput.fill('testpass123');
-      await submitButton.click();
-
-      // Wait for successful login (file upload should appear)
-      await expect(page.getByText(/Drop your video file here/i)).toBeVisible({ timeout: 15000 });
-    }
+    await expect(page.getByText(/Drop your video file here/i)).toBeVisible({ timeout: 15000 });
 
     // Use the authenticated page
     await use(page);

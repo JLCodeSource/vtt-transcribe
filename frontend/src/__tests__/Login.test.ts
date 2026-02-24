@@ -68,13 +68,41 @@ describe('Login', () => {
     expect(submitButton).toHaveProperty('disabled', true);
   });
 
-  it('calls onregister when register link is clicked', async () => {
+  it('switches to register mode when register link is clicked', async () => {
     const onregister = vi.fn();
     render(Login, { props: { onregister } });
 
     const registerLink = screen.getByText(/Register/i);
     await fireEvent.click(registerLink);
 
-    expect(onregister).toHaveBeenCalled();
+    expect(screen.getByRole('heading', { name: /Create Account/i })).toBeTruthy();
+    expect(screen.getByLabelText(/email/i)).toBeTruthy();
+  });
+
+  it('calls onregister callback when register form is submitted', async () => {
+    const onregister = vi.fn();
+    render(Login, { props: { onregister } });
+
+    await fireEvent.click(screen.getByText(/Register/i));
+
+    const usernameInput = screen.getByLabelText(/username/i) as HTMLInputElement;
+    const emailInput = screen.getByLabelText(/email/i) as HTMLInputElement;
+    const passwordInput = screen.getByLabelText(/password/i) as HTMLInputElement;
+    const submitButton = screen.getByRole('button', { name: /create account/i });
+
+    await fireEvent.input(usernameInput, { target: { value: 'newuser' } });
+    await fireEvent.input(emailInput, { target: { value: 'newuser@example.com' } });
+    await fireEvent.input(passwordInput, { target: { value: 'password123' } });
+    await fireEvent.click(submitButton);
+
+    expect(onregister).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: {
+          username: 'newuser',
+          email: 'newuser@example.com',
+          password: 'password123',
+        },
+      })
+    );
   });
 });

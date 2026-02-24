@@ -120,39 +120,80 @@
     })();
   });
 
+  async function loginWithPassword(usernameValue: string, passwordValue: string): Promise<string> {
+    const formData = new URLSearchParams();
+    formData.append('username', usernameValue);
+    formData.append('password', passwordValue);
+
+    const response = await fetch('/auth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formData.toString(),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Login failed');
+    }
+
+    const data = await response.json();
+    return data.access_token as string;
+  }
+
   async function handleLogin(event: CustomEvent<{ username: string; password: string }>) {
     loginLoading = true;
     loginError = '';
 
     try {
-      const formData = new URLSearchParams();
-      formData.append('username', event.detail.username);
-      formData.append('password', event.detail.password);
-
-      const response = await fetch('/auth/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: formData.toString(),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        loginError = error.detail || 'Login failed';
-        return;
-      }
-
-      const data = await response.json();
-      accessToken = data.access_token;
+      const token = await loginWithPassword(event.detail.username, event.detail.password);
+      accessToken = token;
       username = event.detail.username;
       isAuthenticated = true;
 
       // Persist to localStorage
-      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('access_token', token);
       localStorage.setItem('username', event.detail.username);
-    } catch (error) {
-      loginError = 'Network error. Please try again.';
+    } catch (error: unknown) {
+      loginError = error instanceof Error ? error.message : 'Network error. Please try again.';
+    } finally {
+      loginLoading = false;
+    }
+  }
+
+  async function handleRegister(event: CustomEvent<{ username: string; email: string; password: string }>) {
+    loginLoading = true;
+    loginError = '';
+
+    try {
+      const registerResponse = await fetch('/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: event.detail.username,
+          email: event.detail.email,
+          password: event.detail.password,
+        }),
+      });
+
+      if (!registerResponse.ok) {
+        const error = await registerResponse.json();
+        throw new Error(error.detail || 'Registration failed');
+      }
+
+      const token = await loginWithPassword(event.detail.username, event.detail.password);
+
+      accessToken = token;
+      username = event.detail.username;
+      isAuthenticated = true;
+
+      localStorage.setItem('access_token', token);
+      localStorage.setItem('username', event.detail.username);
+    } catch (error: unknown) {
+      loginError = error instanceof Error ? error.message : 'Network error. Please try again.';
     } finally {
       loginLoading = false;
     }
@@ -221,7 +262,12 @@
       <h1>🎬 VTT Transcribe</h1>
       <p class="auth-subtitle">AI-Powered Video Transcription</p>
     </div>
-    <Login onlogin={handleLogin} loading={loginLoading} error={loginError} />
+    <Login
+      onlogin={handleLogin}
+      onregister={handleRegister}
+      loading={loginLoading}
+      error={loginError}
+    />
   </div>
 {:else}
   <Navigation {currentPage} onnavigate={handleNavigate} />

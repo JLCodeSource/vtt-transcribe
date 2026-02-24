@@ -20,6 +20,60 @@ describe('App with Auth Integration', () => {
 
     render(App);
     expect(screen.getByRole('heading', { name: /Sign In/i })).toBeTruthy();
+    expect(screen.getByText(/Register/i)).toBeTruthy();
+  });
+
+  it('registers a new user and logs in', async () => {
+    (global.fetch as any)
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ providers: [] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 1, username: 'newuser' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'new-user-token', token_type: 'bearer' }) });
+
+    render(App);
+
+    const registerToggle = screen.getByRole('button', { name: /register/i });
+    await fireEvent.click(registerToggle);
+
+    const usernameInput = screen.getByLabelText(/username/i) as HTMLInputElement;
+    const emailInput = screen.getByLabelText(/email/i) as HTMLInputElement;
+    const passwordInput = screen.getByLabelText(/password/i) as HTMLInputElement;
+    const submitButton = screen.getByRole('button', { name: /create account/i });
+
+    await fireEvent.input(usernameInput, { target: { value: 'newuser' } });
+    await fireEvent.input(emailInput, { target: { value: 'newuser@example.com' } });
+    await fireEvent.input(passwordInput, { target: { value: 'password123' } });
+    await fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Drop your video file here/i)).toBeTruthy();
+    });
+
+    expect(localStorage.getItem('access_token')).toBe('new-user-token');
+  });
+
+  it('shows registration error when register call fails', async () => {
+    (global.fetch as any)
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ providers: [] }) })
+      .mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({ detail: 'Email already registered' }) });
+
+    render(App);
+
+    const registerToggle = screen.getByRole('button', { name: /register/i });
+    await fireEvent.click(registerToggle);
+
+    const usernameInput = screen.getByLabelText(/username/i) as HTMLInputElement;
+    const emailInput = screen.getByLabelText(/email/i) as HTMLInputElement;
+    const passwordInput = screen.getByLabelText(/password/i) as HTMLInputElement;
+    const submitButton = screen.getByRole('button', { name: /create account/i });
+
+    await fireEvent.input(usernameInput, { target: { value: 'existinguser' } });
+    await fireEvent.input(emailInput, { target: { value: 'existing@example.com' } });
+    await fireEvent.input(passwordInput, { target: { value: 'password123' } });
+    await fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Email already registered/i)).toBeTruthy();
+    });
   });
 
   it('hides file upload when not authenticated', () => {

@@ -15,6 +15,18 @@ def client():
     return TestClient(app)
 
 
+@pytest.fixture(autouse=True)
+def isolated_oauth_env(monkeypatch: pytest.MonkeyPatch):
+    """Isolate OAuth tests from local .env/provider configuration."""
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "")
+    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "")
+    monkeypatch.setenv("GITHUB_CLIENT_ID", "")
+    monkeypatch.setenv("GITHUB_CLIENT_SECRET", "")
+    monkeypatch.setenv("MICROSOFT_CLIENT_ID", "")
+    monkeypatch.setenv("MICROSOFT_CLIENT_SECRET", "")
+    monkeypatch.setenv("FRONTEND_URL", "http://localhost:3000")
+
+
 @pytest.fixture
 def mock_oauth_client():
     """Create mock OAuth client."""
