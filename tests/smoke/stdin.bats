@@ -18,26 +18,9 @@ setup() {
     DIARIZATION_IMAGE="${DIARIZATION_IMAGE:-vtt:diarization}"
     DIARIZATION_GPU_IMAGE="${DIARIZATION_GPU_IMAGE:-vtt:diarization-gpu}"
     SETUP_PYTHON_CLI="${SETUP_PYTHON_CLI:-1}"
-
-    # Build behavior is test-driven so CPU/GPU tests only build their respective
-    # images by default, regardless of values loaded from .env.
-    BUILD_DIARIZATION_IMAGE="0"
-    BUILD_DIARIZATION_GPU_IMAGE="0"
-    if [[ "$BATS_TEST_NAME" == *"diarization-gpu"* ]]; then
-        BUILD_DIARIZATION_GPU_IMAGE="1"
-    elif [[ "$BATS_TEST_NAME" == *"docker diarization"* ]]; then
-        BUILD_DIARIZATION_IMAGE="1"
-    fi
-
     BUILD_BASE_IMAGE="${BUILD_BASE_IMAGE:-1}"
-
-    # Optional explicit overrides for custom runs.
-    if [[ -n "${OVERRIDE_BUILD_DIARIZATION_IMAGE:-}" ]]; then
-        BUILD_DIARIZATION_IMAGE="$OVERRIDE_BUILD_DIARIZATION_IMAGE"
-    fi
-    if [[ -n "${OVERRIDE_BUILD_DIARIZATION_GPU_IMAGE:-}" ]]; then
-        BUILD_DIARIZATION_GPU_IMAGE="$OVERRIDE_BUILD_DIARIZATION_GPU_IMAGE"
-    fi
+    BUILD_DIARIZATION_IMAGE="${BUILD_DIARIZATION_IMAGE:-1}"
+    BUILD_DIARIZATION_GPU_IMAGE="${BUILD_DIARIZATION_GPU_IMAGE:-1}"
     
     # Skip if test audio doesn't exist
     if [[ ! -f "$TEST_AUDIO" ]]; then
@@ -132,7 +115,7 @@ setup() {
         skip "OPENAI_API_KEY not set (set in environment or .env file)"
     fi
     
-    run bash -c "cat '$TEST_AUDIO' | docker run -i -e OPENAI_API_KEY=\"\$OPENAI_API_KEY\" vtt:latest"
+    run bash -c "cat '$TEST_AUDIO' | docker run --rm -i -e OPENAI_API_KEY=\"\$OPENAI_API_KEY\" vtt:latest"
     
     [ "$status" -eq 0 ]
     [[ "$output" =~ "hello world" ]] || [[ "$output" =~ "Hello world" ]]
@@ -153,7 +136,7 @@ setup() {
     TEMP_TRANSCRIPT=$(mktemp)
     
     # Run with output redirect
-    cat "$TEST_AUDIO" | docker run -i -e OPENAI_API_KEY="$OPENAI_API_KEY" vtt:latest > "$TEMP_TRANSCRIPT"
+    cat "$TEST_AUDIO" | docker run --rm -i -e OPENAI_API_KEY="$OPENAI_API_KEY" vtt:latest > "$TEMP_TRANSCRIPT"
     
     # Check output file
     [[ -s "$TEMP_TRANSCRIPT" ]]
@@ -178,7 +161,7 @@ setup() {
         skip "Diarization image not found: $DIARIZATION_IMAGE"
     fi
     
-    run bash -c "cat '$TEST_AUDIO' | docker run -i -e HF_TOKEN=\"\$HF_TOKEN\" '$DIARIZATION_IMAGE' --diarize-only --no-review-speakers --hf-token \"\$HF_TOKEN\""
+    run bash -c "cat '$TEST_AUDIO' | docker run --rm -i -e HF_TOKEN=\"\$HF_TOKEN\" '$DIARIZATION_IMAGE' --diarize-only --no-review-speakers --hf-token \"\$HF_TOKEN\""
     
     [ "$status" -eq 0 ]
     [[ "$output" =~ "SPEAKER" ]]
@@ -199,7 +182,7 @@ setup() {
         skip "Diarization image not found: $DIARIZATION_IMAGE"
     fi
 
-    run bash -c "cat '$TEST_VIDEO' | docker run -i -e HF_TOKEN=\"\$HF_TOKEN\" '$DIARIZATION_IMAGE' --diarize-only --no-review-speakers --hf-token \"\$HF_TOKEN\""
+    run bash -c "cat '$TEST_VIDEO' | docker run --rm -i -e HF_TOKEN=\"\$HF_TOKEN\" '$DIARIZATION_IMAGE' --diarize-only --no-review-speakers --hf-token \"\$HF_TOKEN\""
 
     [ "$status" -eq 0 ]
     [[ "$output" =~ "SPEAKER" ]]
@@ -220,7 +203,7 @@ setup() {
         skip "Diarization GPU image not found: $DIARIZATION_GPU_IMAGE"
     fi
 
-    run bash -c "cat '$TEST_VIDEO' | docker run -i -e HF_TOKEN=\"\$HF_TOKEN\" '$DIARIZATION_GPU_IMAGE' --diarize-only --no-review-speakers --hf-token \"\$HF_TOKEN\""
+    run bash -c "cat '$TEST_VIDEO' | docker run --rm -i -e HF_TOKEN=\"\$HF_TOKEN\" '$DIARIZATION_GPU_IMAGE' --diarize-only --no-review-speakers --hf-token \"\$HF_TOKEN\""
 
     [ "$status" -eq 0 ]
     [[ "$output" =~ "SPEAKER" ]]
