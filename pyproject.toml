@@ -100,6 +100,11 @@ dev = [
     "pyright>=1.1.408",
 ]
 
+[tool.uv]
+override-dependencies = [
+    "pillow>=12.1.1",  # Security override for CVE-2026-25990 while moviepy metadata remains constrained
+]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
