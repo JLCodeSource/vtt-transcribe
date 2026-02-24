@@ -63,23 +63,25 @@ jobs:
       
       - name: Test stdin mode - Basic functionality
         run: |
-          set -o pipefail
           echo "Testing stdin mode with real fixture and missing API key..."
-          if cat tests/hello_conversation.mp3 | docker run -i vtt-transcribe:test 2>&1 | grep -q "OpenAI API key not provided"; then
+          output=$(cat tests/hello_conversation.mp3 | docker run --rm -i vtt-transcribe:test 2>&1 || true)
+          if echo "$output" | grep -q "OpenAI API key not provided"; then
             echo "✓ Stdin mode read input and returned expected missing API key error"
           else
             echo "✗ Stdin mode test failed (expected missing API key error)"
+            echo "$output"
             exit 1
           fi
       
       - name: Test stdin mode - Error handling
         run: |
-          set -o pipefail
           echo "Testing stdin mode flag validation..."
           # Test that incompatible flags are rejected in stdin mode
-          if echo "test" | docker run -i vtt-transcribe:test -s output.txt 2>&1 | grep -q "incompatible"; then
+          output=$(echo "test" | docker run --rm -i vtt-transcribe:test -s output.txt 2>&1 || true)
+          if echo "$output" | grep -q "incompatible"; then
             echo "✓ Incompatible -s flag correctly rejected"
           else
             echo "✗ Flag validation test failed"
+            echo "$output"
             exit 1
           fi
