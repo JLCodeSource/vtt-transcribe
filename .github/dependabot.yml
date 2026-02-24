@@ -19,7 +19,6 @@ updates:
    schedule:
      interval: "weekly"
    ignore:
-     - dependency-name: "pillow"
      - dependency-name: "bcrypt"
        versions: [">=5.0.0"]
      - dependency-name: "torch"
@@ -30,10 +29,3 @@ updates:
    directory: "/"
    schedule:
      interval: "monthly"
-   ignore:
-     - dependency-name: "bcrypt"
-       versions: [">=5.0.0"]
-     - dependency-name: "torch"
-       versions: [">=2.10.0"]
-     - dependency-name: "torchcodec"
-       versions: [">=0.8.0"]
