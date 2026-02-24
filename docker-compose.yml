@@ -48,7 +48,7 @@ services:
       # Security
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set in .env file}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY must be set in .env file}
-      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS512}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       
       # CORS
