@@ -5,14 +5,16 @@
     loading?: boolean;
     error?: string;
     onlogin?: (event: CustomEvent<{ username: string; password: string }>) => void;
-    onregister?: () => void;
+    onregister?: (event: CustomEvent<{ username: string; email: string; password: string }>) => void;
   }
 
   let { loading = false, error = '', onlogin, onregister }: Props = $props();
 
   let username = $state('');
+  let email = $state('');
   let password = $state('');
   let oauthProviders = $state<string[]>([]);
+  let isRegisterMode = $state(false);
 
   onMount(async () => {
     try {
@@ -28,6 +30,15 @@
 
   function handleSubmit(event: Event) {
     event.preventDefault();
+
+    if (isRegisterMode && onregister) {
+      const customEvent = new CustomEvent('register', {
+        detail: { username, email, password },
+      });
+      onregister(customEvent);
+      return;
+    }
+
     if (onlogin) {
       const customEvent = new CustomEvent('login', {
         detail: { username, password },
@@ -36,10 +47,8 @@
     }
   }
 
-  function handleRegisterClick() {
-    if (onregister) {
-      onregister();
-    }
+  function toggleMode() {
+    isRegisterMode = !isRegisterMode;
   }
 
   function handleOAuthLogin(provider: string) {
@@ -62,7 +71,7 @@
 
 <div class="login-container">
   <div class="login-card">
-    <h2>Sign In</h2>
+    <h2>{isRegisterMode ? 'Create Account' : 'Sign In'}</h2>
     <p class="subtitle">Access your transcription workspace</p>
 
     {#if error}
@@ -93,20 +102,33 @@
         <input id="username" type="text" bind:value={username} disabled={loading} required />
       </div>
 
+      {#if isRegisterMode}
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input id="email" type="email" bind:value={email} disabled={loading} required />
+        </div>
+      {/if}
+
       <div class="form-group">
         <label for="password">Password</label>
         <input id="password" type="password" bind:value={password} disabled={loading} required />
       </div>
 
       <button type="submit" disabled={loading} class="submit-button">
-        {loading ? 'Signing In...' : 'Sign In'}
+        {#if loading}
+          {isRegisterMode ? 'Creating Account...' : 'Signing In...'}
+        {:else}
+          {isRegisterMode ? 'Create Account' : 'Sign In'}
+        {/if}
       </button>
     </form>
 
     {#if onregister}
     <div class="register-link">
-      <span>Don't have an account?</span>
-      <button type="button" onclick={handleRegisterClick} class="link-button"> Register </button>
+      <span>{isRegisterMode ? 'Already have an account?' : "Don't have an account?"}</span>
+      <button type="button" onclick={toggleMode} class="link-button">
+        {isRegisterMode ? 'Sign In' : 'Register'}
+      </button>
     </div>
   {/if}
   </div>
