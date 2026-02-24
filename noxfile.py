@@ -12,8 +12,8 @@ def tests(session: nox.Session) -> None:
     Diarization extras (torch) have prebuilt wheels only up to Python 3.13.
     """
     session.install("pip>=23.0")
-    # Install package with development and diarization extras
-    session.install(".[dev,diarization]")
+    # Install package with development, API, and diarization extras
+    session.install(".[dev,api,diarization]")
     # Run tests
     session.run("pytest", "-q")
 
@@ -27,8 +27,8 @@ def tests_core(session: nox.Session) -> None:
     @pytest.mark.diarization are skipped.
     """
     session.install("pip>=23.0")
-    # Install package with development extras only (no diarization)
-    session.install(".[dev]")
+    # Install package with development and API extras (no diarization)
+    session.install(".[dev,api]")
     # Run tests, skipping those that require diarization dependencies
     session.run("pytest", "-q", "-m", "not diarization")
 
