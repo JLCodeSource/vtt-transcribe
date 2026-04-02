@@ -1,0 +1,49 @@
+name: Close Superseded PRs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/close-superseded-prs.yml'
+  workflow_dispatch:
+    inputs:
+      pr_numbers:
+        description: 'Comma-separated list of PR numbers to close as superseded'
+        required: true
+        default: '361,363,364,366,367,368,369,370,371,372'
+      reason:
+        description: 'Reason for closing'
+        required: false
+        default: 'Superseded: dependency update already applied directly to main'
+
+permissions:
+  pull-requests: write
+
+jobs:
+  close-superseded-prs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set PR list and reason
+        id: params
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "pr_numbers=361,363,364,366,367,368,369,370,371,372" >> $GITHUB_OUTPUT
+            echo "reason=Superseded: dependency update already applied directly to main" >> $GITHUB_OUTPUT
+          else
+            echo "pr_numbers=${{ github.event.inputs.pr_numbers }}" >> $GITHUB_OUTPUT
+            echo "reason=${{ github.event.inputs.reason }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Close superseded PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          IFS=',' read -ra PR_LIST <<< "${{ steps.params.outputs.pr_numbers }}"
+          for pr in "${PR_LIST[@]}"; do
+            pr=$(echo "$pr" | tr -d ' ')
+            echo "Closing PR #$pr..."
+            gh pr close "$pr" \
+              --repo "${{ github.repository }}" \
+              --comment "${{ steps.params.outputs.reason }}" \
+              || echo "Failed to close PR #$pr (may already be closed)"
+          done
