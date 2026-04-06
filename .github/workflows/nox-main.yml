@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - copilot/fix-nox-workflow-failure
   workflow_dispatch:
 
 permissions:
