@@ -76,14 +76,11 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           if [ -z "$HF_TOKEN" ]; then
-            echo "::warning::HF_TOKEN is not configured — skipping diarization smoke test."
-            echo "To enable this step, add HF_TOKEN as a repository secret (Actions) AND as a"
-            echo "Dependabot secret (Settings → Secrets and variables → Dependabot)."
-            echo "SKIP_SMOKE=true" >> "$GITHUB_ENV"
+            echo "HF_TOKEN is not configured"
+            exit 1
           fi
 
       - name: Run stdin diarization smoke test (mp4)
-        if: env.SKIP_SMOKE != 'true'
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           DIARIZATION_IMAGE: vtt-transcribe:diarization-test
