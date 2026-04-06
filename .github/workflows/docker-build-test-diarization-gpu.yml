@@ -95,11 +95,14 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           if [ -z "$HF_TOKEN" ]; then
-            echo "HF_TOKEN is not configured"
-            exit 1
+            echo "::warning::HF_TOKEN is not configured — skipping diarization-gpu smoke test."
+            echo "To enable this step, add HF_TOKEN as a repository secret (Actions) AND as a"
+            echo "Dependabot secret (Settings → Secrets and variables → Dependabot)."
+            echo "SKIP_SMOKE=true" >> "$GITHUB_ENV"
           fi
 
       - name: Run stdin diarization-gpu smoke test (mp4)
+        if: env.SKIP_SMOKE != 'true'
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           DIARIZATION_GPU_IMAGE: vtt-transcribe:diarization-gpu-test
