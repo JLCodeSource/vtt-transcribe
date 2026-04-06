@@ -10,11 +10,11 @@ on:
       pr_numbers:
         description: 'Comma-separated list of PR numbers to close as superseded'
         required: true
-        default: '361,363,364,366,367,368,369,370,371,372'
+        default: '375,376,378,379'
       reason:
         description: 'Reason for closing'
         required: false
-        default: 'Superseded: dependency update already applied directly to main'
+        default: 'Superseded: dependency update consolidated in PR #381'
 
 permissions:
   pull-requests: write
@@ -27,8 +27,8 @@ jobs:
         id: params
         run: |
           if [ "${{ github.event_name }}" = "push" ]; then
-            echo "pr_numbers=361,363,364,366,367,368,369,370,371,372" >> $GITHUB_OUTPUT
-            echo "reason=Superseded: dependency update already applied directly to main" >> $GITHUB_OUTPUT
+            echo "pr_numbers=375,376,378,379" >> $GITHUB_OUTPUT
+            echo "reason=Superseded: dependency update consolidated in PR #381" >> $GITHUB_OUTPUT
           else
             echo "pr_numbers=${{ github.event.inputs.pr_numbers }}" >> $GITHUB_OUTPUT
             echo "reason=${{ github.event.inputs.reason }}" >> $GITHUB_OUTPUT
