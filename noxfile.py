@@ -12,6 +12,16 @@ def tests(session: nox.Session) -> None:
     Diarization extras (torch) have prebuilt wheels only up to Python 3.13.
     """
     session.install("pip>=23.0")
+    # Install CPU-only torch and torchaudio first to avoid CUDA library dependencies
+    # on CI runners that don't have CUDA drivers/libraries installed.
+    # The local version identifier (+cpu) satisfies the exact version constraints in
+    # pyproject.toml, so pip will not reinstall the CUDA variants afterwards.
+    session.install(
+        "--index-url",
+        "https://download.pytorch.org/whl/cpu",
+        "torch==2.8.0",
+        "torchaudio>=2.2.0",
+    )
     # Install package with development, API, and diarization extras
     session.install(".[dev,api,diarization]")
     session.env.update(
