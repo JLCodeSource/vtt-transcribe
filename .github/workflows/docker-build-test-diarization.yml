@@ -1,6 +1,12 @@
 name: Docker Build and Test (Diarization)
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Dockerfile.diarization'
+      - 'uv.lock'
+      - 'pyproject.toml'
   workflow_dispatch:
 
 jobs:
