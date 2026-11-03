@@ -23,10 +23,7 @@ updates:
        versions: [">=5.0.0"]
      - dependency-name: "torch"
        versions: [">=2.9.0"]
+     - dependency-name: "torchaudio"
+       versions: [">=2.9.0"]
      - dependency-name: "torchcodec"
        versions: [">=0.8.0"]
- - package-ecosystem: "uv"
-   directory: "/"
-   schedule:
-     interval: "monthly"
-   target-branch: "dependabot-monthly"

@@ -1,9 +1,15 @@
 # Multi-stage Dockerfile for vtt-transcribe WITH DIARIZATION + GPU (CUDA)
-# Uses NVIDIA CUDA base image for GPU-accelerated speaker diarization
-# Requires: nvidia-docker runtime and --gpus flag at run time
+# Requires: nvidia-container-toolkit and the --gpus flag at run time
+#
+# Both stages use plain Ubuntu rather than an nvidia/cuda base image. The
+# PyTorch cu128 wheels already ship every CUDA runtime library they need
+# (cuBLAS, cuDNN, cuFFT, NCCL, ...) as nvidia-* pip packages, and the host
+# driver (libcuda) is injected by nvidia-container-toolkit. A CUDA base image
+# would carry a second, unused copy of those libraries (~3 GB) and pull in
+# NVIDIA's apt repository, whose mirror syncs have broken CI builds.
 
 # Build stage: Install dependencies and build
-FROM nvidia/cuda:12.8.1-runtime-ubuntu24.04 AS builder
+FROM ubuntu:24.04 AS builder
 
 WORKDIR /app
 
@@ -12,60 +18,62 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-venv \
     python3-dev \
-    python3-pip \
     ffmpeg \
     gcc \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv for fast dependency installation
-RUN pip install --no-cache-dir --break-system-packages uv
+COPY --from=ghcr.io/astral-sh/uv:0.13.7 /uv /usr/local/bin/uv
 
 # Copy only dependency files first (for better layer caching)
 COPY pyproject.toml uv.lock README.md ./
 
-# Export fully-resolved diarization requirements from uv/pyproject.
-RUN uv export --format requirements-txt --no-hashes --extra diarization > /tmp/requirements-diarization.txt
+# Export the fully-resolved diarization requirements from uv.lock, split into
+# torch/torchaudio (installed from the CUDA index) and everything else.
+RUN uv export --format requirements-txt --no-hashes --no-emit-project --extra diarization \
+        > /tmp/requirements-diarization.txt \
+    && grep -E '^(torch|torchaudio)==' /tmp/requirements-diarization.txt > /tmp/requirements-torch.txt \
+    && grep -v -E '^(torch|torchaudio)==' /tmp/requirements-diarization.txt > /tmp/requirements-rest.txt \
+    && test "$(wc -l < /tmp/requirements-torch.txt)" -eq 2
 
 # Create virtual environment with Python 3.12
 RUN uv venv --python python3 /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
+ENV VIRTUAL_ENV=/opt/venv
 
 # Install PyTorch + torchaudio with CUDA support in their own layer
 # BOTH must come from the same CUDA index to ensure matching C++ ABI.
 # torchaudio required by pyannote.audio 4.x for resampling
-RUN TORCH_SPEC=$(grep -E '^torch==' /tmp/requirements-diarization.txt | head -n1) \
-    && TORCHAUDIO_SPEC=$(grep -E '^torchaudio==' /tmp/requirements-diarization.txt | head -n1) \
-    && test -n "$TORCH_SPEC" \
-    && test -n "$TORCHAUDIO_SPEC" \
-    && uv pip install "$TORCH_SPEC" "$TORCHAUDIO_SPEC" --index-url https://download.pytorch.org/whl/cu128
+RUN uv pip install --no-cache -r /tmp/requirements-torch.txt --index-url https://download.pytorch.org/whl/cu128
 
-# Install torchcodec (audio decoding for pyannote.audio 4.x)
-RUN TORCHCODEC_SPEC=$(grep -E '^torchcodec==' /tmp/requirements-diarization.txt | head -n1) \
-    && test -n "$TORCHCODEC_SPEC" \
-    && uv pip install "$TORCHCODEC_SPEC"
-
-# Install remaining diarization dependencies in a separate layer
-RUN PYANNOTE_AUDIO_SPEC=$(grep -E '^pyannote-audio==' /tmp/requirements-diarization.txt | head -n1) \
-    && test -n "$PYANNOTE_AUDIO_SPEC" \
-    && uv pip install "$PYANNOTE_AUDIO_SPEC"
+# Install every other locked dependency (pyannote.audio, torchcodec, ...) exactly
+# as resolved in uv.lock. --no-deps stops a fresh resolve from PyPI, which would
+# otherwise replace the pinned torch 2.8 (pyannote.audio needs it) with the
+# newest torch and its CUDA 13 libraries.
+RUN uv pip install --no-cache --no-deps -r /tmp/requirements-rest.txt
 
 # Copy source code
 COPY vtt_transcribe ./vtt_transcribe
 
-# Install the package itself (uses already-installed torch + pyannote)
-# Final dependency resolution comes from pyproject.toml extras.
-RUN uv pip install ".[diarization]"
+# Install the package itself; its dependencies are all installed above.
+RUN uv pip install --no-cache --no-deps . \
+    && python -c "import torch; v = torch.__version__; assert v.startswith('2.8.') and v.endswith('+cu128'), v" \
+    && if ls /opt/venv/lib/python3.12/site-packages | grep -q -E '^nvidia_.*cu13|^cuda_toolkit'; then \
+           echo 'CUDA 13 packages found in the venv' >&2; exit 1; \
+       fi
 
-# Prepare a copy of site-packages without the large dirs (for split COPY layers)
-RUN cp -a /opt/venv/lib/python3.12/site-packages /opt/venv/site-packages-rest \
+# Prepare a copy of site-packages without the large dirs (for split COPY layers),
+# and drop bytecode caches, which are regenerated on demand.
+RUN find /opt/venv -name '__pycache__' -type d -prune -exec rm -rf {} + \
+    && cp -a /opt/venv/lib/python3.12/site-packages /opt/venv/site-packages-rest \
     && rm -rf /opt/venv/site-packages-rest/nvidia \
               /opt/venv/site-packages-rest/torch \
               /opt/venv/site-packages-rest/torchaudio \
               /opt/venv/site-packages-rest/torchcodec
 
-# Runtime stage: CUDA runtime image with only runtime dependencies
-FROM nvidia/cuda:12.8.1-runtime-ubuntu24.04
+# Runtime stage: only Python, ffmpeg and the virtual environment
+FROM ubuntu:24.04
 
 # Configurable UID for non-root user (default 1000 for typical Linux desktops)
 ARG USER_UID=1000
@@ -78,7 +86,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user — NVIDIA base images ship 'ubuntu' at UID 1000,
+# Create non-root user — Ubuntu base images ship 'ubuntu' at UID 1000,
 # so remove it first to guarantee our user gets the target UID.
 RUN existing_user=$(getent passwd "$USER_UID" | cut -d: -f1) \
     && if [ -n "$existing_user" ]; then userdel -r "$existing_user"; fi \
@@ -86,11 +94,10 @@ RUN existing_user=$(getent passwd "$USER_UID" | cut -d: -f1) \
 
 # Copy virtual environment from builder in separate layers to keep each
 # layer under Docker Hub's per-blob size limit (~4GB compressed limit)
-# CUDA torch + NVIDIA libs total ~8GB; split into targeted subdirectories
 #
-# Layer 1: NVIDIA CUDA libraries (cuDNN, cuFFT, cuBLAS, etc.) ~2.5GB
+# Layer 1: NVIDIA CUDA libraries from pip (cuDNN, cuFFT, cuBLAS, etc.)
 COPY --from=builder /opt/venv/lib/python3.12/site-packages/nvidia /opt/venv/lib/python3.12/site-packages/nvidia
-# Layer 2: PyTorch core ~1.5GB
+# Layer 2: PyTorch core
 COPY --from=builder /opt/venv/lib/python3.12/site-packages/torch /opt/venv/lib/python3.12/site-packages/torch
 # Layer 3: torchaudio + torchcodec
 COPY --from=builder /opt/venv/lib/python3.12/site-packages/torchaudio /opt/venv/lib/python3.12/site-packages/torchaudio
@@ -98,9 +105,8 @@ COPY --from=builder /opt/venv/lib/python3.12/site-packages/torchcodec /opt/venv/
 # Layer 4: All remaining packages (pyannote, speechbrain, vtt-transcribe, etc.)
 # Uses the pre-stripped site-packages-rest from the builder stage
 COPY --from=builder /opt/venv/site-packages-rest /opt/venv/lib/python3.12/site-packages
-# Layer 5: bin, include, config
+# Layer 5: entry points and venv config (no include/: headers are not needed at runtime)
 COPY --from=builder /opt/venv/bin /opt/venv/bin
-COPY --from=builder /opt/venv/include /opt/venv/include
 COPY --from=builder /opt/venv/pyvenv.cfg /opt/venv/pyvenv.cfg
 ENV PATH="/opt/venv/bin:$PATH"
 
@@ -113,7 +119,8 @@ USER vttuser
 # Ensure Python output is unbuffered
 ENV PYTHONUNBUFFERED=1
 
-# Default to auto device detection (will use CUDA when --gpus is passed)
+# Expose the GPU to the container via nvidia-container-toolkit
+# (will use CUDA when --gpus is passed)
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 

@@ -92,6 +92,9 @@ ignore = [
 #"UP017"
 ]
 
+[lint.mccabe]
+max-complexity = 10
+
 # Per-file ignores for tests only
 [lint.per-file-ignores]
 "test_*.py" = ["SLF001", "S105", "S106", "S603", "FBT003", "SIM117"]
