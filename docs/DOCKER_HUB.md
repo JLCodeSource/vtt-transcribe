@@ -79,7 +79,7 @@ All input is piped via stdin. Output goes to stdout.
 
 - **torch 2.8.0** with **torchcodec 0.7.0** (pinned per [compatibility table](https://github.com/pytorch/torchcodec#installing-torchcodec))
 - CPU image uses the PyTorch CPU-only index to keep image size small (~700 MB vs ~4 GB with bundled CUDA)
-- GPU image uses `nvidia/cuda:12.8.1-runtime-ubuntu24.04` with multi-stage build and split Docker layers
+- GPU image uses `ubuntu:24.04` with the CUDA 12.8 libraries from the PyTorch cu128 wheels (no `nvidia/cuda` base, so no duplicate CUDA copy), a multi-stage build and split Docker layers
 - Both diarization images are **amd64 only** (no arm64 torchcodec wheels available)
 
 ### Large File Handling

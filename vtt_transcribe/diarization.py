@@ -276,8 +276,15 @@ class SpeakerDiarizer:
                 # Other ValueError - just re-raise
                 raise
 
+        # pyannote.audio 4.0.7+ types the pipeline output as a union that includes an
+        # iterator; the non-streaming call used here always returns DiarizeOutput.
+        speaker_diarization = getattr(diarization, "speaker_diarization", None)
+        if speaker_diarization is None:
+            msg = f"Unexpected diarization output type: {type(diarization).__name__}"
+            raise RuntimeError(msg)
+
         segments = []
-        for turn, _, speaker in diarization.speaker_diarization.itertracks(yield_label=True):
+        for turn, _, speaker in speaker_diarization.itertracks(yield_label=True):
             segments.append((turn.start, turn.end, speaker))
 
         return segments

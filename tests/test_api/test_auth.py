@@ -751,7 +751,7 @@ class TestAuthRoutes:
             token = create_access_token(data, expires_delta=None)
 
             # Decode to verify default expiration was used
-            from jose import jwt
+            import jwt
 
             from vtt_transcribe.api.auth import ALGORITHM
 
@@ -781,7 +781,7 @@ class TestAuthRoutes:
             token = create_access_token(data, expires_delta=timedelta(minutes=30))
 
             # Decode to verify datetime was converted
-            from jose import jwt
+            import jwt
 
             from vtt_transcribe.api.auth import ALGORITHM
 
