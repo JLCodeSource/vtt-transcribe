@@ -4,9 +4,9 @@ import nox
 nox.options.sessions = ["tests", "tests_core", "lint"]
 
 
-@nox.session(python=["3.10", "3.11", "3.12", "3.13"])
+@nox.session(python=["3.11", "3.12", "3.13"])
 def tests(session: nox.Session) -> None:
-    """Run the test suite with diarization support (Python 3.10-3.13).
+    """Run the test suite with diarization support (Python 3.11-3.13).
 
     Installs the package in editable mode with dev and diarization extras and runs pytest.
     Diarization extras (torch) have prebuilt wheels only up to Python 3.13.
@@ -63,9 +63,9 @@ def tests_core(session: nox.Session) -> None:
     session.run("pytest", "-q", "-m", "not diarization")
 
 
-@nox.session(python=["3.10"])
+@nox.session(python=["3.11"])
 def lint(session: nox.Session) -> None:
-    """Run linters/formatters (ruff, mypy) on Python 3.10."""
+    """Run linters/formatters (ruff, mypy) on Python 3.11."""
     session.install("pip>=23.0")
     session.install(".[dev,api]")
     # Run ruff
