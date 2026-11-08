@@ -21,10 +21,10 @@ formatting verbose JSON transcripts into readable timestamped output.
  - Interactive speaker review to rename/merge speakers after diarization
 
 ## Dependencies
- - Python 3.10+
+ - Python 3.11+
 
  Compatibility:
- - Core package supports Python 3.10 through 3.14 (tests run on 3.10–3.14).
+ - Core package supports Python 3.11 through 3.14 (tests run on 3.11–3.14).
  - Speaker diarization extras require specific native wheels (torch==2.8.0) and pyannote packages that currently provide prebuilt wheels up to Python 3.13. Therefore, diarization is officially supported up to Python 3.13.
  - If you run on Python 3.14 and need diarization, you may need to build torch from source or use a compatible wheel; this is not recommended for general users.
 
@@ -376,7 +376,7 @@ cat recording.mp3 | vtt | tee transcript.txt | grep "SPEAKER_00"
 
 ### Continuous Integration
  - The repository includes multiple GitHub Actions workflows:
-   - `.github/workflows/ci.yml` — Runs linting and tests on Python 3.10 (push/PR to `main`)
+   - `.github/workflows/ci.yml` — Runs linting and tests on Python 3.11 (push/PR to `main`)
    - `.github/workflows/publish.yml` — Publishes to PyPI via OIDC on GitHub releases
    - `.github/workflows/publish-testpypi.yml` — Publishes to TestPyPI on version tags
    - `.github/workflows/release.yml` — Creates GitHub releases from version tags

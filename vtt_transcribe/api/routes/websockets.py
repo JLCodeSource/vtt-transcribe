@@ -37,7 +37,8 @@ def _build_status_message(job_id: str, current_job: dict[str, Any]) -> dict[str,
 
 
 async def _wait_for_progress_or_timeout(
-    progress_queue: asyncio.Queue[dict[str, Any]], timeout: float = 0.5
+    progress_queue: asyncio.Queue[dict[str, Any]],
+    timeout: float = 0.5,  # noqa: ASYNC109 - plain float arg, wait_for enforces it
 ) -> dict[str, Any] | None:
     """Wait for a progress update from queue with timeout.
 
@@ -50,7 +51,7 @@ async def _wait_for_progress_or_timeout(
     """
     try:
         return await asyncio.wait_for(progress_queue.get(), timeout=timeout)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return None
 
 
