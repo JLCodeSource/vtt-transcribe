@@ -1,7 +1,7 @@
 """Authentication and authorization utilities."""
 
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 from fastapi import Depends, HTTPException, status
@@ -59,10 +59,7 @@ def create_access_token(data: dict[str, str | datetime], expires_delta: timedelt
     for key, value in to_encode.items():
         if isinstance(value, datetime):
             to_encode[key] = value.isoformat()
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    expire = datetime.now(UTC) + expires_delta if expires_delta else datetime.now(UTC) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)  # type: ignore[arg-type]
 

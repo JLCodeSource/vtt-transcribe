@@ -717,7 +717,7 @@ def test_websocket_job_deleted_check() -> None:
         # Clean up
         try:
             await asyncio.wait_for(task, timeout=0.1)
-        except (asyncio.CancelledError, asyncio.TimeoutError):
+        except (TimeoutError, asyncio.CancelledError):
             task.cancel()
             try:  # noqa: SIM105
                 await task

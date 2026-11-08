@@ -1,6 +1,6 @@
 """Tests for authentication and authorization."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -179,7 +179,7 @@ class TestJWTTokenCreation:
         from vtt_transcribe.api.auth import create_access_token
 
         # JWT doesn't support datetime objects, must use ISO string
-        data: dict[str, str] = {"sub": "testuser", "created": datetime.now(timezone.utc).isoformat()}
+        data: dict[str, str] = {"sub": "testuser", "created": datetime.now(UTC).isoformat()}
 
         token = create_access_token(data)  # type: ignore[arg-type]
 
@@ -738,7 +738,7 @@ class TestAuthRoutes:
 
     def test_create_access_token_else_branch_default_expiry(self) -> None:
         """Should use 15-minute default when expires_delta is None (line 54)."""
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
         from unittest.mock import patch
 
         from vtt_transcribe.api.auth import create_access_token
@@ -758,8 +758,8 @@ class TestAuthRoutes:
             decoded = jwt.decode(token, "test-secret-key-for-testing", algorithms=[ALGORITHM])
 
             # Check that exp is approximately 15 minutes from now
-            exp_time = datetime.fromtimestamp(decoded["exp"], tz=timezone.utc)
-            now = datetime.now(timezone.utc)
+            exp_time = datetime.fromtimestamp(decoded["exp"], tz=UTC)
+            now = datetime.now(UTC)
             time_diff = exp_time - now
 
             # Should be around 15 minutes (allow 1 second tolerance)
@@ -767,14 +767,14 @@ class TestAuthRoutes:
 
     def test_create_access_token_with_datetime_value(self) -> None:
         """Should convert datetime values to isoformat (line 54)."""
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
         from unittest.mock import patch
 
         from vtt_transcribe.api.auth import create_access_token
 
         # Mock SECRET_KEY for test environment
         with patch("vtt_transcribe.api.auth.SECRET_KEY", "test-secret-key-for-testing"):
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             data: dict[str, str | datetime] = {"sub": "testuser", "created_at": now}
 
             # Call with datetime value to trigger isoformat conversion (line 54)

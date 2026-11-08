@@ -1,7 +1,7 @@
 """User API key management routes."""
 
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from cryptography.fernet import Fernet
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -148,7 +148,7 @@ async def get_user_api_key(user_id: int, service: str, db: AsyncSession) -> str 
         return None
 
     # Update last used timestamp
-    key.last_used_at = datetime.now(timezone.utc)
+    key.last_used_at = datetime.now(UTC)
     await db.flush()
 
     return decrypt_key(key.encrypted_key)

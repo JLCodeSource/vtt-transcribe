@@ -8,7 +8,7 @@ The user management endpoints are functional and have been manually tested, but
 automated test coverage is currently limited to endpoint availability checks.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -123,7 +123,7 @@ class TestAPIKeyManagement:
             service="openai",
             encrypted_key="encrypted",
             key_name="Test",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         mock_result.scalars.return_value.all.return_value = [mock_key]
         mock_db.execute = AsyncMock(return_value=mock_result)
@@ -149,7 +149,7 @@ class TestAPIKeyManagement:
             service="openai",
             encrypted_key="encrypted",
             key_name="Test",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         mock_result.scalar_one_or_none.return_value = mock_key
         mock_db.execute = AsyncMock(return_value=mock_result)
@@ -193,7 +193,7 @@ class TestAPIKeyManagement:
             service="openai",
             encrypted_key="encrypted",
             key_name="Test",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         mock_result.scalar_one_or_none.return_value = mock_key
         mock_db.execute = AsyncMock(return_value=mock_result)
@@ -240,7 +240,7 @@ class TestAPIKeyManagement:
             service="openai",
             encrypted_key=encrypted,
             key_name="Test",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         mock_result.scalar_one_or_none.return_value = mock_key
         mock_db.execute = AsyncMock(return_value=mock_result)
@@ -353,7 +353,7 @@ class TestJobManagement:
             filename="test.mp3",
             status="completed",
             transcript="Test transcript",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         mock_result.scalars.return_value.all.return_value = [mock_job]
         mock_db.execute = AsyncMock(return_value=mock_result)
@@ -397,7 +397,7 @@ class TestJobManagement:
             filename="test.mp3",
             status="completed",
             transcript="Test transcript",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         mock_result.scalar_one_or_none.return_value = mock_job
         mock_db.execute = AsyncMock(return_value=mock_result)
@@ -442,7 +442,7 @@ class TestJobManagement:
             filename="test.mp3",
             status="completed",
             transcript="Test transcript",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         mock_result.scalar_one_or_none.return_value = mock_job
         mock_db.execute = AsyncMock(return_value=mock_result)
