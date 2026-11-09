@@ -14,17 +14,17 @@ def tests(session: nox.Session) -> None:
     session.install("pip>=23.0")
     # Install package and all extras in a single resolver pass.
     # The PyTorch CPU wheel index is added as an extra source so that
-    # torch==2.8.0 and torchaudio==2.8.0 resolve to their +cpu variants
+    # torch==2.15.0 and torchaudio==2.11.1 resolve to their +cpu variants
     # (which don't require libcudart) instead of the CUDA builds on PyPI.
-    # torchaudio is pinned to 2.8.0 (matching torch) to prevent pip from
+    # torchaudio is pinned to 2.11.1 (its last release) to prevent pip from
     # upgrading to a newer CUDA torchaudio from PyPI which would produce an
     # ABI mismatch ("undefined symbol: torch_library_impl").
     session.install(
         "--extra-index-url",
         "https://download.pytorch.org/whl/cpu",
         ".[dev,api,diarization]",
-        "torch==2.8.0",
-        "torchaudio==2.8.0",
+        "torch==2.15.0",
+        "torchaudio==2.11.1",
     )
     session.env.update(
         {

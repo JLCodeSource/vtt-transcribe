@@ -20,12 +20,12 @@ COPY pyproject.toml uv.lock README.md ./
 
 # Export the fully-resolved diarization requirements from uv.lock, split into
 # torch/torchaudio (installed from the CPU index) and everything else. The
-# CUDA-only packages that the PyPI torch wheel pulls in (nvidia-*, triton) are
+# CUDA-only packages that the PyPI torch wheel pulls in (nvidia-*, cuda-*, triton) are
 # dropped: the CPU wheels do not use them.
 RUN uv export --format requirements-txt --no-hashes --no-emit-project --extra diarization \
         > /tmp/requirements-diarization.txt \
     && grep -E '^(torch|torchaudio)==' /tmp/requirements-diarization.txt > /tmp/requirements-torch.txt \
-    && grep -v -E '^(torch|torchaudio|triton|nvidia-[a-z0-9-]+)==' /tmp/requirements-diarization.txt \
+    && grep -v -E '^(torch|torchaudio|triton|nvidia-[a-z0-9-]+|cuda-(bindings|pathfinder|toolkit))==' /tmp/requirements-diarization.txt \
         > /tmp/requirements-rest.txt \
     && test "$(wc -l < /tmp/requirements-torch.txt)" -eq 2
 
@@ -35,14 +35,14 @@ RUN uv pip install --no-cache -r /tmp/requirements-torch.txt --index-url https:/
 
 # Layer 2: every other locked dependency (pyannote.audio, torchcodec, ...) exactly
 # as resolved in uv.lock. --no-deps stops a fresh resolve from PyPI, which would
-# otherwise replace the pinned CPU torch 2.8 (pyannote.audio needs it) with the
+# otherwise replace the pinned CPU torch 2.15 (pyannote.audio needs it) with the
 # newest CUDA torch.
 RUN uv pip install --no-cache --no-deps -r /tmp/requirements-rest.txt
 
 # Layer 3: vtt-transcribe; its dependencies are all installed above.
 COPY vtt_transcribe ./vtt_transcribe
 RUN uv pip install --no-cache --no-deps . \
-    && python -c "import torch; v = torch.__version__; assert v.startswith('2.8.') and v.endswith('+cpu'), v" \
+    && python -c "import torch; v = torch.__version__; assert v.startswith('2.15.') and v.endswith('+cpu'), v" \
     && if ls /opt/venv/lib/python3.13/site-packages | grep -q -E '^(nvidia|cuda_|triton)'; then \
            echo 'CUDA packages found in the CPU venv' >&2; exit 1; \
        fi

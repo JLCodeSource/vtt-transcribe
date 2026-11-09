@@ -62,4 +62,3 @@ Objective: add local-only Whisper processing for offline and air-gapped environm
 - The 0.4.0 API layer provides a natural integration point for plugging in local models later
 
 ## Technical Debt
-- **Torch version locked to 2.8.0**: torch 2.10+ introduced breaking changes to `torch.load(..., weights_only=...)` that cause pyannote.audio 3.1 diarization models to fail. Upgrade to torch 2.10+ once pyannote.audio officially supports it.

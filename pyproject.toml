@@ -57,9 +57,9 @@ api = [
 ]
 diarization = [
     "pyannote.audio>=4.0.0",  # 4.x uses torchcodec for audio I/O (actively maintained)
-    "torch==2.8.0",  # Pinned due to torch 2.10+ breaking change in weights_only
-    "torchaudio>=2.2.0,<2.9",  # Required by pyannote.audio 4.x (resampling); must stay on the torch 2.8 line for C++ ABI
-    "torchcodec>=0.6.0,<0.8",  # Required by pyannote.audio 4.x for audio decoding; 0.7.x is the last version compatible with torch 2.8
+    "torch==2.15.0",  # pyannote.audio 4.x runs fine on 2.15 (CPU and CUDA); older torch has open security advisories
+    "torchaudio==2.11.1",  # Required by pyannote.audio 4.x (resampling); 2.11.1 is the last torchaudio release, resampling verified with torch 2.15
+    "torchcodec==0.13.0",  # Required by pyannote.audio 4.x for audio decoding; 0.14+ fail to load against torch 2.15
 ]
 dev = [
     "pytest>=7.4.0",
