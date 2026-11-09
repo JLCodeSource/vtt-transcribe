@@ -80,8 +80,8 @@ install-api: install-base
 # This creates an unlocked environment for CPU-only PyTorch from the torch CPU index
 install-diarization-cpu: install-base
 	@echo "Installing diarization dependencies with CPU-only torch..."
-	@uv pip install --index-url https://download.pytorch.org/whl/cpu torch==2.8.0 torchaudio>=2.2.0
-	@uv pip install pyannote.audio>=4.0.0 "torchcodec>=0.6.0,<0.8"
+	@uv pip install --index-url https://download.pytorch.org/whl/cpu torch==2.15.0 torchaudio==2.11.1
+	@uv pip install pyannote.audio>=4.0.0 "torchcodec==0.13.0"
 	@echo "Diarization (CPU) dependencies installed successfully!"
 	@echo "Note: This installation uses CPU-only torch for faster installation and CPU inference."
 

@@ -11,7 +11,7 @@
 |-----|------|------|-------------|
 | `latest` | ~150 MB | amd64, arm64 | Transcription only — lightweight, no diarization |
 | `diarization` | ~700 MB | amd64 | Speaker diarization with PyTorch CPU + pyannote.audio |
-| `diarization-gpu` | ~6.5 GB | amd64 | GPU-accelerated diarization with CUDA 12.8 |
+| `diarization-gpu` | ~6.5 GB | amd64 | GPU-accelerated diarization with CUDA 13.2 |
 
 ### Version Tags
 
@@ -77,9 +77,9 @@ All input is piped via stdin. Output goes to stdout.
 
 ### Diarization Images
 
-- **torch 2.8.0** with **torchcodec 0.7.0** (pinned per [compatibility table](https://github.com/pytorch/torchcodec#installing-torchcodec))
+- **torch 2.15.0** with **torchaudio 2.11.1** and **torchcodec 0.13.0** (pinned per [compatibility table](https://github.com/pytorch/torchcodec#installing-torchcodec))
 - CPU image uses the PyTorch CPU-only index to keep image size small (~700 MB vs ~4 GB with bundled CUDA)
-- GPU image uses `ubuntu:24.04` with the CUDA 12.8 libraries from the PyTorch cu128 wheels (no `nvidia/cuda` base, so no duplicate CUDA copy), a multi-stage build and split Docker layers
+- GPU image uses `ubuntu:24.04` with the CUDA 13.2 libraries from the PyTorch cu132 wheels (no `nvidia/cuda` base, so no duplicate CUDA copy), a multi-stage build and split Docker layers
 - Both diarization images are **amd64 only** (no arm64 torchcodec wheels available)
 
 ### Large File Handling
