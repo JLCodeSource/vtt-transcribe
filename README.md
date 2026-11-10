@@ -98,7 +98,7 @@ Docker images are available on Docker Hub and GitHub Container Registry in three
 |-------|-----|------|------|-------------|
 | **Base** | `latest` | ~150 MB | amd64, arm64 | Transcription only, lightweight |
 | **Diarization** | `diarization` | ~700 MB | amd64 only | Speaker diarization, PyTorch CPU, torchcodec 0.7 |
-| **Diarization GPU** | `diarization-gpu` | ~6.5 GB | amd64 only | GPU-accelerated diarization, CUDA 12.8 |
+| **Diarization GPU** | `diarization-gpu` | ~6.5 GB | amd64 only | GPU-accelerated diarization, CUDA 13.2 |
 
 > **Compatibility note:** Diarization images pin `torch==2.8.0` with `torchcodec==0.7.0` per the [torchcodec compatibility table](https://github.com/pytorch/torchcodec#installing-torchcodec). The CPU image uses the PyTorch CPU index to keep the image small (~700 MB vs ~4 GB with bundled CUDA).
 
@@ -109,7 +109,7 @@ docker pull jlcodesource/vtt-transcribe:latest
 # Pull diarization image (CPU-only, amd64 only, ~700 MB)
 docker pull jlcodesource/vtt-transcribe:diarization
 
-# Pull diarization GPU image (CUDA 12.8, amd64 only, ~6.5 GB)
+# Pull diarization GPU image (CUDA 13.2, amd64 only, ~6.5 GB)
 docker pull jlcodesource/vtt-transcribe:diarization-gpu
 
 # OR: Pull from GitHub Container Registry
@@ -146,53 +146,9 @@ cat input.mp4 | docker run -i --gpus all -e OPENAI_API_KEY="your-key" -e HF_TOKE
 
 For more Docker usage patterns and troubleshooting, see [Docker Registry Documentation](docs/DOCKER_REGISTRY.md).
 
-### Using Docker Compose (Full Stack)
+## Server edition
 
-For local development with the complete API, worker, and database stack:
-
-```bash
-# 1. Copy environment template
-cp .env.example .env
-
-# 2. Edit .env - set required secrets/variables (OPENAI_API_KEY, SECRET_KEY, POSTGRES_PASSWORD)
-# 3. Start services
-docker compose up -d
-
-# 4. Access API at http://localhost:8000
-# API docs: http://localhost:8000/docs
-```
-
-See [Docker Compose Guide](docs/DOCKER_COMPOSE.md) for complete setup instructions, architecture details, and troubleshooting.
-
-### Web Frontend (Development)
-
-A modern web frontend built with Svelte + Vite + TypeScript is available for local development:
-
-```bash
-# Start all services including frontend
-docker compose --profile frontend up
-
-# Frontend will be available at http://localhost:3000
-# Backend API at http://localhost:8000
-```
-
-**Frontend Features:**
-- Drag-and-drop file upload for video/audio files
-- Real-time transcription progress via WebSocket
-- Interactive transcript viewer with speaker labels
-- Search and filter by speaker
-- Download transcripts in TXT, VTT, or SRT formats
-
-**Frontend Development:**
-```bash
-cd frontend
-npm install
-npm run dev  # Starts dev server on port 3000 with hot reload
-npm test     # Run test suite
-npm run build  # Build for production
-```
-
-See [frontend/README.md](frontend/README.md) for detailed frontend documentation.
+vtt-transcribe is the transcription package and CLI. A hosted/server edition with a web interface is developed separately.
 
 ## Upgrading from 0.2.0
 

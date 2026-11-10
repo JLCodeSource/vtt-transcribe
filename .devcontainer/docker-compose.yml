@@ -24,18 +24,3 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
-    
-    # Environment variables for accessing docker-compose services
-    environment:
-      DATABASE_URL: postgresql://vtt_user:${POSTGRES_PASSWORD}@db:5432/vtt_transcribe
-      API_URL: http://api:8000
-    
-    # Connect to the vtt-network so we can access db, api, worker, frontend
-    networks:
-      - vtt-network
-
-networks:
-  vtt-network:
-    # Use the existing network created by docker-compose.yml
-    name: vtt-transcribe_vtt-network
-    external: true
