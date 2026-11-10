@@ -19,10 +19,7 @@
 	},
 	// Use this environment variable if you need to bind mount your local source code into a new container.
 	"remoteEnv": {
-		"LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}",
-		// Connect to docker-compose services by service name
-		"DATABASE_URL": "postgresql://vtt_user:${localEnv:POSTGRES_PASSWORD}@db:5432/vtt_transcribe",
-		"API_URL": "http://api:8000"
+		"LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}"
 	},
 	// Configure VS Code
 	"customizations": {

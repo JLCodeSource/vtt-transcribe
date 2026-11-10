@@ -13,34 +13,8 @@
 - ✅ CI coverage: Python 3.10 tested in CI
 - ✅ Docker Hub automation: description auto-updated from `docs/DOCKER_HUB.md`
 
-## Version 0.4.0 (Next — API & Web Interface)
-Objective: expose vtt-transcribe as a web service with user management and a browser-based frontend for uploading and processing files.
-
-### Features
-- **FastAPI backend**: REST API exposing transcription and diarization functionality
-  - Upload audio/video files via multipart form data
-  - Async transcription with job status polling
-  - WebSocket support for real-time progress updates
-  - Diarization endpoint with speaker labeling
-- **Translation support**: Translate transcripts from language X to language Y
-  - Language detection on input audio
-  - Translation via OpenAI API or configurable translation backend
-  - Output in original language, translated language, or side-by-side
-- **User management**: Authentication and multi-user support
-  - User registration and login (OAuth2 / API key)
-  - Per-user API key management (OpenAI, HF tokens)
-  - Job history and transcript storage per user
-- **Web frontend**: Browser-based UI for file upload and transcript viewing
-  - File upload with drag-and-drop
-  - Real-time transcription progress
-  - Transcript viewer with speaker labels and timestamps
-  - Download transcripts in multiple formats (TXT, VTT, SRT)
-
-### Technical considerations
-- FastAPI with async workers for concurrent transcription jobs
-- Database for user accounts and job metadata (SQLite for dev, PostgreSQL for production)
-- Frontend framework TBD (React, Vue, or HTMX for simplicity)
-- Docker Compose for local development (API + frontend + database)
+## Version 0.4.0 (Done — server and web interface moved out)
+The API server, user management and web frontend are developed in a separate, private repository (`vtt-transcribe-server`). This package keeps the transcription library and CLI. Translation support (language X to Y) stays here.
 
 ## Version 0.5.0 (Local Processing)
 Objective: add local-only Whisper processing for offline and air-gapped environments.

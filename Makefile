@@ -2,35 +2,30 @@
 PYTHON ?= python
 PIP ?= pip
 
-.PHONY: help install-uv install-base install-api install-diarization-cpu install-diarization-gpu install-diarization install-dev install-build install-all install test test-integration lint ruff-check ruff-fix mypy format clean build build-check publish-test publish
+.PHONY: help install-uv install-base install-diarization-cpu install-diarization-gpu install-diarization install-dev install-build install-all install test test-integration lint ruff-check ruff-fix mypy format clean build build-check publish-test publish
 
 help:
 	@echo "Available installation targets:"
 	@echo "  install-uv             - Install uv package manager only"
 	@echo "  install-base           - Install base dependencies only (moviepy, openai, python-dotenv)"
-	@echo "  install-api            - Install with API server support (FastAPI, uvicorn, database drivers)"
 	@echo "  install-diarization-cpu - Install diarization with CPU-only torch (faster install, CPU inference)"
 	@echo "  install-diarization-gpu - Install diarization with GPU torch (CUDA support for faster inference)"
 	@echo "  install-diarization    - Install diarization (alias for install-diarization-gpu; GPU by default)"
 	@echo "  install-dev            - Install development tools (pytest, mypy, ruff, pre-commit)"
 	@echo "  install-build          - Install build and publishing tools (build, twine, hatchling)"
-	@echo "  install-all            - Install everything (base + api + diarization + dev + build)"
+	@echo "  install-all            - Install everything (base + diarization + dev + build)"
 	@echo "  install                - Install everything (alias for install-all; backward compatibility)"
 	@echo ""
 	@echo "Common installation workflows:"
 	@echo "  For basic CLI usage:      make install-base"
 	@echo "  For development:          make install-dev"
-	@echo "  For API server:           make install-api"
+	@echo "  For API server:           make "
 	@echo "  For diarization (CPU):    make install-diarization-cpu"
 	@echo "  For diarization (GPU):    make install-diarization-gpu"
 	@echo "  For everything:           make install-all"
 	@echo ""
 	@echo "Available development targets:"
 	@echo "  test                   - Run backend tests with coverage"
-	@echo "  test-frontend          - Run all frontend tests (unit + E2E)"
-	@echo "  test-frontend-unit     - Run frontend unit tests only (Vitest)"
-	@echo "  test-frontend-e2e      - Run frontend E2E tests only (Playwright)"
-	@echo "  test-all               - Run all tests (backend + frontend)"
 	@echo "  test-integration       - Run only integration tests"
 	@echo "  lint                   - Run ruff and mypy checks"
 	@echo "  ruff-check             - Run ruff linter"
@@ -69,12 +64,6 @@ install-base: install-uv
 	@uv sync
 	@echo "Base dependencies installed successfully!"
 
-# Install with API server support (FastAPI, uvicorn, database drivers)
-install-api: install-base
-	@echo "Installing API server dependencies..."
-	@uv sync --extra api
-	@echo "API dependencies installed successfully!"
-
 # Install diarization with CPU-only torch (faster install, CPU inference)
 # Note: Uses uv pip install to bypass lockfile for CPU-specific torch installation
 # This creates an unlocked environment for CPU-only PyTorch from the torch CPU index
@@ -88,7 +77,7 @@ install-diarization-cpu: install-base
 # Install diarization with GPU torch (CUDA support for faster inference)
 install-diarization-gpu: install-base
 	@echo "Installing diarization dependencies with GPU torch..."
-	@uv sync --extra api --extra diarization
+	@uv sync --extra diarization
 	@echo "Diarization (GPU) dependencies installed successfully!"
 	@echo "Note: This installation includes CUDA support for GPU acceleration."
 
@@ -114,7 +103,7 @@ install-build: install-base
 	@uv sync --extra build
 	@echo "Build dependencies installed successfully!"
 
-# Install everything (base + api + diarization + dev + build)
+# Install everything (base + diarization + dev + build)
 install-all: install-uv
 	@echo "Setting up complete development environment..."
 	@if [ -d ".venv" ] && [ -f ".venv/pyvenv.cfg" ]; then \
@@ -123,8 +112,8 @@ install-all: install-uv
 		echo "Creating new virtual environment..."; \
 		uv venv --clear; \
 	fi
-	@echo "Installing all dependencies (base + api + diarization + dev + build)..."
-	@uv sync --extra api --extra diarization --extra dev --extra build
+	@echo "Installing all dependencies (base + diarization + dev + build)..."
+	@uv sync --extra diarization --extra dev --extra build
 	@echo "Checking for pre-commit in uv-managed environment..."
 	@if uv run python -c "import pre_commit" >/dev/null 2>&1; then \
 		echo "Installing pre-commit hooks..."; \
@@ -144,36 +133,6 @@ test:
 
 test-integration:
 	@uv run pytest -v -k integration
-
-# Frontend testing (requires Node.js and npm)
-
-# Run frontend unit tests only (Vitest)
-test-frontend-unit:
-	@echo "Running frontend unit tests..."
-	@if [ ! -d "frontend/node_modules" ]; then \
-		echo "Installing frontend dependencies..."; \
-		cd frontend && npm install; \
-	fi
-	@cd frontend && npm run test
-
-# Run frontend E2E tests only (Playwright)
-test-frontend-e2e:
-	@echo "Running frontend E2E tests..."
-	@if [ ! -d "frontend/node_modules" ]; then \
-		echo "Installing frontend dependencies..."; \
-		cd frontend && npm install; \
-	fi
-	@if ! ls -d "$(HOME)/.cache/ms-playwright"/chromium-* >/dev/null 2>&1; then \
-		echo "Installing Playwright browsers..."; \
-		cd frontend && npx playwright install chromium --with-deps || npx playwright install chromium; \
-	fi
-	@cd frontend && npm run test:e2e -- --project=chromium
-
-# Run all frontend tests (unit + E2E)
-test-frontend: test-frontend-unit test-frontend-e2e
-
-# Run all tests (backend + frontend)
-test-all: test test-frontend
 
 ruff-check:
 	@uv run ruff check .

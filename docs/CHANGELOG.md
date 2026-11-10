@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - Unreleased
+
+### Changed
+- **Server and web interface moved out.** The FastAPI server, user management, OAuth, database layer, Svelte
+  frontend and Docker Compose stack now live in a separate, private repository. This package is the
+  transcription library and CLI.
+- **BREAKING: the `api` extra is removed.** `pip install vtt-transcribe[api]` no longer installs the server.
+- **torch 2.15 / CUDA 13.2.** The diarization extra now uses torch 2.15.0, torchaudio 2.11.1 and torchcodec
+  0.13.0 (PR #435); the GPU image moved from the CUDA 12.8 to the CUDA 13.2 wheels. pyannote.audio 4.0.7 gives
+  identical results on torch 2.15 and 2.8.
+- Python 3.11 or newer is required.
+- The devcontainer no longer depends on the Compose stack's network.
+
 ## [0.3.1] - 2026-02-09
 
 ### Fixed
