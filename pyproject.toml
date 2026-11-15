@@ -39,7 +39,13 @@ Issues = "https://github.com/JLCodeSource/vtt-transcribe/issues"
 Changelog = "https://github.com/JLCodeSource/vtt-transcribe/blob/main/docs/CHANGELOG.md"
 
 [project.optional-dependencies]
+sherpa = [
+    "sherpa-onnx>=1.12.0",  # default diarization backend: CPU ONNX, no torch, no Hugging Face token
+    "numpy>=1.26",
+]
 diarization = [
+    "sherpa-onnx>=1.12.0",  # includes the default (sherpa) backend alongside pyannote
+    "numpy>=1.26",
     "pyannote.audio>=4.0.0",  # 4.x uses torchcodec for audio I/O (actively maintained)
     "torch==2.15.0",  # pyannote.audio 4.x runs fine on 2.15 (CPU and CUDA); older torch has open security advisories
     "torchaudio==2.11.1",  # Required by pyannote.audio 4.x (resampling); 2.11.1 is the last torchaudio release, resampling verified with torch 2.15

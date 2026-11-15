@@ -29,8 +29,35 @@ def check_ffmpeg_installed() -> None:
         sys.exit(1)
 
 
-def check_diarization_dependencies() -> None:
-    """Check if diarization dependencies (torch, pyannote) are installed.
+SHERPA_PACKAGES = ("sherpa_onnx", "numpy")
+PYANNOTE_PACKAGES = ("pyannote.audio", "torch", "torchaudio")
+
+
+def _missing(packages: tuple[str, ...]) -> list[str]:
+    """Names from ``packages`` that cannot be found (without importing them)."""
+    missing = []
+    for pkg in packages:
+        try:
+            if find_spec(pkg) is None:
+                missing.append(pkg)
+        except (ModuleNotFoundError, ValueError):
+            missing.append(pkg)
+    return missing
+
+
+def resolve_diarizer(choice: str = "auto") -> str:
+    """Turn ``--diarizer`` into a concrete backend: "sherpa" or "pyannote".
+
+    "auto" prefers sherpa when it is installed (no token, no torch) and otherwise falls back to
+    pyannote, so existing pyannote-only installs keep working.
+    """
+    if choice != "auto":
+        return choice
+    return "sherpa" if not _missing(SHERPA_PACKAGES) else "pyannote"
+
+
+def check_diarization_dependencies(diarizer: str = "auto") -> None:
+    """Check that the dependencies for the chosen diarization backend are installed.
 
     Uses importlib to check package availability without triggering heavy
     native library loading (torchcodec C++ extensions can crash on systems
@@ -38,19 +65,19 @@ def check_diarization_dependencies() -> None:
 
     Exits with installation instructions if dependencies are not found.
     """
-    missing = []
-    for pkg in ("pyannote.audio", "torch", "torchaudio"):
-        try:
-            if find_spec(pkg) is None:
-                missing.append(pkg)
-        except (ModuleNotFoundError, ValueError):
-            missing.append(pkg)
+    sherpa_missing = _missing(SHERPA_PACKAGES)
+    pyannote_missing = _missing(PYANNOTE_PACKAGES)
+
+    if diarizer == "sherpa":
+        missing, hint = sherpa_missing, "pip install vtt-transcribe[sherpa]"
+    elif diarizer == "pyannote":
+        missing, hint = pyannote_missing, "pip install vtt-transcribe[diarization]"
+    else:  # auto: either backend is enough
+        missing = [] if not sherpa_missing or not pyannote_missing else sherpa_missing
+        hint = "pip install vtt-transcribe[sherpa] or: pip install vtt-transcribe[diarization] (pyannote backend)"
 
     if missing:
         print("\nError: Diarization dependencies not installed.", file=sys.stderr)
         print(f"  Missing: {', '.join(missing)}", file=sys.stderr)
-        print(
-            "Install with: pip install vtt-transcribe[diarization] or: uv pip install vtt-transcribe[diarization]\n",
-            file=sys.stderr,
-        )
+        print(f"Install with: {hint}\n", file=sys.stderr)
         sys.exit(1)

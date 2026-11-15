@@ -70,7 +70,7 @@ def test_check_diarization_dependencies_when_missing() -> None:
         patch("vtt_transcribe.dependencies.find_spec", side_effect=_mock_find_spec_missing_all),
         pytest.raises(SystemExit) as exc_info,
     ):
-        check_diarization_dependencies()
+        check_diarization_dependencies("pyannote")
 
     assert exc_info.value.code == 1
 
@@ -84,7 +84,7 @@ def test_check_diarization_dependencies_prints_error_message() -> None:
         patch("builtins.print") as mock_print,
         pytest.raises(SystemExit),
     ):
-        check_diarization_dependencies()
+        check_diarization_dependencies("pyannote")
 
     # Verify error message was printed
     print_calls = [str(call) for call in mock_print.call_args_list]
@@ -107,7 +107,7 @@ def test_check_diarization_dependencies_handles_torch_missing() -> None:
         patch("vtt_transcribe.dependencies.find_spec", side_effect=find_spec_no_torch),
         pytest.raises(SystemExit) as exc_info,
     ):
-        check_diarization_dependencies()
+        check_diarization_dependencies("pyannote")
     assert exc_info.value.code == 1
 
 
@@ -124,7 +124,7 @@ def test_check_diarization_dependencies_handles_pyannote_missing() -> None:
         patch("vtt_transcribe.dependencies.find_spec", side_effect=find_spec_no_pyannote),
         pytest.raises(SystemExit) as exc_info,
     ):
-        check_diarization_dependencies()
+        check_diarization_dependencies("pyannote")
     assert exc_info.value.code == 1
 
 
@@ -141,7 +141,7 @@ def test_check_diarization_dependencies_handles_torchaudio_missing() -> None:
         patch("vtt_transcribe.dependencies.find_spec", side_effect=find_spec_no_torchaudio),
         pytest.raises(SystemExit) as exc_info,
     ):
-        check_diarization_dependencies()
+        check_diarization_dependencies("pyannote")
     assert exc_info.value.code == 1
 
 

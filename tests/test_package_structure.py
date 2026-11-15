@@ -108,3 +108,16 @@ def test_vtt_command_via_entry_point() -> None:
 
     assert result.returncode == 0
     assert "vtt" in result.stdout
+
+
+def test_sherpa_extra_is_light_and_torch_free() -> None:
+    """The sherpa extra must not pull in torch or pyannote; the diarization extra includes sherpa too."""
+    requires = [Requirement(r) for r in (metadata("vtt-transcribe").get_all("Requires-Dist") or [])]
+
+    def names(extra: str) -> set[str]:
+        return {r.name for r in requires if r.marker is not None and r.marker.evaluate({"extra": extra})}
+
+    sherpa = names("sherpa")
+    assert "sherpa-onnx" in sherpa
+    assert not sherpa & {"torch", "torchaudio", "torchcodec", "pyannote-audio", "pyannote.audio"}
+    assert "sherpa-onnx" in names("diarization")
