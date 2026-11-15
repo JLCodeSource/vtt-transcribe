@@ -41,12 +41,9 @@ jobs:
       - name: Install build environment
         run: make build
       
-      - name: Lint
-        run: make lint
-      
-      - name: Test
-        run: make test
-      
+      # Lint and tests are not repeated here: this environment installs only the build extra
+      # (no torch/pyannote), so pyright cannot resolve those imports. The same commit is linted
+      # and tested with the full environment by the CI, Nox and Release workflows before tagging.
       - name: Publish to TestPyPI via OIDC
         if: ${{ !inputs.dry_run }}
         uses: pypa/gh-action-pypi-publish@release/v1
