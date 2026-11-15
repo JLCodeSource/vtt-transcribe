@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **sherpa-onnx diarization backend (new default).** `--diarize` now uses sherpa-onnx with the
+  pyannote-segmentation-3.0 and NVIDIA TitaNet-small ONNX models: CPU only, no torch, no Hugging Face token,
+  no gated model terms. Models (about 46 MB) are downloaded once, verified by SHA-256 and cached in
+  `~/.cache/vtt-transcribe/models` (`VTT_MODEL_DIR` overrides). Measured 12.7% diarization error rate on
+  eight synthetic 3-minute LibriSpeech conversations (clean speech, no overlap) at about 15x real time.
+- `--diarizer {auto,sherpa,pyannote}` (default `auto`: sherpa when installed, otherwise pyannote) and
+  `--num-speakers N`.
+- New `sherpa` extra (`pip install vtt-transcribe[sherpa]`). The `diarization` extra now also installs
+  sherpa-onnx.
+
+### Changed
+- The transcript-labelling code and formatting helpers moved to `vtt_transcribe.diarization_common`
+  (still re-exported from `vtt_transcribe.diarization`).
+- pyannote remains available for overlap-heavy audio and GPU use (`--diarizer pyannote`, needs `HF_TOKEN`).
+
 ## [0.4.0] - 2026-11-11
 
 ### Changed

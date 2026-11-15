@@ -291,7 +291,7 @@ class TestMainCliArgumentParsing:
             video_path.touch()
 
             with (
-                patch("sys.argv", ["main.py", str(video_path), "--diarize", "--no-review-speakers"]),
+                patch("sys.argv", ["main.py", str(video_path), "--diarize", "--diarizer", "pyannote", "--no-review-speakers"]),
                 patch.object(VideoTranscriber, "transcribe", return_value="[00:00:00 - 00:00:05] Hello"),
                 patch.object(VideoTranscriber, "detect_language", return_value="en"),
                 patch.object(VideoTranscriber, "extract_audio"),
@@ -327,7 +327,19 @@ class TestMainCliArgumentParsing:
             video_path.touch()
 
             with (
-                patch("sys.argv", ["main.py", str(video_path), "--diarize", "--device", "cuda", "--no-review-speakers"]),
+                patch(
+                    "sys.argv",
+                    [
+                        "main.py",
+                        str(video_path),
+                        "--diarize",
+                        "--diarizer",
+                        "pyannote",
+                        "--device",
+                        "cuda",
+                        "--no-review-speakers",
+                    ],
+                ),
                 patch.object(VideoTranscriber, "transcribe", return_value="[00:00:00 - 00:00:05] Hello"),
                 patch.object(VideoTranscriber, "detect_language", return_value="en"),
                 patch.object(VideoTranscriber, "extract_audio"),
@@ -362,7 +374,10 @@ class TestMainCliArgumentParsing:
             audio_path.touch()
 
             with (
-                patch("sys.argv", ["main.py", str(audio_path), "--diarize-only", "--no-review-speakers"]),
+                patch(
+                    "sys.argv",
+                    ["main.py", str(audio_path), "--diarize-only", "--diarizer", "pyannote", "--no-review-speakers"],
+                ),
                 patch("vtt_transcribe.handlers._lazy_import_diarization") as mock_lazy_import,
                 # Mock dependency check
                 patch("vtt_transcribe.main.check_diarization_dependencies"),
@@ -397,7 +412,15 @@ class TestMainCliArgumentParsing:
             with (
                 patch(
                     "sys.argv",
-                    ["main.py", str(audio_path), "--apply-diarization", str(transcript_path), "--no-review-speakers"],
+                    [
+                        "main.py",
+                        str(audio_path),
+                        "--apply-diarization",
+                        str(transcript_path),
+                        "--diarizer",
+                        "pyannote",
+                        "--no-review-speakers",
+                    ],
                 ),
                 patch("vtt_transcribe.handlers._lazy_import_diarization") as mock_lazy_import,
                 # Mock dependency check
@@ -437,7 +460,7 @@ class TestMainCliArgumentParsing:
             with (
                 patch(
                     "sys.argv",
-                    ["main.py", str(audio_path), "--apply-diarization", str(transcript_path)],
+                    ["main.py", str(audio_path), "--apply-diarization", str(transcript_path), "--diarizer", "pyannote"],
                 ),
                 patch("vtt_transcribe.handlers._lazy_import_diarization") as mock_lazy_import,
                 # Mock dependency check

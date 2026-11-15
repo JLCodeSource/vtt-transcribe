@@ -125,12 +125,27 @@ Environment Variables:
     # Diarization options
     diarize_group = parser.add_argument_group(
         "Speaker Diarization Options",
-        "Note: Diarization features require additional dependencies. Install with: pip install vtt-transcribe[diarization]",
+        "Note: Diarization features require additional dependencies. Install with: pip install vtt-transcribe[sherpa] "
+        "(default backend, no token needed) or pip install vtt-transcribe[diarization] (pyannote backend).",
     )
     diarize_group.add_argument(
         "--diarize",
         action="store_true",
-        help="Enable speaker diarization using pyannote.audio (requires diarization extras)",
+        help="Enable speaker diarization (requires the sherpa or diarization extras)",
+    )
+    diarize_group.add_argument(
+        "--diarizer",
+        choices=["auto", "sherpa", "pyannote"],
+        default="auto",
+        help=(
+            "Diarization backend: 'sherpa' (sherpa-onnx, CPU, no token, no torch), 'pyannote' (pyannote.audio,"
+            " needs HF_TOKEN, better with overlapping speech) or 'auto' (sherpa if installed, else pyannote)."
+        ),
+    )
+    diarize_group.add_argument(
+        "--num-speakers",
+        type=int,
+        help="Number of speakers, if known (sherpa backend; otherwise detected automatically)",
     )
     diarize_group.add_argument(
         "--device",

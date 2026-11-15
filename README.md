@@ -14,7 +14,7 @@ formatting verbose JSON transcripts into readable timestamped output.
  - Translation support: translate transcripts to any language using `--translate-to`
  - Prefer minute-aligned chunk durations for large audio files exceeding 25MB API limit
  - Transcribe audio via OpenAI's Whisper API with `verbose_json` response format
- - Speaker diarization using pyannote.audio to identify and label speakers in transcripts
+ - Speaker diarization to identify and label speakers: a light CPU backend (sherpa-onnx, default, no token) or pyannote.audio
  - Format transcripts into human-friendly lines: `[HH:MM:SS - HH:MM:SS] text` with optional speaker labels
  - Shift chunk-local timestamps into absolute timeline when chunking
  - Keep or delete intermediate audio/chunk files based on flags
@@ -31,8 +31,8 @@ formatting verbose JSON transcripts into readable timestamped output.
  - **ffmpeg** (required for video/audio processing via moviepy)
  - moviepy (audio/video helpers)
  - openai (Whisper API client)
- - pyannote.audio (speaker diarization, optional - requires [diarization] extra)
- - torch (required for pyannote.audio)
+ - sherpa-onnx (default speaker diarization backend, optional - requires the [sherpa] extra)
+ - pyannote.audio + torch (alternative diarization backend, optional - requires the [diarization] extra)
  - Dev / test: pytest, mypy, ruff, pre-commit, coverage, python-dotenv
 
 ## Prerequisites
@@ -49,7 +49,10 @@ formatting verbose JSON transcripts into readable timestamped output.
 
 ## Speaker Diarization
  - The speaker diarization feature (`--diarize`) identifies and labels different speakers in audio
- - **Requirements:**
+ - **Two backends** (`--diarizer auto|sherpa|pyannote`, default `auto` = sherpa if installed, else pyannote):
+   - **sherpa** (default): sherpa-onnx with the pyannote-segmentation-3.0 and NVIDIA TitaNet-small ONNX models. CPU only, **no Hugging Face token, no torch**, about 15x faster than real time on a laptop CPU. Install with `pip install vtt-transcribe[sherpa]`. The two models (about 46 MB) download once from the sherpa-onnx GitHub releases, are verified against pinned SHA-256 hashes and cached in `~/.cache/vtt-transcribe/models` (override with `VTT_MODEL_DIR`). Use `--num-speakers N` when you know the count. Measured on eight synthetic 3-minute LibriSpeech conversations (2-6 speakers, clean speech, no overlap): 12.7% diarization error rate. Overlapping speech is handled less well than by pyannote.
+   - **pyannote**: pyannote.audio 4.x on torch (`pip install vtt-transcribe[diarization]`, which also includes sherpa). Better with overlapping speech; supports GPU. Requirements below apply to this backend only.
+ - **Requirements (pyannote backend only):**
    - Hugging Face token (set `HF_TOKEN` environment variable or use `--hf-token` flag)
    - **Accept pyannote model terms**: Before using diarization, you must accept the terms for the following models on Hugging Face:
       - [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) ⭐ **Required** - main diarization model
@@ -88,7 +91,7 @@ uv pip install vtt-transcribe
 uv pip install vtt-transcribe[diarization]
 ```
 
-> **Note:** Installing with `[diarization]` extras adds large dependencies such as PyTorch and `pyannote.audio`, which significantly increases the download and install size of your environment. The actual diarization model weights are typically downloaded at runtime (e.g., via the Hugging Face cache) on first use, so overall disk usage for diarization (dependencies + cached models) can reach several GB. Only install these extras if you need speaker identification features.
+> **Note:** `pip install vtt-transcribe[sherpa]` is the light option (sherpa-onnx + numpy, about 50 MB of models on first use). Installing with `[diarization]` extras adds large dependencies such as PyTorch and `pyannote.audio`, which significantly increases the download and install size of your environment. The actual diarization model weights are typically downloaded at runtime (e.g., via the Hugging Face cache) on first use, so overall disk usage for diarization (dependencies + cached models) can reach several GB. Only install these extras if you need speaker identification features.
 
 ### Using Docker (Alternative)
 
@@ -174,7 +177,7 @@ This section is for contributors and developers who want to build and run the pr
 # Basic install (transcription only, no diarization)
 make install
 
-# OR: Install with diarization support (includes torch + pyannote.audio)
+# OR: Install with diarization support (includes sherpa-onnx, torch and pyannote.audio)
 make install-diarization
 ```
 
@@ -193,7 +196,7 @@ You can set environment variables in your shell or create a `.env` file in your 
 **Option 1: Shell environment**
 ```bash
 export OPENAI_API_KEY="your-openai-key"
-export HF_TOKEN="your-huggingface-token"  # Only needed for --diarize
+export HF_TOKEN="your-huggingface-token"  # Only needed for --diarize --diarizer pyannote
 ```
 
 **Option 2: .env file (automatically loaded)**
@@ -295,8 +298,10 @@ cat recording.mp3 | vtt | tee transcript.txt | grep "SPEAKER_00"
  - `--translate-to LANG`: translate transcript to target language (e.g., 'Spanish', 'French') after transcription
 
 **Diarization Options:**
- - `--diarize`: enable speaker diarization (requires `HF_TOKEN` and model access)
- - `--hf-token`: Hugging Face token for pyannote models (or set `HF_TOKEN` env var)
+ - `--diarize`: enable speaker diarization (sherpa backend by default: no token needed; pyannote backend needs `HF_TOKEN` and model access)
+ - `--diarizer {auto,sherpa,pyannote}`: diarization backend (default `auto`: sherpa if installed, else pyannote)
+ - `--num-speakers N`: number of speakers, if known (sherpa backend)
+ - `--hf-token`: Hugging Face token for the pyannote backend (or set `HF_TOKEN` env var)
  - `--device`: device for diarization (`auto`, `cuda`/`gpu`, or `cpu`; default: `auto`)
  - `--diarize-only`: run diarization on existing audio without transcription
  - `--apply-diarization PATH`: apply diarization to an existing transcript file

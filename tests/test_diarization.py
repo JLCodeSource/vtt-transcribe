@@ -28,7 +28,7 @@ class TestDiarizationImportHandling:
 
         # Mock the transcription to succeed so we can test diarization import failure
         # Simulate missing torch dependency (the actual scenario when optional deps not installed)
-        def mock_lazy_import() -> None:
+        def mock_lazy_import(backend: str = "pyannote") -> None:  # noqa: ARG001
             raise ImportError(DIARIZATION_DEPS_ERROR_MSG)
 
         with (
@@ -59,7 +59,7 @@ class TestDiarizationImportHandling:
         audio_file.write_text("dummy audio")
 
         # Simulate missing pyannote.audio dependency (the actual scenario)
-        def mock_lazy_import() -> None:
+        def mock_lazy_import(backend: str = "pyannote") -> None:  # noqa: ARG001
             raise ImportError(DIARIZATION_DEPS_ERROR_MSG)
 
         with (
@@ -82,7 +82,7 @@ class TestDiarizationImportHandling:
         transcript_file.write_text("dummy transcript")
 
         # Simulate missing torch dependency (the actual scenario)
-        def mock_lazy_import() -> None:
+        def mock_lazy_import(backend: str = "pyannote") -> None:  # noqa: ARG001
             raise ImportError(DIARIZATION_DEPS_ERROR_MSG)
 
         with (
@@ -489,6 +489,20 @@ def test_diarize_audio_other_value_error() -> None:
     with (
         patch("vtt_transcribe.diarization.Pipeline.from_pretrained", return_value=mock_pipeline),
         pytest.raises(ValueError, match="Some random ValueError"),
+    ):
+        diarizer.diarize_audio(Path("/fake/audio.mp3"))
+
+
+def test_diarize_audio_unexpected_pipeline_output() -> None:
+    """A pipeline result without .speaker_diarization is reported, not silently accepted."""
+    from vtt_transcribe.diarization import SpeakerDiarizer
+
+    diarizer = SpeakerDiarizer(hf_token="test_token")
+    mock_pipeline = MagicMock(return_value=object())
+
+    with (
+        patch("vtt_transcribe.diarization.Pipeline.from_pretrained", return_value=mock_pipeline),
+        pytest.raises(RuntimeError, match="Unexpected diarization output type"),
     ):
         diarizer.diarize_audio(Path("/fake/audio.mp3"))
 

@@ -42,6 +42,8 @@ def get_api_key(api_key_arg: str | None) -> str:
 def handle_diarization_modes(args: Namespace) -> bool:
     """Handle diarization-only and apply-diarization modes. Returns True if handled."""
     save_path = Path(args.save_transcript) if args.save_transcript else None
+    backend = getattr(args, "diarizer", "pyannote")
+    num_speakers = getattr(args, "num_speakers", None)
 
     # Handle diarization-only mode
     if args.diarize_only:
@@ -54,7 +56,9 @@ def handle_diarization_modes(args: Namespace) -> bool:
                 "no_review_speakers": args.no_review_speakers,
             },
         )
-        diarization_result = handle_diarize_only_mode(Path(args.input_file), args.hf_token, save_path, args.device)
+        diarization_result = handle_diarize_only_mode(
+            Path(args.input_file), args.hf_token, save_path, args.device, backend, num_speakers
+        )
 
         # Run review unless disabled
         if not args.no_review_speakers:
@@ -64,6 +68,8 @@ def handle_diarization_modes(args: Namespace) -> bool:
                 save_path=save_path,
                 device=args.device,
                 transcript=diarization_result,
+                backend=backend,
+                num_speakers=num_speakers,
             )
         return True
 
@@ -79,7 +85,7 @@ def handle_diarization_modes(args: Namespace) -> bool:
             },
         )
         apply_result = handle_apply_diarization_mode(
-            Path(args.input_file), Path(args.apply_diarization), args.hf_token, save_path, args.device
+            Path(args.input_file), Path(args.apply_diarization), args.hf_token, save_path, args.device, backend, num_speakers
         )
 
         # Run review unless disabled
@@ -90,6 +96,8 @@ def handle_diarization_modes(args: Namespace) -> bool:
                 save_path=save_path,
                 device=args.device,
                 transcript=apply_result,
+                backend=backend,
+                num_speakers=num_speakers,
             )
         return True
 
@@ -255,7 +263,7 @@ def main() -> None:
     # Check diarization dependencies if any diarization flag is used
     if args.diarize or args.diarize_only or args.apply_diarization:
         logger.debug("Checking diarization dependencies")
-        check_diarization_dependencies()
+        check_diarization_dependencies(getattr(args, "diarizer", "auto"))
 
     try:
         # Handle stdin mode: read binary data from stdin and create temp file

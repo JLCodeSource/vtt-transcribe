@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from vtt_transcribe.dependencies import resolve_diarizer
 from vtt_transcribe.logging_config import get_logger
 from vtt_transcribe.translator import AudioTranslator
 
@@ -21,9 +22,16 @@ TRANSCRIPT_EXTENSION = ".txt"
 # Error message for missing diarization dependencies
 DIARIZATION_DEPS_ERROR_MSG = (
     "Diarization dependencies not installed. "
-    "Install with: pip install vtt-transcribe[diarization] "
-    "or: uv pip install vtt-transcribe[diarization]"
+    "Install with: pip install vtt-transcribe[sherpa] (default backend) "
+    "or: pip install vtt-transcribe[diarization] (pyannote backend)"
 )
+
+
+def _build_diarizer(diarizer_class: Any, backend: str, hf_token: str | None, device: str, num_speakers: int | None) -> Any:
+    """Instantiate the diarizer for ``backend`` (only sherpa understands ``num_speakers``)."""
+    if resolve_diarizer(backend) == "sherpa":
+        return diarizer_class(hf_token=hf_token, device=device, num_speakers=num_speakers)
+    return diarizer_class(hf_token=hf_token, device=device)
 
 
 def save_transcript(output_path: Path, transcript: str) -> None:
@@ -54,7 +62,14 @@ def display_result(transcript: str) -> None:
     print(transcript)
 
 
-def handle_diarize_only_mode(input_path: Path, hf_token: str | None, save_path: Path | None, device: str = "auto") -> str:
+def handle_diarize_only_mode(
+    input_path: Path,
+    hf_token: str | None,
+    save_path: Path | None,
+    device: str = "auto",
+    backend: str = "pyannote",
+    num_speakers: int | None = None,
+) -> str:
     """Handle --diarize-only mode: run diarization without transcription.
 
     Returns:
@@ -75,14 +90,15 @@ def handle_diarize_only_mode(input_path: Path, hf_token: str | None, save_path: 
         msg = f"Audio file not found: {input_path}"
         raise FileNotFoundError(msg)
 
-    SpeakerDiarizer, format_diarization_output, _, _ = _lazy_import_diarization()  # noqa: N806
+    SpeakerDiarizer, format_diarization_output, _, _ = _lazy_import_diarization(backend)  # noqa: N806
     print(f"Running speaker diarization on: {input_path}")
-    print(f"Using device: {device}")
+    sherpa = resolve_diarizer(backend) == "sherpa"
+    print(f"Using device: {'cpu' if sherpa else device}")
 
-    # Show GPU info if using CUDA
+    # Show GPU info if using CUDA (pyannote only; sherpa runs on the CPU and never loads torch)
     gpu_memory_after: float | None = None
     torch_module = None
-    if device in ("cuda", "auto"):
+    if not sherpa and device in ("cuda", "auto"):
         import torch
 
         torch_module = torch
@@ -90,11 +106,11 @@ def handle_diarize_only_mode(input_path: Path, hf_token: str | None, save_path: 
             print(f"GPU: {torch.cuda.get_device_name(0)}")
             print(f"GPU memory before: {torch.cuda.memory_allocated(0) / 1024**2:.2f} MB")
 
-    diarizer = SpeakerDiarizer(hf_token=hf_token, device=device)
+    diarizer = _build_diarizer(SpeakerDiarizer, backend, hf_token, device, num_speakers)
     segments = diarizer.diarize_audio(input_path)
 
     # Show GPU memory after if using CUDA
-    if device in ("cuda", "auto") and torch_module is not None and torch_module.cuda.is_available():
+    if not sherpa and device in ("cuda", "auto") and torch_module is not None and torch_module.cuda.is_available():
         gpu_memory_after = torch_module.cuda.memory_allocated(0) / 1024**2
         print(f"GPU memory after: {gpu_memory_after:.2f} MB")
 
@@ -118,7 +134,13 @@ def handle_diarize_only_mode(input_path: Path, hf_token: str | None, save_path: 
 
 
 def handle_apply_diarization_mode(
-    input_path: Path, transcript_path: Path, hf_token: str | None, save_path: Path | None, device: str = "auto"
+    input_path: Path,
+    transcript_path: Path,
+    hf_token: str | None,
+    save_path: Path | None,
+    device: str = "auto",
+    backend: str = "pyannote",
+    num_speakers: int | None = None,
 ) -> str:
     """Handle --apply-diarization mode: apply diarization to existing transcript.
 
@@ -150,8 +172,8 @@ def handle_apply_diarization_mode(
     transcript = transcript_path.read_text()
 
     # Run diarization
-    SpeakerDiarizer, _, _, _ = _lazy_import_diarization()  # noqa: N806
-    diarizer = SpeakerDiarizer(hf_token=hf_token, device=device)
+    SpeakerDiarizer, _, _, _ = _lazy_import_diarization(backend)  # noqa: N806
+    diarizer = _build_diarizer(SpeakerDiarizer, backend, hf_token, device, num_speakers)
     print(f"Running speaker diarization on: {input_path}")
     segments = diarizer.diarize_audio(input_path)
 
@@ -176,7 +198,9 @@ def handle_apply_diarization_mode(
     return result
 
 
-def _load_transcript_from_input(input_path: Path, hf_token: str | None, device: str) -> str:
+def _load_transcript_from_input(
+    input_path: Path, hf_token: str | None, device: str, backend: str = "pyannote", num_speakers: int | None = None
+) -> str:
     """Load or generate transcript from input path."""
     is_transcript = input_path.suffix.lower() in [".txt", ".srt", ".vtt"]
 
@@ -185,8 +209,8 @@ def _load_transcript_from_input(input_path: Path, hf_token: str | None, device: 
         return input_path.read_text()
 
     # Run diarization on audio file
-    SpeakerDiarizer, format_diarization_output, _, _ = _lazy_import_diarization()  # noqa: N806
-    diarizer = SpeakerDiarizer(hf_token=hf_token, device=device)
+    SpeakerDiarizer, format_diarization_output, _, _ = _lazy_import_diarization(backend)  # noqa: N806
+    diarizer = _build_diarizer(SpeakerDiarizer, backend, hf_token, device, num_speakers)
     print(f"Running speaker diarization on: {input_path}")
     segments = diarizer.diarize_audio(input_path)
     return format_diarization_output(segments)
@@ -240,6 +264,8 @@ def handle_review_speakers(
     save_path: Path | None = None,
     device: str = "auto",
     transcript: str | None = None,
+    backend: str = "pyannote",
+    num_speakers: int | None = None,
 ) -> str:
     """Handle interactive speaker review and renaming for diarization workflows.
 
@@ -249,10 +275,12 @@ def handle_review_speakers(
 
     Args:
         input_path: Path to audio/transcript file (required if transcript is None).
-        hf_token: Hugging Face token for pyannote models (required if running diarization).
+        hf_token: Hugging Face token for pyannote models (pyannote backend only).
         save_path: Optional path to save final transcript.
         device: Device to use for diarization (auto/cuda/cpu).
         transcript: Pre-computed transcript string. If provided, skips diarization step.
+        backend: Diarization backend ("auto", "sherpa" or "pyannote").
+        num_speakers: Known number of speakers (sherpa backend only).
 
     Returns:
         Final transcript with speaker labels applied.
@@ -268,7 +296,7 @@ def handle_review_speakers(
         },
     )
 
-    _, _, _get_unique_speakers, get_speaker_context_lines = _lazy_import_diarization()
+    _, _, _get_unique_speakers, get_speaker_context_lines = _lazy_import_diarization(backend)
 
     # Determine final transcript source
     if transcript is not None:
@@ -280,7 +308,7 @@ def handle_review_speakers(
         msg = f"Input file not found: {input_path}"
         raise FileNotFoundError(msg)
     else:
-        final_transcript = _load_transcript_from_input(input_path, hf_token, device)
+        final_transcript = _load_transcript_from_input(input_path, hf_token, device, backend, num_speakers)
 
     # Extract and review speakers
     speakers = _extract_speakers_from_transcript(final_transcript)
@@ -307,8 +335,28 @@ def handle_review_speakers(
     return final_transcript
 
 
-def _lazy_import_diarization() -> tuple:
-    """Lazy import diarization module to avoid loading torch on --help."""
+def _lazy_import_diarization(backend: str = "pyannote") -> tuple:
+    """Lazy import the diarization backend to avoid loading torch/onnx on --help.
+
+    The default stays "pyannote" so existing callers are unchanged; the CLI passes its own
+    ``--diarizer`` value ("auto" unless overridden).
+    """
+    if resolve_diarizer(backend) == "sherpa":
+        try:
+            from vtt_transcribe.diarization_common import (
+                format_diarization_output,
+                get_speaker_context_lines,
+                get_unique_speakers,
+            )
+            from vtt_transcribe.sherpa_diarization import SherpaDiarizer
+        except ImportError as e:
+            raise ImportError(DIARIZATION_DEPS_ERROR_MSG) from e
+        return SherpaDiarizer, format_diarization_output, get_unique_speakers, get_speaker_context_lines
+    return _lazy_import_pyannote()
+
+
+def _lazy_import_pyannote() -> tuple:
+    """Lazy import the pyannote diarization module."""
     try:
         from vtt_transcribe.diarization import (
             SpeakerDiarizer,
@@ -461,8 +509,10 @@ def handle_standard_transcription(args: Any, api_key: str) -> str:
 
     # Apply diarization if requested
     if args.diarize:
-        SpeakerDiarizer, _, _, _ = _lazy_import_diarization()  # noqa: N806
-        diarizer = SpeakerDiarizer(hf_token=args.hf_token, device=args.device)
+        backend = getattr(args, "diarizer", "pyannote")
+        num_speakers = getattr(args, "num_speakers", None)
+        SpeakerDiarizer, _, _, _ = _lazy_import_diarization(backend)  # noqa: N806
+        diarizer = _build_diarizer(SpeakerDiarizer, backend, args.hf_token, args.device, num_speakers)
         # Determine the audio path used for transcription
         # After transcribe() has run, the audio file should exist at the expected location
         if input_path.suffix.lower() in VideoTranscriber.SUPPORTED_AUDIO_FORMATS:
@@ -487,6 +537,8 @@ def handle_standard_transcription(args: Any, api_key: str) -> str:
                 save_path=None,  # Don't auto-save during review, we'll save at end
                 device=args.device,
                 transcript=result,
+                backend=backend,
+                num_speakers=num_speakers,
             )
 
     # Apply text translation if requested
