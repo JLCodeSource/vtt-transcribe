@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Local Whisper engine.** `--engine {openai,local,auto}` (default `openai`, so existing behaviour is unchanged).
+  `local` transcribes with faster-whisper (CTranslate2) on the CPU or an NVIDIA GPU (`--device`), with no
+  OpenAI key and, combined with the sherpa diarizer, no Hugging Face token:
+  `vtt audio.mp3 --engine local --diarize`. `auto` picks local when installed and no API key is set.
+- `--model` (tiny, base, small (default), medium, large-v3, large-v3-turbo, or a local path). Models are cached in
+  `~/.cache/vtt-transcribe/models/whisper` (`VTT_MODEL_DIR` overrides the base directory).
+- New `local` extra (`pip install vtt-transcribe[local]`). `--translate` (speech to English) also works locally;
+  `--translate-to` still uses the OpenAI API.
+- Benchmark (178 s of speech, beam 1, int8; CPU limited to 4 threads, GPU is an RTX A1000 Laptop 4 GB with
+  int8_float16): tiny 0.016x / 0.007x real time (CPU / GPU), base 0.027x / 0.008x, small 0.081x / 0.019x
+  (440 MB VRAM), medium 0.046x on GPU (1.1 GB), large-v3-turbo 0.052x on GPU (1.2 GB).
+
 ## [0.5.0] - 2026-11-15
 
 ### Added

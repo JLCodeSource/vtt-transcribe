@@ -8,7 +8,12 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from vtt_transcribe.cli import create_parser
-from vtt_transcribe.dependencies import check_diarization_dependencies, check_ffmpeg_installed
+from vtt_transcribe.dependencies import (
+    check_diarization_dependencies,
+    check_ffmpeg_installed,
+    check_local_dependencies,
+    resolve_engine,
+)
 from vtt_transcribe.handlers import (
     display_result,
     handle_apply_diarization_mode,
@@ -37,6 +42,15 @@ def get_api_key(api_key_arg: str | None) -> str:
     source = "argument" if api_key_arg else "environment"
     logger.debug("API key retrieved", extra={"source": source})
     return api_key
+
+
+def _prepare_engine(args: Namespace) -> str | None:
+    """Resolve ``--engine`` and return the OpenAI key (optional for the local engine)."""
+    args.engine = resolve_engine(getattr(args, "engine", "openai"), args.api_key)
+    if args.engine == "local":
+        check_local_dependencies()
+        return args.api_key or os.environ.get("OPENAI_API_KEY")  # only --translate-to needs it
+    return get_api_key(args.api_key)
 
 
 def handle_diarization_modes(args: Namespace) -> bool:
@@ -278,8 +292,8 @@ def main() -> None:
             return
 
         # Standard transcription flow
-        api_key = get_api_key(args.api_key)
-        logger.info("Starting standard transcription")
+        api_key = _prepare_engine(args)
+        logger.info("Starting standard transcription", extra={"engine": args.engine})
         result = handle_standard_transcription(args, api_key)
         _output_result(result, stdin_mode=stdin_mode, save_path=args.save_transcript)
 

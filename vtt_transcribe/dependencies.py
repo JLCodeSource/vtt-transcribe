@@ -4,6 +4,7 @@ This module validates that required external dependencies (ffmpeg, torch, pyanno
 are installed before executing transcription workflows.
 """
 
+import os
 import shutil
 import sys
 from importlib.util import find_spec
@@ -81,3 +82,23 @@ def check_diarization_dependencies(diarizer: str = "auto") -> None:
         print(f"  Missing: {', '.join(missing)}", file=sys.stderr)
         print(f"Install with: {hint}\n", file=sys.stderr)
         sys.exit(1)
+
+
+def check_local_dependencies() -> None:
+    """Exit with install instructions when the local engine's faster-whisper is missing."""
+    if not local_available():
+        print("\nError: the local engine needs faster-whisper.", file=sys.stderr)
+        print("Install with: pip install vtt-transcribe[local]\n", file=sys.stderr)
+        sys.exit(1)
+
+
+def local_available() -> bool:
+    """True when faster-whisper is installed (checked without importing it)."""
+    return not _missing(("faster_whisper",))
+
+
+def resolve_engine(choice: str, api_key: str | None) -> str:
+    """Turn ``--engine`` into "openai" or "local". "auto" picks local when installed and no key is set."""
+    if choice != "auto":
+        return choice
+    return "local" if local_available() and not (api_key or os.environ.get("OPENAI_API_KEY")) else "openai"
