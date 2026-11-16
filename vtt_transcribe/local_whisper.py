@@ -44,7 +44,7 @@ def resolve_device(device: str) -> str:
     if device == "cpu" or os.environ.get("DISABLE_GPU") == "1":
         return "cpu"
     try:
-        import ctranslate2
+        import ctranslate2  # pyright: ignore[reportMissingImports]
 
         return "cuda" if ctranslate2.get_cuda_device_count() > 0 else "cpu"
     except Exception:
@@ -81,7 +81,7 @@ class LocalTranscriber(VideoTranscriber):
     def _get_model(self) -> Any:
         if self._model is None:
             try:
-                from faster_whisper import WhisperModel
+                from faster_whisper import WhisperModel  # pyright: ignore[reportMissingImports]
             except ImportError as e:
                 raise ImportError(LOCAL_DEPS_ERROR_MSG) from e
             self.model_dir.mkdir(parents=True, exist_ok=True)
