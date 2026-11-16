@@ -111,3 +111,8 @@ class TestMore:
     def test_translate_segments_line_mismatch(self) -> None:
         with pytest.raises(speakers.SpeakerError, match="lines"):
             speakers.translate_segments(speakers.parse_transcript(TRANSCRIPT), lambda _t: "[00:00:00 - 00:00:01] x")
+
+
+def test_parse_diarize_only_line_without_colon() -> None:
+    segs = speakers.parse_transcript("[00:00:00 - 00:00:04] SPEAKER_01\n[00:04 - 00:06] SPEAKER_00: hi")
+    assert [(s["speaker"], s["text"]) for s in segs] == [("SPEAKER_01", ""), ("SPEAKER_00", "hi")]

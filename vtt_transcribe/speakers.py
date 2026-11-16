@@ -12,10 +12,14 @@ import re
 from collections.abc import Callable
 from typing import Any
 
+from vtt_transcribe.transcript_formatter import TranscriptFormatter
+
 Segment = dict[str, Any]
 
 # core emits "[HH:MM:SS - HH:MM:SS] SPEAKER_00: text"; older/other output may use MM:SS and omit the speaker
-_LINE = re.compile(r"^\[(?:(\d{2}):)?(\d{2}):(\d{2})\s*-\s*(?:(\d{2}):)?(\d{2}):(\d{2})\]\s*(?:(SPEAKER_\d+):\s*)?(.*)$")
+_LINE = re.compile(
+    r"^\[(?:(\d{2}):)?(\d{2}):(\d{2})\s*-\s*(?:(\d{2}):)?(\d{2}):(\d{2})\]\s*(?:(SPEAKER_\d+)(?::\s*|\s*$))?(.*)$"
+)
 _ID = re.compile(r"^SPEAKER_(\d+)$")
 
 SAMPLES_PER_SPEAKER = 3
@@ -204,10 +208,8 @@ def _line(seg: Segment) -> str:
 def to_result(segments: list[Segment]) -> str:
     """Core-style timestamped transcript (``[HH:MM:SS - HH:MM:SS] Name: text``), used as the job ``result``."""
 
-    def hms(t: float) -> str:
-        return _clock(t)[:8]
-
-    return "\n".join(f"[{hms(s['start'])} - {hms(s['end'])}] {_line(s)}" for s in segments)
+    fmt = TranscriptFormatter.format_timestamp
+    return "\n".join(f"[{fmt(s['start'])} - {fmt(s['end'])}] {_line(s)}" for s in segments)
 
 
 def to_txt(segments: list[Segment]) -> str:

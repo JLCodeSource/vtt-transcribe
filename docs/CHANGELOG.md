@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `vtt_transcribe.speakers`: pure helpers for speaker review shared by the CLI and the server (parse a transcript,
-  rename, merge and split speakers, apply names, export as txt/SRT/VTT).
+  rename, merge and split speakers, apply names, export as txt/SRT/VTT), plus `translate_segments` (segment-wise
+  translation with any text-to-text translator, keeping original and translation per segment).
 - **Local Whisper engine.** `--engine {openai,local,auto}` (default `openai`, so existing behaviour is unchanged).
   `local` transcribes with faster-whisper (CTranslate2) on the CPU or an NVIDIA GPU (`--device`), with no
   OpenAI key and, combined with the sherpa diarizer, no Hugging Face token:
