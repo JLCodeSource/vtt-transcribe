@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `--format {txt,srt,vtt}` (also chosen by a `.srt`/`.vtt` extension on `-s`) and repeatable
+  `--speaker-name ID=NAME` for named-speaker subtitle export from the CLI, built on `vtt_transcribe.speakers`.
 - `vtt_transcribe.speakers`: pure helpers for speaker review shared by the CLI and the server (parse a transcript,
   rename, merge and split speakers, apply names, export as txt/SRT/VTT), plus `translate_segments` (segment-wise
   translation with any text-to-text translator, keeping original and translation per segment).

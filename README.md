@@ -309,6 +309,12 @@ cat recording.mp3 | vtt | tee transcript.txt | grep "SPEAKER_00"
  - `-o, --output-audio`: path for extracted audio file (defaults to input name with `.mp3`; not allowed if input is already audio)
  - `-s, --save-transcript`: path to save the transcript (will ensure `.txt` extension)
 
+**Output Formats and Speaker Names:**
+ - `--format {txt,srt,vtt}`: output format (default `txt`; a `.srt` or `.vtt` extension on `-s` selects it automatically). SRT cues read `Name: text`, VTT uses `<v Name>` voice tags.
+ - `--speaker-name ID=NAME`: name a speaker, e.g. `--speaker-name SPEAKER_00=Alice` (repeatable). Unnamed speakers become `Speaker N`. Use it with `--no-review-speakers` (the interactive review renames speakers in the text instead).
+ - Example: `vtt talk.mp3 --engine local --diarize --no-review-speakers --speaker-name SPEAKER_00=Alice -s talk.srt`
+ - The same rules are available to other Python code as `vtt_transcribe.speakers` (parse, rename, merge, split, export, `translate_segments`).
+
 **Processing Options:**
  - `-f, --force`: re-extract audio even if it already exists
  - `--delete-audio`: delete audio files after transcription (default: keep them)

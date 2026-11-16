@@ -19,6 +19,7 @@ Examples:
   %(prog)s audio.mp3 --translate-to French     # Transcribe and translate to French
   %(prog)s audio.mp3 --diarize                 # Audio with speaker identification
   %(prog)s audio.mp3 --engine local --diarize  # No API key or HF token: local Whisper + sherpa diarization
+  %(prog)s audio.mp3 --diarize --speaker-name SPEAKER_00=Alice -s talk.srt  # Named speakers, SRT subtitles
   %(prog)s video.mp4 --diarize -s output.txt   # Save diarized transcript
   %(prog)s audio.mp3 --diarize-only            # Only identify speakers
   %(prog)s audio.mp3 --apply-diarization transcript.txt  # Add speakers to existing transcript
@@ -102,7 +103,18 @@ Environment Variables:
     io_group.add_argument(
         "-s",
         "--save-transcript",
-        help="Path to save the transcript to a file",
+        help="Path to save the transcript to a file (a .srt or .vtt extension selects that format)",
+    )
+    io_group.add_argument(
+        "--format",
+        choices=["txt", "srt", "vtt"],
+        help="Output format: txt (default, timestamped lines), srt or vtt subtitles (default follows the -s extension)",
+    )
+    io_group.add_argument(
+        "--speaker-name",
+        action="append",
+        metavar="ID=NAME",
+        help="Name a speaker in the output, e.g. --speaker-name SPEAKER_00=Alice (repeatable; others become 'Speaker N')",
     )
 
     # Processing options

@@ -34,9 +34,9 @@ def _build_diarizer(diarizer_class: Any, backend: str, hf_token: str | None, dev
 
 
 def save_transcript(output_path: Path, transcript: str) -> None:
-    """Save transcript to a file, ensuring .txt extension and trailing newline."""
+    """Save transcript to a file (.txt unless .srt/.vtt is given), with a trailing newline."""
     # Ensure output path has .txt extension
-    if output_path.suffix.lower() != ".txt":
+    if output_path.suffix.lower() not in (".txt", ".srt", ".vtt"):
         output_path = output_path.with_suffix(TRANSCRIPT_EXTENSION)
     if not transcript.endswith("\n"):
         transcript += "\n"
