@@ -214,14 +214,26 @@ class TestHandlers:
         assert "Hello there." in out
         assert model.transcribe.call_args.kwargs["task"] == "translate"
 
-    def test_translate_to_needs_key(self, audio: Path) -> None:
+    def test_translate_to_uses_local_translator(self, audio: Path) -> None:
         model = _fake_model()
         with (
             patch("vtt_transcribe.local_whisper.LocalTranscriber._get_model", return_value=model),
             patch("vtt_transcribe.local_whisper.load_audio", return_value="pcm"),
+            patch("vtt_transcribe.local_translate.LocalTextTranslator") as translator_cls,
+        ):
+            translator_cls.return_value.translate_text.return_value = "bonjour"
+            out = handlers.handle_standard_transcription(_args(input_file=str(audio), translate_to="French"), None)
+        assert out == "bonjour"
+        assert translator_cls.call_args.kwargs["source_language"] == "en"
+
+    def test_translate_to_openai_needs_key(self, audio: Path) -> None:
+        with (
+            patch("vtt_transcribe.handlers.VideoTranscriber", create=True),
+            patch.object(handlers, "_make_transcriber", return_value=MagicMock(transcribe=lambda *_a, **_k: "x")),
+            patch.object(handlers, "_detect_or_override_language", return_value=(None, "en")),
             pytest.raises(ValueError, match="--translate-to"),
         ):
-            handlers.handle_standard_transcription(_args(input_file=str(audio), translate_to="French"), None)
+            handlers.handle_standard_transcription(_args(input_file=str(audio), engine="openai", translate_to="French"), None)
 
     def test_openai_engine_requires_key(self, audio: Path) -> None:
         with pytest.raises(ValueError, match="API key"):

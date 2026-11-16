@@ -205,7 +205,8 @@ vtt audio.mp3 --engine local --model base --device cpu
  - `--model`: `tiny`, `base`, `small` (default), `medium`, `large-v3`, `large-v3-turbo`, or a path to a CTranslate2 model.
  - `--device {auto,cuda,gpu,cpu}`: `auto` uses an NVIDIA GPU when CTranslate2 can see one (needs the CUDA 12 cuBLAS and cuDNN 9 libraries, e.g. `pip install nvidia-cublas-cu12 "nvidia-cudnn-cu12==9.*"`), otherwise the CPU. Quantisation is int8 on the CPU and int8_float16 on the GPU.
  - Models download once from the public `Systran/faster-whisper-*` Hugging Face repositories (no token) into `~/.cache/vtt-transcribe/models/whisper` (`VTT_MODEL_DIR` overrides the base directory).
- - Output has the same `[HH:MM:SS - HH:MM:SS] text` lines, so `--diarize`, `--language` and `--translate` (Whisper speech-to-English) work as before. `--translate-to` is still an OpenAI call and needs a key.
+ - Output has the same `[HH:MM:SS - HH:MM:SS] text` lines, so `--diarize`, `--language` and `--translate` (Whisper speech-to-English) work as before.
+ - `--translate-to LANG` also runs locally with `--engine local`: Meta's MIT-licensed M2M100 418M (CTranslate2 int8, about 490 MB, about 100 languages, any pair), downloaded once from a pinned revision of a public Hugging Face repository into `~/.cache/vtt-transcribe/models/translate`. Timestamps and speaker labels are kept and each line is translated on its own, so quality is below the OpenAI engine on context-dependent sentences. Speed: 60 transcript lines in about 12 s on 4 CPU threads and 1.6 s on an RTX A1000. Needs `sentencepiece`, which the `local` extra installs. With `--engine openai`, `--translate-to` still needs an API key.
  - Measured on 3 minutes of speech (beam size 1, int8): `small` runs at about 0.08x real time on 4 CPU threads and 0.02x on an RTX A1000 Laptop GPU (440 MB VRAM); `base` about 0.03x on CPU; `tiny` 0.016x. See the 0.6.0 changelog for the full table.
 
 ## Setup Environment Variables

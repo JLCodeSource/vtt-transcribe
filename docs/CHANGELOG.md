@@ -14,8 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `vtt audio.mp3 --engine local --diarize`. `auto` picks local when installed and no API key is set.
 - `--model` (tiny, base, small (default), medium, large-v3, large-v3-turbo, or a local path). Models are cached in
   `~/.cache/vtt-transcribe/models/whisper` (`VTT_MODEL_DIR` overrides the base directory).
-- New `local` extra (`pip install vtt-transcribe[local]`). `--translate` (speech to English) also works locally;
-  `--translate-to` still uses the OpenAI API.
+- New `local` extra (`pip install vtt-transcribe[local]`). `--translate` (speech to English) also works locally.
+- **Local `--translate-to`.** With `--engine local`, text translation uses Meta's MIT-licensed M2M100 418M via
+  CTranslate2 int8 (about 490 MB, about 100 languages, any pair; NLLB was rejected for its CC-BY-NC licence). The
+  model downloads once from a pinned revision into `~/.cache/vtt-transcribe/models/translate`; timestamps and
+  speaker labels are preserved. 60 lines take about 12 s on 4 CPU threads and 1.6 s on an RTX A1000. The `local`
+  extra adds `sentencepiece`. With `--engine openai`, `--translate-to` still uses the OpenAI API.
 - Benchmark (178 s of speech, beam 1, int8; CPU limited to 4 threads, GPU is an RTX A1000 Laptop 4 GB with
   int8_float16): tiny 0.016x / 0.007x real time (CPU / GPU), base 0.027x / 0.008x, small 0.081x / 0.019x
   (440 MB VRAM), medium 0.046x on GPU (1.1 GB), large-v3-turbo 0.052x on GPU (1.2 GB).

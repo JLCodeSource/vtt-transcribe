@@ -492,6 +492,20 @@ def _translate_audio(args: Any, api_key: str | None) -> str:
     return result
 
 
+def _translate_transcript(args: Any, result: str, api_key: str | None, source_language: str | None) -> str:
+    """Handle --translate-to: local M2M100 model with ``--engine local``, else the OpenAI API."""
+    print(f"\nTranslating transcript to {args.translate_to}...")
+    if getattr(args, "engine", "openai") == "local":
+        from vtt_transcribe.local_translate import LocalTextTranslator
+
+        local_translator = LocalTextTranslator(source_language=source_language, device=getattr(args, "device", "auto"))
+        return local_translator.translate_text(result, args.translate_to, speakers=bool(args.diarize))
+    if not api_key:
+        msg = "--translate-to with the openai engine needs an API key (set OPENAI_API_KEY or pass --api-key)"
+        raise ValueError(msg)
+    return AudioTranslator(api_key).translate_text(result, target_language=args.translate_to)
+
+
 def handle_standard_transcription(args: Any, api_key: str | None) -> str:
     """Handle standard transcription workflow with optional diarization and translation.
 
@@ -570,12 +584,7 @@ def handle_standard_transcription(args: Any, api_key: str | None) -> str:
 
     # Apply text translation if requested
     if args.translate_to:
-        if not api_key:
-            msg = "--translate-to uses the OpenAI API and needs an API key (set OPENAI_API_KEY or pass --api-key)"
-            raise ValueError(msg)
-        translator = AudioTranslator(api_key)
-        print(f"\nTranslating transcript to {args.translate_to}...")
-        result = translator.translate_text(result, target_language=args.translate_to)
+        result = _translate_transcript(args, result, api_key, language_to_use or _detected_language)
 
     duration = time.time() - start_time
     logger.info(
