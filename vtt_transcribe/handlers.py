@@ -1,6 +1,5 @@
 """Handler functions for different transcription and diarization workflows."""
 
-import re
 import sys
 import time
 from pathlib import Path
@@ -218,18 +217,9 @@ def _load_transcript_from_input(
 
 def _extract_speakers_from_transcript(transcript: str) -> list[str]:
     """Extract unique speaker labels from transcript in order of appearance."""
-    speakers = []
-    seen = set()
-    for line in transcript.split("\n"):
-        # Match pattern: [HH:MM:SS - HH:MM:SS] or [MM:SS - MM:SS] SPEAKER_XX: text (with colon)
-        # or [HH:MM:SS - HH:MM:SS] / [MM:SS - MM:SS] SPEAKER_XX (without colon, from diarization-only output)
-        match = re.match(r"\[(?:\d{2}:)?\d{2}:\d{2} - (?:\d{2}:)?\d{2}:\d{2}\]\s+(SPEAKER_\d+):?", line)
-        if match:
-            speaker = match.group(1)
-            if speaker not in seen:
-                seen.add(speaker)
-                speakers.append(speaker)
-    return speakers
+    from vtt_transcribe import speakers
+
+    return speakers.speaker_ids(speakers.parse_transcript(transcript))
 
 
 def _review_speaker_interactively(speaker: str, transcript: str, get_speaker_context_lines: Any) -> tuple[str, str | None]:
