@@ -57,8 +57,8 @@ jobs:
           SIZE=$(docker image inspect vtt-transcribe:test --format='{{.Size}}')
           SIZE_MB=$((SIZE / 1024 / 1024))
           echo "Base image size: ${SIZE_MB}MB"
-          if [ $SIZE_MB -gt 1000 ]; then
-            echo "⚠ Warning: Base image size exceeds 1GB"
+          if [ $SIZE_MB -gt 1500 ]; then
+            echo "⚠ Warning: Base image size exceeds 1.5GB"
           fi
       
       - name: Test stdin mode - Basic functionality

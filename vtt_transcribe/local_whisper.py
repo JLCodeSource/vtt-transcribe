@@ -13,6 +13,7 @@ import os
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -74,6 +75,7 @@ class LocalTranscriber(VideoTranscriber):
         self.api_key = ""
         self.model_name = model or DEFAULT_MODEL
         self.device = resolve_device(device)
+        self._auto = device == "auto"
         self.compute_type = "int8_float16" if self.device == "cuda" else "int8"
         self.model_dir = model_dir or whisper_model_dir()
         self._model: Any = None
@@ -94,13 +96,29 @@ class LocalTranscriber(VideoTranscriber):
             )
         return self._model
 
+    def _with_cpu_fallback(self, work: Callable[[Any], Any]) -> Any:
+        """Run ``work(model)``; with ``--device auto`` on a GPU, retry on the CPU if the CUDA libraries are unusable.
+
+        CTranslate2 loads its CUDA libraries (cuBLAS 12, cuDNN 9) lazily, so a missing or mismatched install only
+        fails at the first transcription. An explicit ``--device cuda`` still raises.
+        """
+        try:
+            return work(self._get_model())
+        except RuntimeError as e:
+            if not (self._auto and self.device == "cuda"):
+                raise
+            logger.warning("CUDA unavailable for the local engine, falling back to the CPU", extra={"error": str(e)})
+            print(f"CUDA unavailable ({e}); using the CPU instead.", file=sys.stderr)
+            self.device, self.compute_type, self._model = "cpu", "int8", None
+            return work(self._get_model())
+
     def detect_language(self, audio_path: Path) -> str:
         """Detect the spoken language from the first 30 seconds."""
         if not audio_path.exists():
             msg = f"Audio file not found: {audio_path}"
             raise FileNotFoundError(msg)
         audio = load_audio(audio_path)[: DETECT_SECONDS * SAMPLE_RATE]
-        language, _probability, _all = self._get_model().detect_language(audio)
+        language, _probability, _all = self._with_cpu_fallback(lambda m: m.detect_language(audio))
         return str(language)
 
     def _run(self, audio_path: Path, *, language: str | None, task: str) -> str:
@@ -109,7 +127,12 @@ class LocalTranscriber(VideoTranscriber):
             raise FileNotFoundError(msg)
         start = time.time()
         audio = load_audio(audio_path)
-        segments, info = self._get_model().transcribe(audio, language=language, task=task, beam_size=1, vad_filter=True)
+
+        def work(model: Any) -> tuple[list[Any], Any]:
+            segments, info = model.transcribe(audio, language=language, task=task, beam_size=1, vad_filter=True)
+            return list(segments), info  # consume the lazy generator here so CUDA errors surface inside the fallback
+
+        segments, info = self._with_cpu_fallback(work)
         payload = {"segments": [{"start": s.start, "end": s.end, "text": s.text} for s in segments]}
         logger.info(
             "Local transcription complete",

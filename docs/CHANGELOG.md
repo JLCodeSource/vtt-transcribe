@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- The Docker images now include the `local` extra (faster-whisper, sentencepiece), and the base image also
+  includes `sherpa`: `docker run -t jlcodesource/vtt-transcribe ... --engine local --diarize` works with no
+  OpenAI key or Hugging Face token. Mount a volume and set `VTT_MODEL_DIR` to keep downloaded models.
+
+### Fixed
+- `--engine local` with `--device auto` on a GPU host without the CUDA 12 libraries (cuBLAS 12, cuDNN 9) crashed
+  at the first transcription ("libcublas.so.12 is not found"). It now warns and falls back to the CPU; an explicit
+  `--device cuda` still raises. The diarization-gpu image ships CUDA 13 libraries, so it runs the local engine on
+  the CPU.
+
 ## [0.6.0] - 2026-11-16
 
 ### Added

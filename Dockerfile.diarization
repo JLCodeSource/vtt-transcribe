@@ -22,7 +22,7 @@ COPY pyproject.toml uv.lock README.md ./
 # torch/torchaudio (installed from the CPU index) and everything else. The
 # CUDA-only packages that the PyPI torch wheel pulls in (nvidia-*, cuda-*, triton) are
 # dropped: the CPU wheels do not use them.
-RUN uv export --format requirements-txt --no-hashes --no-emit-project --extra diarization \
+RUN uv export --format requirements-txt --no-hashes --no-emit-project --extra diarization --extra local \
         > /tmp/requirements-diarization.txt \
     && grep -E '^(torch|torchaudio)==' /tmp/requirements-diarization.txt > /tmp/requirements-torch.txt \
     && grep -v -E '^(torch|torchaudio|triton|nvidia-[a-z0-9-]+|cuda-(bindings|pathfinder|toolkit))==' /tmp/requirements-diarization.txt \
