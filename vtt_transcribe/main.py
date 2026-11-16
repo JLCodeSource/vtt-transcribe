@@ -146,8 +146,57 @@ def _validate_stdin_mode(args: Namespace, parser: ArgumentParser, *, stdin_mode:
         parser.error(f"stdin mode is incompatible with: {', '.join(incompatible_flags)}")
 
 
-def _output_result(result: str, *, stdin_mode: bool, save_path: str | None) -> None:
+def _parse_speaker_names(entries: list[str] | None) -> dict[str, str]:
+    """Parse repeated ``--speaker-name ID=NAME`` options into a ``{speaker_id: name}`` map."""
+    names: dict[str, str] = {}
+    for entry in entries or []:
+        speaker_id, sep, name = entry.partition("=")
+        if not sep or not speaker_id.strip() or not name.strip():
+            msg = f"Invalid --speaker-name {entry!r}; expected ID=NAME, e.g. SPEAKER_00=Alice"
+            raise ValueError(msg)
+        names[speaker_id.strip()] = name.strip()
+    return names
+
+
+def _export_format(fmt: str | None, save_path: str | None) -> str:
+    """``--format`` if given, else the ``-s`` file extension (.srt/.vtt), else txt."""
+    if fmt:
+        return fmt
+    suffix = Path(save_path).suffix.lower().lstrip(".") if save_path else ""
+    return suffix if suffix in ("srt", "vtt") else "txt"
+
+
+def _render_export(result: str, fmt: str, names: dict[str, str]) -> str:
+    """Render a timestamped transcript as txt/srt/vtt with speaker names (unchanged if nothing to do)."""
+    from vtt_transcribe import speakers
+
+    if fmt == "txt" and not names:
+        return result
+    segments = speakers.parse_transcript(result)
+    if not segments:
+        logger.warning("No timestamped lines found; output left unformatted")
+        return result
+    known = set(speakers.speaker_ids(segments))
+    unknown = sorted(set(names) - known)
+    if unknown:
+        msg = (
+            f"--speaker-name for unknown speaker(s) {', '.join(unknown)}; transcript has: {', '.join(sorted(known)) or 'none'}"
+        )
+        raise ValueError(msg)
+    labelled = speakers.labelled(segments, names)
+    return {"txt": speakers.to_result, "srt": speakers.to_srt, "vtt": speakers.to_vtt}[fmt](labelled)
+
+
+def _output_result(
+    result: str,
+    *,
+    stdin_mode: bool,
+    save_path: str | None,
+    fmt: str | None = None,
+    speaker_names: dict[str, str] | None = None,
+) -> None:
     """Output transcription result to stdout or display, and optionally save."""
+    result = _render_export(result, _export_format(fmt, save_path), speaker_names or {})
     if stdin_mode:
         sys.stdout.write(result)
         # Ensure output ends with a newline to prevent shell prompt on same line
@@ -287,6 +336,8 @@ def main() -> None:
             # Override args.input_file to use the temp file
             args.input_file = str(temp_file_path)
 
+        speaker_names = _parse_speaker_names(args.speaker_name)
+
         # Handle diarization modes first (they don't require OpenAI API key)
         if handle_diarization_modes(args):
             return
@@ -295,7 +346,13 @@ def main() -> None:
         api_key = _prepare_engine(args)
         logger.info("Starting standard transcription", extra={"engine": args.engine})
         result = handle_standard_transcription(args, api_key)
-        _output_result(result, stdin_mode=stdin_mode, save_path=args.save_transcript)
+        _output_result(
+            result,
+            stdin_mode=stdin_mode,
+            save_path=args.save_transcript,
+            fmt=args.format,
+            speaker_names=speaker_names,
+        )
 
     except FileNotFoundError as e:
         logger.exception("File not found", extra={"error": str(e)})
