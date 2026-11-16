@@ -14,6 +14,7 @@ formatting verbose JSON transcripts into readable timestamped output.
  - Translation support: translate transcripts to any language using `--translate-to`
  - Prefer minute-aligned chunk durations for large audio files exceeding 25MB API limit
  - Transcribe audio via OpenAI's Whisper API with `verbose_json` response format
+ - Or transcribe fully locally with `--engine local` (faster-whisper, CPU or GPU, no API key; `pip install vtt-transcribe[local]`)
  - Speaker diarization to identify and label speakers: a light CPU backend (sherpa-onnx, default, no token) or pyannote.audio
  - Format transcripts into human-friendly lines: `[HH:MM:SS - HH:MM:SS] text` with optional speaker labels
  - Shift chunk-local timestamps into absolute timeline when chunking
@@ -31,6 +32,7 @@ formatting verbose JSON transcripts into readable timestamped output.
  - **ffmpeg** (required for video/audio processing via moviepy)
  - moviepy (audio/video helpers)
  - openai (Whisper API client)
+ - faster-whisper (local Whisper engine, optional - requires the [local] extra)
  - sherpa-onnx (default speaker diarization backend, optional - requires the [sherpa] extra)
  - pyannote.audio + torch (alternative diarization backend, optional - requires the [diarization] extra)
  - Dev / test: pytest, mypy, ruff, pre-commit, coverage, python-dotenv
@@ -189,6 +191,23 @@ make install-diarization
 make test
 ```
 
+## Local transcription (no OpenAI key)
+
+`vtt audio.mp3` uses the OpenAI Whisper API by default. To transcribe on your own machine instead:
+
+```bash
+pip install "vtt-transcribe[local,sherpa]"
+vtt audio.mp3 --engine local --diarize      # no OPENAI_API_KEY, no HF token
+vtt audio.mp3 --engine local --model base --device cpu
+```
+
+ - `--engine {openai,local,auto}`: default `openai` (unchanged). `auto` uses the local engine when faster-whisper is installed and no API key is set.
+ - `--model`: `tiny`, `base`, `small` (default), `medium`, `large-v3`, `large-v3-turbo`, or a path to a CTranslate2 model.
+ - `--device {auto,cuda,gpu,cpu}`: `auto` uses an NVIDIA GPU when CTranslate2 can see one (needs the CUDA 12 cuBLAS and cuDNN 9 libraries, e.g. `pip install nvidia-cublas-cu12 "nvidia-cudnn-cu12==9.*"`), otherwise the CPU. Quantisation is int8 on the CPU and int8_float16 on the GPU.
+ - Models download once from the public `Systran/faster-whisper-*` Hugging Face repositories (no token) into `~/.cache/vtt-transcribe/models/whisper` (`VTT_MODEL_DIR` overrides the base directory).
+ - Output has the same `[HH:MM:SS - HH:MM:SS] text` lines, so `--diarize`, `--language` and `--translate` (Whisper speech-to-English) work as before. `--translate-to` is still an OpenAI call and needs a key.
+ - Measured on 3 minutes of speech (beam size 1, int8): `small` runs at about 0.08x real time on 4 CPU threads and 0.02x on an RTX A1000 Laptop GPU (440 MB VRAM); `base` about 0.03x on CPU; `tiny` 0.016x. See the 0.6.0 changelog for the full table.
+
 ## Setup Environment Variables
 
 You can set environment variables in your shell or create a `.env` file in your project directory:
@@ -283,7 +302,9 @@ cat recording.mp3 | vtt | tee transcript.txt | grep "SPEAKER_00"
 
 **Input/Output:**
  - `input_file`: positional path to the input video or audio file (.mp4, .mp3, .wav, .ogg, .m4a)
- - `-k, --api-key`: OpenAI API key (or set `OPENAI_API_KEY` env var)
+ - `-k, --api-key`: OpenAI API key (or set `OPENAI_API_KEY` env var); not needed with `--engine local`
+ - `--engine {openai,local,auto}`: transcription engine (default `openai`); see [Local transcription](#local-transcription-no-openai-key)
+ - `--model`: local engine model (default `small`)
  - `-o, --output-audio`: path for extracted audio file (defaults to input name with `.mp3`; not allowed if input is already audio)
  - `-s, --save-transcript`: path to save the transcript (will ensure `.txt` extension)
 
@@ -302,7 +323,7 @@ cat recording.mp3 | vtt | tee transcript.txt | grep "SPEAKER_00"
  - `--diarizer {auto,sherpa,pyannote}`: diarization backend (default `auto`: sherpa if installed, else pyannote)
  - `--num-speakers N`: number of speakers, if known (sherpa backend)
  - `--hf-token`: Hugging Face token for the pyannote backend (or set `HF_TOKEN` env var)
- - `--device`: device for diarization (`auto`, `cuda`/`gpu`, or `cpu`; default: `auto`)
+ - `--device`: device for the local engine and pyannote diarization (`auto`, `cuda`/`gpu`, or `cpu`; default: `auto`)
  - `--diarize-only`: run diarization on existing audio without transcription
  - `--apply-diarization PATH`: apply diarization to an existing transcript file
  - `--no-review-speakers`: skip interactive speaker review (default: review is enabled)

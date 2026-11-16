@@ -18,6 +18,7 @@ Examples:
   %(prog)s video.mp4 --language es             # Manual language override (Spanish)
   %(prog)s audio.mp3 --translate-to French     # Transcribe and translate to French
   %(prog)s audio.mp3 --diarize                 # Audio with speaker identification
+  %(prog)s audio.mp3 --engine local --diarize  # No API key or HF token: local Whisper + sherpa diarization
   %(prog)s video.mp4 --diarize -s output.txt   # Save diarized transcript
   %(prog)s audio.mp3 --diarize-only            # Only identify speakers
   %(prog)s audio.mp3 --apply-diarization transcript.txt  # Add speakers to existing transcript
@@ -42,7 +43,8 @@ Docker Usage with Stdin:
 Environment Variables:
   OPENAI_API_KEY    OpenAI API key for transcription
   HF_TOKEN          Hugging Face token for diarization (requires model access)
-  DISABLE_GPU       Set to 1 to force CPU usage for diarization
+  DISABLE_GPU       Set to 1 to force CPU usage for diarization and the local engine
+  VTT_MODEL_DIR     Where downloaded models are cached (default ~/.cache/vtt-transcribe/models)
         """,
     )
 
@@ -72,6 +74,22 @@ Environment Variables:
     api_group.add_argument(
         "--hf-token",
         help="Hugging Face token for pyannote.audio models (defaults to HF_TOKEN environment variable)",
+    )
+
+    # Transcription engine
+    engine_group = parser.add_argument_group("Transcription Engine")
+    engine_group.add_argument(
+        "--engine",
+        choices=["openai", "local", "auto"],
+        default="openai",
+        help=(
+            "Transcription engine: 'openai' (Whisper API, needs OPENAI_API_KEY; default), 'local' (faster-whisper on this"
+            " machine, no key; pip install vtt-transcribe[local]) or 'auto' (local if installed and no API key is set)."
+        ),
+    )
+    engine_group.add_argument(
+        "--model",
+        help="Local engine model: tiny, base, small (default), medium, large-v3, large-v3-turbo, or a local model path",
     )
 
     # Input/Output options
@@ -152,7 +170,7 @@ Environment Variables:
         choices=["auto", "cuda", "gpu", "cpu"],
         default="auto",
         help=(
-            "Device for diarization: 'auto' (GPU if available), 'gpu'/'cuda' (force GPU), 'cpu'."
+            "Device for the local engine and pyannote diarization: 'auto' (GPU if available), 'gpu'/'cuda' (force GPU), 'cpu'."
             " Set DISABLE_GPU=1 to force CPU."
         ),
     )

@@ -440,7 +440,59 @@ def _detect_or_override_language(args: Any, transcriber: Any, input_path: Path) 
     return detected_language, None  # Let Whisper detect it during transcription too
 
 
-def handle_standard_transcription(args: Any, api_key: str) -> str:
+def _make_transcriber(args: Any, api_key: str | None) -> Any:
+    """Build the transcriber for ``--engine``: local faster-whisper or the OpenAI API."""
+    if getattr(args, "engine", "openai") == "local":
+        from vtt_transcribe.local_whisper import LocalTranscriber
+
+        return LocalTranscriber(model=getattr(args, "model", None), device=getattr(args, "device", "auto"))
+    from vtt_transcribe.transcriber import VideoTranscriber
+
+    if not api_key:
+        msg = "An OpenAI API key is required for the openai engine"
+        raise ValueError(msg)
+    return VideoTranscriber(api_key)
+
+
+def _translate_audio(args: Any, api_key: str | None) -> str:
+    """Handle --translate: Whisper audio translation to English (OpenAI API or the local engine)."""
+    from vtt_transcribe.transcriber import VideoTranscriber
+
+    local = getattr(args, "engine", "openai") == "local"
+    if local:
+        translator: Any = _make_transcriber(args, api_key)
+    else:
+        if not api_key:
+            msg = "An OpenAI API key is required for the openai engine"
+            raise ValueError(msg)
+        translator = AudioTranslator(api_key)
+    input_path = Path(args.input_file)
+
+    # For audio translation, we need the audio file
+    if input_path.suffix.lower() not in VideoTranscriber.SUPPORTED_AUDIO_FORMATS:
+        # Extract audio first
+        transcriber = _make_transcriber(args, api_key)
+        audio_path = Path(args.output_audio) if args.output_audio else None
+        audio_path = transcriber.resolve_audio_path(input_path, audio_path)
+        keep_audio = not args.delete_audio
+        transcriber.extract_audio(input_path, audio_path, force=args.force)
+        actual_audio_path = audio_path
+    else:
+        actual_audio_path = input_path
+        keep_audio = True
+
+    print("Translating audio to English...")
+    result = translator.translate_audio_file(actual_audio_path)
+
+    # Cleanup audio if requested
+    if not keep_audio and actual_audio_path != input_path:
+        actual_audio_path.unlink()
+        print(f"Deleted audio file: {actual_audio_path}")
+
+    return result
+
+
+def handle_standard_transcription(args: Any, api_key: str | None) -> str:
     """Handle standard transcription workflow with optional diarization and translation.
 
     Returns:
@@ -461,35 +513,10 @@ def handle_standard_transcription(args: Any, api_key: str) -> str:
 
     from vtt_transcribe.transcriber import VideoTranscriber
 
-    # Handle --translate flag (audio translation)
     if args.translate:
-        translator = AudioTranslator(api_key)
-        input_path = Path(args.input_file)
+        return _translate_audio(args, api_key)
 
-        # For audio translation, we need the audio file
-        if input_path.suffix.lower() not in VideoTranscriber.SUPPORTED_AUDIO_FORMATS:
-            # Extract audio first
-            transcriber = VideoTranscriber(api_key)
-            audio_path = Path(args.output_audio) if args.output_audio else None
-            audio_path = transcriber.resolve_audio_path(input_path, audio_path)
-            keep_audio = not args.delete_audio
-            transcriber.extract_audio(input_path, audio_path, force=args.force)
-            actual_audio_path = audio_path
-        else:
-            actual_audio_path = input_path
-            keep_audio = True
-
-        print("Translating audio to English...")
-        result = translator.translate_audio_file(actual_audio_path)
-
-        # Cleanup audio if requested
-        if not keep_audio and actual_audio_path != input_path:
-            actual_audio_path.unlink()
-            print(f"Deleted audio file: {actual_audio_path}")
-
-        return result
-
-    transcriber = VideoTranscriber(api_key)
+    transcriber = _make_transcriber(args, api_key)
 
     input_path = Path(args.input_file)
     audio_path = Path(args.output_audio) if args.output_audio else None
@@ -543,6 +570,9 @@ def handle_standard_transcription(args: Any, api_key: str) -> str:
 
     # Apply text translation if requested
     if args.translate_to:
+        if not api_key:
+            msg = "--translate-to uses the OpenAI API and needs an API key (set OPENAI_API_KEY or pass --api-key)"
+            raise ValueError(msg)
         translator = AudioTranslator(api_key)
         print(f"\nTranslating transcript to {args.translate_to}...")
         result = translator.translate_text(result, target_language=args.translate_to)
