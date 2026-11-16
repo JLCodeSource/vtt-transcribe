@@ -238,3 +238,39 @@ class TestHandlers:
     def test_openai_engine_requires_key(self, audio: Path) -> None:
         with pytest.raises(ValueError, match="API key"):
             handlers.handle_standard_transcription(_args(input_file=str(audio), engine="openai"), None)
+
+
+class TestCpuFallback:
+    def _broken_gpu_model(self) -> MagicMock:
+        model = MagicMock()
+        model.transcribe.side_effect = RuntimeError("Library libcublas.so.12 is not found or cannot be loaded")
+        model.detect_language.side_effect = RuntimeError("Library libcublas.so.12 is not found or cannot be loaded")
+        return model
+
+    def test_auto_device_falls_back_to_cpu(self, audio: Path) -> None:
+        t = LocalTranscriber(device="auto")
+        t.device, t.compute_type, t._auto = "cuda", "int8_float16", True
+        t._model = self._broken_gpu_model()
+        cpu_model = _fake_model()
+        with (
+            patch("vtt_transcribe.local_whisper.load_audio", return_value="pcm"),
+            patch.object(LocalTranscriber, "_get_model", side_effect=[t._model, cpu_model]),
+        ):
+            out = t.transcribe_audio_file(audio)
+        assert "Hello there." in out
+        assert (t.device, t.compute_type) == ("cpu", "int8")
+
+    def test_explicit_cuda_still_raises(self, audio: Path) -> None:
+        t = LocalTranscriber(device="cuda")
+        t._model = self._broken_gpu_model()
+        with (
+            patch("vtt_transcribe.local_whisper.load_audio", return_value="pcm"),
+            pytest.raises(RuntimeError, match="libcublas"),
+        ):
+            t.transcribe_audio_file(audio)
+
+    def test_cpu_errors_are_not_swallowed(self, audio: Path) -> None:
+        t = LocalTranscriber(device="cpu")
+        t._model = self._broken_gpu_model()
+        with patch("vtt_transcribe.local_whisper.load_audio", return_value="pcm"), pytest.raises(RuntimeError):
+            t.transcribe_audio_file(audio)

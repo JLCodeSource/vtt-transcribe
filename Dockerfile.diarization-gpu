@@ -31,7 +31,7 @@ COPY pyproject.toml uv.lock README.md ./
 
 # Export the fully-resolved diarization requirements from uv.lock, split into
 # torch/torchaudio (installed from the CUDA index) and everything else.
-RUN uv export --format requirements-txt --no-hashes --no-emit-project --extra diarization \
+RUN uv export --format requirements-txt --no-hashes --no-emit-project --extra diarization --extra local \
         > /tmp/requirements-diarization.txt \
     && grep -E '^(torch|torchaudio)==' /tmp/requirements-diarization.txt > /tmp/requirements-torch.txt \
     && grep -v -E '^(torch|torchaudio)==' /tmp/requirements-diarization.txt > /tmp/requirements-rest.txt \

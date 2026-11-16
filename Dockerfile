@@ -24,8 +24,9 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Copy source code
 COPY vtt_transcribe ./vtt_transcribe
 
-# Install base package with dependencies
-RUN uv pip install "."
+# Install the package with the local Whisper engine (faster-whisper, CPU) and the sherpa-onnx diarizer:
+# `vtt --engine local --diarize` then works without an OpenAI key or Hugging Face token.
+RUN uv pip install ".[local,sherpa]"
 
 # Runtime stage: Minimal image with only runtime dependencies
 FROM python:3.13-slim AS base
