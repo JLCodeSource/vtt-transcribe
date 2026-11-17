@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-11-17
+
 ### Added
 - The Docker images now include the `local` extra (faster-whisper, sentencepiece), and the base image also
   includes `sherpa`: `docker run -t jlcodesource/vtt-transcribe ... --engine local --diarize` works with no

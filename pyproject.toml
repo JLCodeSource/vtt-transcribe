@@ -1,6 +1,6 @@
 [project]
 name = "vtt-transcribe"
-version = "0.6.0"
+version = "0.6.1"
 description = "Transcribe video and audio files to text with OpenAI Whisper or a local Whisper model, with optional speaker diarization"
 readme = "README.md"
 requires-python = ">=3.11"
