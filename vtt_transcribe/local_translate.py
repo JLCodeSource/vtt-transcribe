@@ -15,6 +15,7 @@ from typing import Any
 
 from vtt_transcribe.local_whisper import resolve_device, whisper_model_dir
 from vtt_transcribe.logging_config import get_logger
+from vtt_transcribe.progress import ProgressCallback, report
 
 logger = get_logger(__name__)
 
@@ -42,7 +43,14 @@ for _entry in _NAMES.replace("\n", "").split("|"):
 LANGUAGES.update({"flemish": "nl", "mandarin": "zh", "farsi": "fa", "filipino": "tl", "scottish gaelic": "gd"})
 
 _LINE = re.compile(r"^(\[[^\]]*\]\s*)(.*)$")
+# Sentence boundary: after . ! ? (and CJK/Arabic/Devanagari equivalents) plus whitespace, or right after CJK stops.
+_SENTENCE_END = re.compile(r"(?<=[.!?\u061f\u0964\u06d4])\s+|(?<=[\u3002\uff01\uff1f])")
 _SPEAKER = re.compile(r"^([^\s:][^:]{0,40}:\s+)(.*)$")
+
+
+def split_sentences(text: str) -> list[str]:
+    """Split a line into sentences. M2M100 tends to translate only one sentence of a multi-sentence input."""
+    return [p for p in (s.strip() for s in _SENTENCE_END.split(text)) if p]
 
 
 def language_code(language: str) -> str:
@@ -58,8 +66,18 @@ def language_code(language: str) -> str:
 class LocalTextTranslator:
     """Translate transcripts with a local M2M100 model; same ``translate_text`` shape as ``AudioTranslator``."""
 
-    def __init__(self, source_language: str | None = None, device: str = "auto", model_dir: Path | None = None) -> None:
-        """Remember settings; the model loads lazily on first use."""
+    def __init__(
+        self,
+        source_language: str | None = None,
+        device: str = "auto",
+        model_dir: Path | None = None,
+        progress_callback: ProgressCallback | None = None,
+    ) -> None:
+        """Remember settings; the model loads lazily on first use.
+
+        ``progress_callback(fraction, message)`` is called when translation starts (0.0) and finishes (1.0).
+        """
+        self.progress_callback = progress_callback
         self.source_language = source_language
         self.device = resolve_device(device)
         self.model_dir = model_dir or whisper_model_dir().parent / "translate"
@@ -85,10 +103,19 @@ class LocalTextTranslator:
         self._sp = sentencepiece.SentencePieceProcessor(model_file=str(Path(path) / "sentencepiece.bpe.model"))
 
     def _translate_lines(self, texts: list[str], source: str, target: str) -> list[str]:
+        """Translate each line sentence by sentence (one model call per batch) and rejoin the sentences."""
         self._load()
-        batch = [[f"__{source}__", *self._sp.encode(t, out_type=str), "</s>"] for t in texts]
+        pieces = [split_sentences(t) or [t] for t in texts]
+        flat = [sentence for group in pieces for sentence in group]
+        batch = [[f"__{source}__", *self._sp.encode(t, out_type=str), "</s>"] for t in flat]
         results = self._translator.translate_batch(batch, target_prefix=[[f"__{target}__"]] * len(batch), beam_size=4)
-        return [self._sp.decode(r.hypotheses[0][1:]) for r in results]
+        decoded = [self._sp.decode(r.hypotheses[0][1:]) for r in results]
+        out: list[str] = []
+        pos = 0
+        for group in pieces:
+            out.append(" ".join(decoded[pos : pos + len(group)]))
+            pos += len(group)
+        return out
 
     def translate_text(self, text: str, target_language: str, *, speakers: bool = False) -> str:
         """Translate each transcript line's text, keeping ``[timestamps]`` (and speaker labels if ``speakers``)."""
@@ -104,10 +131,12 @@ class LocalTextTranslator:
             parts.append((prefix, body))
         if source == target:
             return text
+        report(self.progress_callback, 0.0, f"Translating to {target_language}")
         todo = [i for i, (_, body) in enumerate(parts) if body.strip()]
         translated = self._translate_lines([parts[i][1] for i in todo], source, target) if todo else []
         out = [p + b for p, b in parts]
         for i, t in zip(todo, translated, strict=True):
             out[i] = parts[i][0] + t
+        report(self.progress_callback, 1.0, "Translation complete")
         logger.info("Local translation complete", extra={"lines": len(todo), "target": target, "source": source})
         return "\n".join(out)

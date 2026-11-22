@@ -8,6 +8,7 @@ from openai import OpenAI
 from vtt_transcribe.audio_chunker import AudioChunker
 from vtt_transcribe.audio_manager import AudioFileManager
 from vtt_transcribe.logging_config import get_logger
+from vtt_transcribe.progress import ProgressCallback, report
 from vtt_transcribe.transcript_formatter import TranscriptFormatter
 
 if TYPE_CHECKING:
@@ -26,10 +27,13 @@ class VideoTranscriber:
 
     MAX_SIZE_MB = MAX_FILE_SIZE_MB
     SUPPORTED_AUDIO_FORMATS = (".mp3", ".wav", ".ogg", ".m4a")
+    #: Optional ``callback(fraction, message)``; the OpenAI path reports once per chunk (see ``vtt_transcribe.progress``).
+    progress_callback: ProgressCallback | None = None
 
-    def __init__(self, api_key: str) -> None:
+    def __init__(self, api_key: str, progress_callback: ProgressCallback | None = None) -> None:
         """Initialize transcriber with API key."""
         self.api_key: str = api_key
+        self.progress_callback = progress_callback
         self.client = OpenAI(api_key=api_key)
 
     def detect_language(self, audio_path: Path) -> str:
@@ -360,10 +364,12 @@ class VideoTranscriber:
                 },
             )
             print(f"Transcribing chunk {i + 1}/{len(chunk_files)}...")
+            report(self.progress_callback, i / len(chunk_files), f"Transcribing chunk {i + 1}/{len(chunk_files)}")
             transcript: str = self.transcribe_audio_file(chunk_path, language=language)
             if transcript and start_time > 0:
                 transcript = self._shift_formatted_timestamps(transcript, start_time)
             transcripts.append(transcript)
+            report(self.progress_callback, (i + 1) / len(chunk_files), f"Transcribed chunk {i + 1}/{len(chunk_files)}")
             if not keep_chunks:
                 with contextlib.suppress(Exception):
                     chunk_path.unlink()

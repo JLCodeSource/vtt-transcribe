@@ -16,6 +16,7 @@ import time
 from pathlib import Path
 
 from vtt_transcribe.logging_config import get_logger
+from vtt_transcribe.progress import ProgressCallback, report
 
 # Same name as the historical logger so existing log filters and tests keep working.
 logger = get_logger("vtt_transcribe.diarization")
@@ -28,6 +29,8 @@ class SpeakerLabeler:
     """Shared behaviour for diarizers: run on a file (with WAV fallback) and label transcripts."""
 
     device: str
+    #: Optional ``callback(fraction, message)``; reports step start (0.0) and finish (1.0) (see ``vtt_transcribe.progress``).
+    progress_callback: ProgressCallback | None = None
 
     def _diarize_audio_internal(self, audio_path: Path) -> list[tuple[float, float, str]]:
         """Backend-specific diarization. Returns (start, end, speaker_label) tuples."""
@@ -69,7 +72,9 @@ class SpeakerLabeler:
             },
         )
 
+        report(self.progress_callback, 0.0, "Identifying speakers")
         result = self._diarize_with_fallback(audio_path)
+        report(self.progress_callback, 1.0, "Speakers identified")
 
         duration = time.time() - start_time
         logger.info(

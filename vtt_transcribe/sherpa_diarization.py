@@ -25,6 +25,7 @@ from typing import Any
 
 from vtt_transcribe.diarization_common import SpeakerLabeler
 from vtt_transcribe.logging_config import get_logger
+from vtt_transcribe.progress import ProgressCallback
 
 logger = get_logger(__name__)
 
@@ -32,6 +33,14 @@ _RELEASES = "https://github.com/k2-fsa/sherpa-onnx/releases/download"
 # Chosen by sweeping 0.8-1.05 on eight 3-minute LibriSpeech conversations (2-6 speakers):
 # lowest mean diarization error rate (12.7%) at 0.95, 12.8% at 1.0.
 DEFAULT_THRESHOLD = 0.95
+# Second pass: 0.95 merges similar voices (two people in the 4-turn hello_conversation sample came out as one),
+# while 0.90 over-splits some multi-speaker files (mean DER 14.3% vs 12.7%). So 0.95 stays the first pass, and only
+# when it finds a single speaker is the audio re-clustered at 0.90; that result is kept only if the split looks
+# real: the smaller speaker has at least RECLUSTER_MIN_SHARE of the speech time and the audio has at least
+# RECLUSTER_MIN_TURNS turns in total.
+RECLUSTER_THRESHOLD = 0.90
+RECLUSTER_MIN_SHARE = 0.15
+RECLUSTER_MIN_TURNS = 3
 SAMPLE_RATE = 16000
 
 
@@ -166,6 +175,7 @@ class SherpaDiarizer(SpeakerLabeler):
         num_speakers: int | None = None,
         threshold: float = DEFAULT_THRESHOLD,
         model_dir: Path | None = None,
+        progress_callback: ProgressCallback | None = None,
     ) -> None:
         """Create a diarizer.
 
@@ -175,17 +185,20 @@ class SherpaDiarizer(SpeakerLabeler):
             num_speakers: If known, cluster to exactly this many speakers; otherwise detect.
             threshold: Clustering distance threshold used when ``num_speakers`` is not given.
             model_dir: Where models are cached. Defaults to ``~/.cache/vtt-transcribe/models``.
+            progress_callback: Optional ``callback(fraction, message)``; called at step start and finish.
         """
+        self.progress_callback = progress_callback
         self.device = "cpu"
         if device in ("cuda", "gpu"):
             logger.warning("The sherpa diarization backend runs on the CPU; ignoring --device %s", device)
         self.num_speakers = num_speakers
         self.threshold = threshold
         self.model_dir = model_dir
-        self._engine: Any = None
+        self._engines: dict[float, Any] = {}
 
-    def _load(self) -> Any:
-        if self._engine is None:
+    def _load(self, threshold: float | None = None) -> Any:
+        threshold = self.threshold if threshold is None else threshold
+        if threshold not in self._engines:
             import sherpa_onnx
 
             segmentation, embedding = ensure_models(self.model_dir)
@@ -197,7 +210,7 @@ class SherpaDiarizer(SpeakerLabeler):
                 embedding=sherpa_onnx.SpeakerEmbeddingExtractorConfig(model=str(embedding), num_threads=4),
                 clustering=sherpa_onnx.FastClusteringConfig(
                     num_clusters=self.num_speakers if self.num_speakers else -1,
-                    threshold=self.threshold,
+                    threshold=threshold,
                 ),
                 min_duration_on=0.3,
                 min_duration_off=0.5,
@@ -205,8 +218,8 @@ class SherpaDiarizer(SpeakerLabeler):
             if not config.validate():  # pragma: no cover - only if a model file is unreadable
                 msg = "Invalid sherpa-onnx diarization configuration (are the model files intact?)"
                 raise RuntimeError(msg)
-            self._engine = sherpa_onnx.OfflineSpeakerDiarization(config)
-        return self._engine
+            self._engines[threshold] = sherpa_onnx.OfflineSpeakerDiarization(config)
+        return self._engines[threshold]
 
     def _diarize_audio_internal(self, audio_path: Path) -> list[tuple[float, float, str]]:
         engine = self._load()
@@ -218,5 +231,31 @@ class SherpaDiarizer(SpeakerLabeler):
         if rate != engine.sample_rate:  # pragma: no cover - _convert_to_wav always writes 16 kHz
             msg = f"Expected {engine.sample_rate} Hz audio, got {rate} Hz"
             raise ValueError(msg)
+        segments = self._segments(engine, samples)
+        if self.num_speakers is None and self.threshold > RECLUSTER_THRESHOLD and len({s[2] for s in segments}) == 1:
+            retry = self._segments(self._load(RECLUSTER_THRESHOLD), samples)
+            if _is_real_split(retry):
+                logger.info(
+                    "Single speaker found; re-clustered at a lower threshold", extra={"threshold": RECLUSTER_THRESHOLD}
+                )
+                return retry
+        return segments
+
+    @staticmethod
+    def _segments(engine: Any, samples: Any) -> list[tuple[float, float, str]]:
         result = engine.process(samples).sort_by_start_time()
         return [(float(s.start), float(s.end), f"SPEAKER_{s.speaker:02d}") for s in result]
+
+
+def _is_real_split(segments: list[tuple[float, float, str]]) -> bool:
+    """True if ``segments`` has 2+ speakers, enough turns, and the second-largest speaker has enough speech."""
+    talk: dict[str, float] = {}
+    turns: dict[str, int] = {}
+    for start, end, who in segments:
+        talk[who] = talk.get(who, 0.0) + end - start
+        turns[who] = turns.get(who, 0) + 1
+    if len(talk) < 2:
+        return False
+    total = sum(talk.values())
+    ranked = sorted(talk, key=lambda w: talk[w], reverse=True)
+    return talk[ranked[1]] >= RECLUSTER_MIN_SHARE * total and sum(turns.values()) >= RECLUSTER_MIN_TURNS

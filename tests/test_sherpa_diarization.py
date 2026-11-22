@@ -8,7 +8,7 @@ import types
 import wave
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -485,3 +485,51 @@ class TestHandlersWithSherpa:
             assert handle_standard_transcription(args, "key") == "done"
         lazy.assert_called_with("sherpa")
         cls.assert_called_once_with(hf_token=None, device="cpu", num_speakers=2)
+
+
+class TestSingleSpeakerRecluster:
+    ONE: ClassVar = [(0.0, 5.0, "SPEAKER_00"), (6.0, 12.0, "SPEAKER_00")]
+    TWO: ClassVar = [(0.0, 5.0, "SPEAKER_00"), (6.0, 12.0, "SPEAKER_01"), (13.0, 17.0, "SPEAKER_00")]
+
+    def _run(self, tmp_path: Path, d: SherpaDiarizer, passes: list[list[tuple[float, float, str]]]) -> tuple[Any, MagicMock]:
+        loaded: list[float | None] = []
+
+        def load(threshold: float | None = None) -> MagicMock:
+            loaded.append(threshold)
+            return MagicMock(sample_rate=16000)
+
+        def convert(_self: Any, _src: Path, dest: Path) -> None:
+            _wav(dest)
+
+        with (
+            patch.object(SherpaDiarizer, "_load", side_effect=load),
+            patch.object(SherpaDiarizer, "_segments", side_effect=passes) as seg,
+            patch.object(SherpaDiarizer, "_convert_to_wav", convert),
+        ):
+            out = d._diarize_audio_internal(tmp_path / "x.mp3")
+        return out, seg
+
+    def test_collapsed_result_is_reclustered(self, tmp_path: Path) -> None:
+        out, seg = self._run(tmp_path, SherpaDiarizer(), [self.ONE, self.TWO])
+        assert out == self.TWO
+        assert seg.call_count == 2
+
+    def test_unreal_split_is_rejected(self, tmp_path: Path) -> None:
+        tiny = [*self.ONE, (30.0, 30.4, "SPEAKER_01")]
+        out, _ = self._run(tmp_path, SherpaDiarizer(), [self.ONE, tiny])
+        assert out == self.ONE
+
+    def test_still_one_speaker_stays(self, tmp_path: Path) -> None:
+        out, _ = self._run(tmp_path, SherpaDiarizer(), [self.ONE, self.ONE])
+        assert out == self.ONE
+
+    def test_multiple_speakers_not_reclustered(self, tmp_path: Path) -> None:
+        out, seg = self._run(tmp_path, SherpaDiarizer(), [self.TWO])
+        assert out == self.TWO
+        assert seg.call_count == 1
+
+    def test_explicit_num_speakers_and_low_threshold_unchanged(self, tmp_path: Path) -> None:
+        for d in (SherpaDiarizer(num_speakers=2), SherpaDiarizer(threshold=0.9)):
+            out, seg = self._run(tmp_path, d, [self.ONE])
+            assert out == self.ONE
+            assert seg.call_count == 1
