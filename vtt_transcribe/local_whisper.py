@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from vtt_transcribe.logging_config import get_logger
+from vtt_transcribe.progress import ProgressCallback, format_clock, report
 from vtt_transcribe.transcriber import VideoTranscriber
 from vtt_transcribe.transcript_formatter import TranscriptFormatter
 
@@ -70,8 +71,19 @@ class LocalTranscriber(VideoTranscriber):
     # No upload limit locally, so never split into chunks.
     MAX_SIZE_MB = 10**9
 
-    def __init__(self, model: str | None = None, device: str = "auto", model_dir: Path | None = None) -> None:
-        """Remember settings; the model itself loads lazily on first use."""
+    def __init__(
+        self,
+        model: str | None = None,
+        device: str = "auto",
+        model_dir: Path | None = None,
+        progress_callback: ProgressCallback | None = None,
+    ) -> None:
+        """Remember settings; the model itself loads lazily on first use.
+
+        ``progress_callback(fraction, message)`` is called as segments are produced, with the position in the
+        audio divided by its total duration (see ``vtt_transcribe.progress``).
+        """
+        self.progress_callback = progress_callback
         self.api_key = ""
         self.model_name = model or DEFAULT_MODEL
         self.device = resolve_device(device)
@@ -130,9 +142,22 @@ class LocalTranscriber(VideoTranscriber):
 
         def work(model: Any) -> tuple[list[Any], Any]:
             segments, info = model.transcribe(audio, language=language, task=task, beam_size=1, vad_filter=True)
-            return list(segments), info  # consume the lazy generator here so CUDA errors surface inside the fallback
+            total = float(getattr(info, "duration", 0) or 0)
+            report(self.progress_callback, 0.0, "Transcribing")
+            out: list[Any] = []
+            # consume the lazy generator here so CUDA errors surface inside the fallback
+            for seg in segments:
+                out.append(seg)
+                if total > 0:
+                    report(
+                        self.progress_callback,
+                        float(seg.end) / total,
+                        f"Transcribing {format_clock(float(seg.end))} / {format_clock(total)}",
+                    )
+            return out, info
 
         segments, info = self._with_cpu_fallback(work)
+        report(self.progress_callback, 1.0, "Transcription complete")
         payload = {"segments": [{"start": s.start, "end": s.end, "text": s.text} for s in segments]}
         logger.info(
             "Local transcription complete",

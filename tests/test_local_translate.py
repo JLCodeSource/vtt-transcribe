@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from vtt_transcribe.local_translate import MODEL_REVISION, LocalTextTranslator, language_code
+from vtt_transcribe.local_translate import MODEL_REVISION, LocalTextTranslator, language_code, split_sentences
 
 
 def test_language_code() -> None:
@@ -41,6 +41,23 @@ def test_keeps_timestamps_and_skips_blank_lines() -> None:
     batch = ct.translate_batch.call_args.args[0]
     assert batch[0] == ["__en__", "hello", "world", "</s>"]
     assert ct.translate_batch.call_args.kwargs["target_prefix"][0] == ["__fr__"]
+
+
+def test_split_sentences() -> None:
+    assert split_sentences("Hola. ¿Qué tal? Bien!") == ["Hola.", "¿Qué tal?", "Bien!"]
+    assert split_sentences("a\u3002b\uff1fc") == ["a\u3002", "b\uff1f", "c"]
+    assert split_sentences("no end") == ["no end"]
+    assert split_sentences("   ") == []
+
+
+def test_multi_sentence_lines_are_translated_per_sentence() -> None:
+    t, _, ct = _translator()
+    out = t.translate_text("[00:00:00 - 00:00:05] good morning all. today we talk\n[00:00:05 - 00:00:06] bye", "fr")
+    assert out == "[00:00:00 - 00:00:05] GOOD MORNING ALL. TODAY WE TALK\n[00:00:05 - 00:00:06] BYE"
+    batch = ct.translate_batch.call_args.args[0]
+    assert batch[0] == ["__en__", "good", "morning", "all.", "</s>"]
+    assert batch[1] == ["__en__", "today", "we", "talk", "</s>"]
+    assert len(batch) == 3
 
 
 def test_keeps_speaker_labels_only_when_asked() -> None:

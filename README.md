@@ -210,6 +210,29 @@ vtt audio.mp3 --engine local --model base --device cpu
  - `--translate-to LANG` also runs locally with `--engine local`: Meta's MIT-licensed M2M100 418M (CTranslate2 int8, about 490 MB, about 100 languages, any pair), downloaded once from a pinned revision of a public Hugging Face repository into `~/.cache/vtt-transcribe/models/translate`. Timestamps and speaker labels are kept and each line is translated on its own, so quality is below the OpenAI engine on context-dependent sentences. Speed: 60 transcript lines in about 12 s on 4 CPU threads and 1.6 s on an RTX A1000. Needs `sentencepiece`, which the `local` extra installs. With `--engine openai`, `--translate-to` still needs an API key.
  - Measured on 3 minutes of speech (beam size 1, int8): `small` runs at about 0.08x real time on 4 CPU threads and 0.02x on an RTX A1000 Laptop GPU (440 MB VRAM); `base` about 0.03x on CPU; `tiny` 0.016x. See the 0.6.0 changelog for the full table.
 
+### Progress callbacks (library use)
+
+Long jobs can report progress. Every step accepts an optional `progress_callback(fraction: float, message: str) -> None`
+(type `vtt_transcribe.progress.ProgressCallback`); `fraction` is 0.0-1.0 within that step and `message` is short status
+text. With no callback nothing changes, and a callback that raises is logged and ignored.
+
+```python
+from vtt_transcribe.local_whisper import LocalTranscriber
+from vtt_transcribe.local_translate import LocalTextTranslator
+from vtt_transcribe.sherpa_diarization import SherpaDiarizer
+
+def on_progress(fraction: float, message: str) -> None:
+    print(f"{fraction:6.1%} {message}")
+
+LocalTranscriber(progress_callback=on_progress)    # per segment: position in audio / total duration
+SherpaDiarizer(progress_callback=on_progress)      # step level: 0.0 at start, 1.0 at finish
+LocalTextTranslator(progress_callback=on_progress)  # step level: 0.0 at start, 1.0 at finish
+```
+
+The OpenAI `VideoTranscriber(api_key, progress_callback=...)` reports once per chunk when a file is split. The
+attribute `.progress_callback` can also be set on an existing object. Fractions are per step; combine them yourself
+for one overall bar.
+
 ## Setup Environment Variables
 
 You can set environment variables in your shell or create a `.env` file in your project directory:

@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Optional `progress_callback(fraction: float, message: str)` (`vtt_transcribe.progress.ProgressCallback`) on
+  `LocalTranscriber` (per segment: position in audio / total duration), `VideoTranscriber` (OpenAI, per chunk),
+  `SherpaDiarizer` / `SpeakerLabeler` and `LocalTextTranslator` (step start 0.0 and finish 1.0). No callback means
+  unchanged behaviour; a raising callback is logged and ignored. See the README.
+
+### Fixed
+- Local translation (`--engine local --translate-to`) silently dropped sentences: M2M100 translates only part of a
+  multi-sentence input (the Spanish line "Buenos días a todos. Hoy vamos a hablar de ..." lost "Buenos días a
+  todos"). Each line is now split into sentences, translated in one batch and rejoined; timestamps, speaker labels
+  and line structure are unchanged.
+- Speaker detection no longer collapses similar voices into one speaker: when the default pass (threshold 0.95)
+  finds a single speaker, the audio is re-clustered at 0.90 and that result is kept if the split looks real (the
+  smaller speaker has at least 15% of the speech and there are at least 3 turns). The two-person
+  `tests/hello_conversation.*` sample now gives 2 speakers (it gave 1). `--num-speakers` is unchanged, and files
+  that already have 2+ speakers at 0.95 are untouched.
+
+  Threshold sweep (8 synthetic 3-minute LibriSpeech conversations, 2-6 speakers; mean DER, collar 0.25 s) and the
+  speaker count on `hello_conversation`:
+
+  | threshold | mean DER | hello_conversation speakers |
+  |-----------|----------|------------------------------|
+  | 0.90      | 14.29%   | 2 |
+  | 0.91      | 14.29%   | 1 |
+  | 0.92      | 14.29%   | 1 |
+  | 0.93      | 14.29%   | 1 |
+  | 0.94      | 14.13%   | 1 |
+  | 0.95      | 12.73%   | 1 |
+  | 0.95 + re-cluster at 0.90 when 1 speaker | 12.73% (no benchmark file collapses) | 2 |
+
+  No single threshold gives both, hence the second pass. `hello_voices.mp3` (one 2-second utterance) stays at 1
+  speaker and `two-voices.wav` at 2 at every setting; 8 single-speaker 40-95 s clips cut from the benchmark are not
+  split at 0.90.
+
 ## [0.6.1] - 2026-11-17
 
 ### Added
