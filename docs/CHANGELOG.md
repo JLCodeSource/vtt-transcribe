@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-11-22
+
 ### Added
 - Optional `progress_callback(fraction: float, message: str)` (`vtt_transcribe.progress.ProgressCallback`) on
   `LocalTranscriber` (per segment: position in audio / total duration), `VideoTranscriber` (OpenAI, per chunk),
