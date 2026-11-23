@@ -1,6 +1,6 @@
 # Worker contract (sub-session prompt) for vtt-transcribe
 
-Copy this into a sub-session's prompt, fill in the task block, and point the session at this file. The rules in `CLAUDE.md`
+Copy this into a sub-session's prompt, fill in the task block, and point the session at this file. The rules in `AGENTS.md`
 apply in full; this document is the contract between coordinator and worker.
 
 ---
@@ -19,15 +19,15 @@ apply in full; this document is the contract between coordinator and worker.
 
 ## How you work
 
-1. Read `CLAUDE.md` and the bead. Mark the bead `in_progress`.
-2. Work in strict red, green, refactor commits (`CLAUDE.md` section 1): a `test:` commit with the failure output in the body, a
+1. Read `AGENTS.md` and the bead. Mark the bead `in_progress`.
+2. Work in strict red, green, refactor commits (`AGENTS.md` section 1): a `test:` commit with the failure output in the body, a
    `feat:`/`fix:` commit with the smallest change, a `refactor:` commit. Never skip the refactor: if your code needs nothing,
    refactor more widely in its own commit. Several small cycles beat one big one.
 3. Never weaken, skip or delete a test to get green. A genuinely wrong test gets its own `test:` commit with evidence.
 4. Out-of-scope findings (bugs, gaps, ideas, wider refactorings) become new beads with `discovered-from:{TASK_ID}` and go in
    your report. You do not fix them.
 5. Blocked? Write down why (in the bead and in your report) and stop. Never guess or work around a blocker.
-6. Finish by running **all** checks from `CLAUDE.md` section 3, rebasing onto the latest `main`, re-running the checks, and
+6. Finish by running **all** checks from `AGENTS.md` section 3, rebasing onto the latest `main`, re-running the checks, and
    pushing your branch. Open a PR if the coordinator asked for one. Do not merge unless told to. Do not tag, release,
    publish or deploy.
 
@@ -40,7 +40,7 @@ apply in full; this document is the contract between coordinator and worker.
 
 ## Closing down
 
-After the report, complete `CLAUDE.md` section 6: close off what is necessary, raise follow-on beads (improvements and wider
+After the report, complete `AGENTS.md` section 6: close off what is necessary, raise follow-on beads (improvements and wider
 refactorings), `bd dolt push`, tell the coordinator you are ready for archival, and wait. **Do not archive the session
 yourself.** The coordinator asks the user, and archives only with approval.
 
