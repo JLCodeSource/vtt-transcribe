@@ -59,6 +59,11 @@ This file replaces the earlier `AGENTS.md` (Landing the Plane). Its rules are ke
 4. A worker stops when its PR is merge-ready (all checks green, feedback addressed) and reports; the coordinator reviews
    (section 5) and merges with a regular merge commit, or a worker merges only when told to.
 5. Beads are synced with `bd dolt push` in the beads workspace (section 4). The old `bd sync` into the repository is retired.
+6. **Close the merged branch on the remote.** Whoever merges deletes the branch straight away: `gh pr merge <n> --merge --delete-branch`,
+   or afterwards `git push origin --delete <branch>`, then the local branch and its worktree (`git worktree remove`, `git branch -d`).
+   If other PRs are stacked on it, retarget them to `main` first, because deleting a base branch closes its dependents.
+   Only merged branches are deleted; an unmerged branch is never deleted, and an abandoned one is reported to the coordinator.
+   The coordinator checks that no merged branch is left on the remote (`git branch -r --merged origin/main`).
 
 ## 4. Work items: beads, outside the code repos
 
@@ -85,7 +90,7 @@ This file replaces the earlier `AGENTS.md` (Landing the Plane). Its rules are ke
 
 When your work is finished, do all of this, then stop and wait. Do not archive yourself.
 
-1. Close off anything necessary: docs, changelog, stray branches and temp files, bead status accurate.
+1. Close off anything necessary: docs, changelog, stray branches (local and remote: merged ones deleted, section 3) and temp files, bead status accurate.
 2. Raise follow-on beads for improvements to the system or platform and for wider refactorings that would warrant a bigger
    change, each with acceptance criteria and a link to the bead it came from.
 3. `bd dolt push`.
